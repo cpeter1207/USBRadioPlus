@@ -518,15 +518,15 @@ fn read_startup_eeprom(
     enabled: bool,
     gpio: GpioAdapter,
 ) -> Result<Option<EepromImage>, HardwareStationError> {
-    if !enabled {
+    if !enabled || selected.cm119.is_none() {
         return Ok(None);
     }
-    let mut device =
-        gpio.open_cm119(&selected.cm119)
-            .map_err(|source| HardwareStationError::Gpio {
-                operation: HardwareOperation::OpenCm119,
-                source,
-            })?;
+    let mut device = gpio
+        .open_cm119(selected.cm119.as_ref().expect("configured CM119"))
+        .map_err(|source| HardwareStationError::Gpio {
+            operation: HardwareOperation::OpenCm119,
+            source,
+        })?;
     Ok(device
         .read_eeprom()
         .ok()
@@ -542,24 +542,37 @@ fn read_startup_eeprom(
 /// # Errors
 ///
 /// Returns audio selection, configured identity, GPIO presence, or serial mismatch failures.
+fn select_audio(plan: &HardwarePlan, audio: AudioProvider) -> Result<SelectedDevice, AudioError> {
+    if plan.cm119.is_some() {
+        audio.select_device(&plan.audio_selector)
+    } else {
+        audio.select_alsa_device(&plan.audio_selector)
+    }
+}
+
+/// Bind exact audio and optional CM119 identity on the shared control path.
+/// Generic ALSA audio never probes or opens a USB HID device.
 pub fn select_native_hardware(
     plan: &HardwarePlan,
     audio: AudioProvider,
     gpio: GpioAdapter,
     maximum_frame_count: u32,
 ) -> Result<(SelectedDevice, SelectedHardwarePlan), HardwareStationError> {
-    let mut selected = audio.select_device(&plan.audio_selector)?;
+    let mut selected = select_audio(plan, audio)?;
     let mut bound = plan.select(&selected, maximum_frame_count)?;
-    bound.cm119.usb_port_path = selected
+    let Some(cm119) = &mut bound.cm119 else {
+        return Ok((selected, bound));
+    };
+    cm119.usb_port_path = selected
         .interface_path
+        .as_deref()
+        .ok_or(AudioError::InvalidArgument)?
         .split(':')
         .next()
         .filter(|path| !path.is_empty())
         .ok_or(AudioError::InvalidArgument)?
         .to_owned();
-    let identity = gpio
-        .probe(&bound.cm119)
-        .map_err(HardwareStationError::GpioProbe)?;
+    let identity = gpio.probe(cm119).map_err(HardwareStationError::GpioProbe)?;
     if !identity.present {
         return Err(HardwareStationError::GpioNotPresent);
     }
@@ -569,8 +582,8 @@ pub fn select_native_hardware(
         }
     }
     selected.serial = selected.serial.or(identity.serial);
-    bound.cm119.vendor_id = identity.vendor_id;
-    bound.cm119.product_id = identity.product_id;
+    cm119.vendor_id = identity.vendor_id;
+    cm119.product_id = identity.product_id;
     Ok((selected, bound))
 }
 
@@ -597,7 +610,7 @@ impl HardwareStation {
         audio: AudioProvider,
         gpio: GpioAdapter,
     ) -> Result<HardwarePreflight, HardwareStationError> {
-        let selected = audio.select_device(&plan.audio_selector)?;
+        let selected = select_audio(plan, audio)?;
         let selected_plan = plan.select(&selected, 1)?;
         let startup_eeprom = read_startup_eeprom(&selected_plan, eeprom_enabled, gpio)?;
         Ok(HardwarePreflight::new(selected, startup_eeprom))
@@ -619,7 +632,7 @@ impl HardwareStation {
         audio: AudioProvider,
         gpio: GpioAdapter,
     ) -> Result<HardwarePreflight, HardwareStationError> {
-        let selected = audio.select_device(&plan.audio_selector)?;
+        let selected = select_audio(plan, audio)?;
         let selected_plan = plan.select(&selected, 1)?;
         self.maintenance.preflight_selected_replacement(
             selected,
@@ -654,13 +667,18 @@ impl HardwareStation {
         let initial_remote_radio = configured_remote_radio(media.plan.configuration());
         let selected = preflight.selected;
         let selected_plan = plan.select(&selected, maximum_frame_count)?;
-        let (mixers, sidetone) = HardwareMixers::open(
-            audio,
-            &selected,
-            &hardware,
-            preflight.startup_tuning,
-            local_repeat_level,
-        )?;
+        let (mixers, sidetone) = if selected.interface_path.is_some() {
+            let (mixers, sidetone) = HardwareMixers::open(
+                audio,
+                &selected,
+                &hardware,
+                preflight.startup_tuning,
+                local_repeat_level,
+            )?;
+            (Some(mixers), sidetone)
+        } else {
+            (None, None)
+        };
         let (runtime, control) = StationRuntime::open(media, &selected_plan, audio)?;
         let service = HardwareService::new(
             gpio,
@@ -675,7 +693,7 @@ impl HardwareStation {
         );
         let maintenance = HardwareMaintenance {
             service,
-            mixers: RefCell::new(Some(mixers)),
+            mixers: RefCell::new(mixers),
             native_mixers: None,
             hardware: runtime.hardware_state(),
             selected: selected.clone(),
@@ -1203,8 +1221,15 @@ impl HardwareMaintenance {
     ) -> Result<Self, HardwareStationError> {
         if selected.stream.input_device_index != preflight.selected.input_device_index
             || selected.stream.output_device_index != preflight.selected.output_device_index
-            || preflight.selected.interface_path.split(':').next()
-                != Some(selected.cm119.usb_port_path.as_str())
+            || preflight
+                .selected
+                .interface_path
+                .as_deref()
+                .and_then(|path| path.split(':').next())
+                != selected
+                    .cm119
+                    .as_ref()
+                    .map(|cm119| cm119.usb_port_path.as_str())
         {
             return Err(HardwarePlanError::UsbIdentityMismatch.into());
         }
@@ -1220,11 +1245,15 @@ impl HardwareMaintenance {
         Ok(Self {
             service,
             mixers: RefCell::new(None),
-            native_mixers: Some(NativeMixerSetup {
-                audio,
-                gains,
-                tuning: Cell::new(preflight.startup_tuning),
-            }),
+            native_mixers: preflight
+                .selected
+                .interface_path
+                .is_some()
+                .then(|| NativeMixerSetup {
+                    audio,
+                    gains,
+                    tuning: Cell::new(preflight.startup_tuning),
+                }),
             hardware: state,
             selected: preflight.selected,
             update_mixers: None,
@@ -1349,7 +1378,10 @@ impl HardwareMaintenance {
         if let Some(setup) = &self.native_mixers {
             HardwareMixers::apply_native_gains(
                 setup.audio,
-                &self.selected.interface_path,
+                self.selected
+                    .interface_path
+                    .as_deref()
+                    .ok_or(AudioError::Unsupported)?,
                 setup.gains,
                 setup.tuning.get(),
             )?;
@@ -1367,7 +1399,7 @@ impl HardwareMaintenance {
     fn mixers(&self) -> Result<RefMut<'_, HardwareMixers>, HardwareStationError> {
         let mut mixers = self.mixers.borrow_mut();
         if mixers.is_none() {
-            let setup = self.native_mixers.as_ref().expect("native lazy mixers");
+            let setup = self.native_mixers.as_ref().ok_or(AudioError::Unsupported)?;
             *mixers = Some(HardwareMixers::native(setup.audio, &self.selected)?);
         }
         Ok(RefMut::map(mixers, |mixers| {
@@ -1659,13 +1691,32 @@ struct HardwareMixers {
 
 impl HardwareMixers {
     fn native(provider: AudioProvider, selected: &SelectedDevice) -> Result<Self, AudioError> {
-        let paths = provider.cm119_mixer_paths(&selected.interface_path)?;
+        let paths = provider.cm119_mixer_paths(
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
+        )?;
         // AudioProvider already rejects an empty receive-path list.
         if paths.transmit.len() != 2 {
             return Err(AudioError::Unsupported);
         }
-        let receive = open_paths(provider, &selected.interface_path, &paths.receive)?;
-        let transmit = open_paths(provider, &selected.interface_path, &paths.transmit)?;
+        let receive = open_paths(
+            provider,
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
+            &paths.receive,
+        )?;
+        let transmit = open_paths(
+            provider,
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
+            &paths.transmit,
+        )?;
         Ok(Self {
             levels: [
                 receive[0].normalized()?,
@@ -1728,16 +1779,45 @@ impl HardwareMixers {
         startup_tuning: Option<EepromTuning>,
         local_repeat_level: u32,
     ) -> Result<(Self, Option<HardwareSidetone>), AudioError> {
-        let paths = provider.cm119_mixer_paths(&selected.interface_path)?;
+        let paths = provider.cm119_mixer_paths(
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
+        )?;
         if paths.transmit.len() != 2 {
             return Err(AudioError::Unsupported);
         }
-        let mut receive = open_paths(provider, &selected.interface_path, &paths.receive)?;
-        let mut transmit = open_paths(provider, &selected.interface_path, &paths.transmit)?;
-        let sidetone = open_paths(provider, &selected.interface_path, &paths.sidetone)?;
+        let mut receive = open_paths(
+            provider,
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
+            &paths.receive,
+        )?;
+        let mut transmit = open_paths(
+            provider,
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
+            &paths.transmit,
+        )?;
+        let sidetone = open_paths(
+            provider,
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
+            &paths.sidetone,
+        )?;
         let mut receive_compatibility = open_paths(
             provider,
-            &selected.interface_path,
+            selected
+                .interface_path
+                .as_deref()
+                .ok_or(AudioError::Unsupported)?,
             &paths.receive_compatibility_switch,
         )?;
 
@@ -2029,8 +2109,8 @@ impl HardwareService {
             provider,
             parallel: plan.parallel.clone(),
             statistics: Arc::new(ServiceStatistics::new(plan.parallel.is_some())),
-            cm119_input_mask: plan.cm119.input_mask,
-            clip_led_mask: plan.cm119.clip_led_mask,
+            cm119_input_mask: plan.cm119.as_ref().map_or(0, |cm119| cm119.input_mask),
+            clip_led_mask: plan.cm119.as_ref().map_or(0, |cm119| cm119.clip_led_mask),
             selected,
             state,
             eeprom_enabled: setup.eeprom_enabled,
@@ -2259,9 +2339,15 @@ impl HardwareService {
 
     fn validate_command(&self, command: OutputCommand) -> Result<(), HardwareStationError> {
         let (available, request) = match command {
-            OutputCommand::Cm119(bit, request) => {
-                (self.selected.cm119.output_enable_mask & bit != 0, request)
-            }
+            OutputCommand::Cm119(bit, request) => (
+                self.selected
+                    .cm119
+                    .as_ref()
+                    .map_or(0, |cm119| cm119.output_enable_mask)
+                    & bit
+                    != 0,
+                request,
+            ),
             OutputCommand::Parallel(bit, request) => (
                 self.parallel
                     .as_ref()
@@ -2370,7 +2456,7 @@ fn receive_value<T>(receiver: Receiver<T>) -> Result<T, HardwareStationError> {
 }
 
 struct ServiceDevices {
-    cm119: Cm119Device,
+    cm119: Option<Cm119Device>,
     parallel: Option<ParallelDevice>,
     ptt_inverted: bool,
 }
@@ -2389,6 +2475,28 @@ struct ServiceExit {
 }
 
 impl ServiceDevices {
+    fn cm119(&self, operation: HardwareOperation) -> Result<&Cm119Device, ServiceFailure> {
+        self.cm119
+            .as_ref()
+            .ok_or(ServiceFailure(operation, GpioError::Unsupported))
+    }
+    fn cm119_snapshot(&mut self) -> Result<Option<(Cm119Inputs, Cm119Statistics)>, ServiceFailure> {
+        self.cm119
+            .as_mut()
+            .map(|device| {
+                device
+                    .service()
+                    .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))?;
+                let inputs = device
+                    .inputs()
+                    .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))?;
+                let statistics = device.statistics().map_err(|source| {
+                    ServiceFailure(HardwareOperation::ReadCm119Statistics, source)
+                })?;
+                Ok((inputs, statistics))
+            })
+            .transpose()
+    }
     fn open_at_outputs(
         provider: GpioAdapter,
         selected: &SelectedHardwarePlan,
@@ -2398,11 +2506,13 @@ impl ServiceDevices {
         // Use the resolved safe baseline even if a later open fails and drops
         // the first handle. Startup and recovery share this ownership transfer.
         let mut selected = selected.clone();
-        selected.cm119.output_initial_mask = outputs.cm119;
+        if let Some(cm119) = &mut selected.cm119 {
+            cm119.output_initial_mask = outputs.cm119;
+        }
         let mut parallel = parallel.cloned();
         if let Some(plan) = &mut parallel {
             plan.config.output_initial_mask =
-                parallel_output(plan, outputs.parallel, false, selected.cm119.ptt_inverted);
+                parallel_output(plan, outputs.parallel, false, selected.ptt_inverted());
         }
         Self::open(provider, &selected, parallel.as_ref())
     }
@@ -2412,9 +2522,15 @@ impl ServiceDevices {
         selected: &SelectedHardwarePlan,
         parallel: Option<&ParallelPlan>,
     ) -> Result<Self, ServiceFailure> {
-        let cm119 = provider
-            .open_cm119(&selected.cm119)
-            .map_err(|source| ServiceFailure(HardwareOperation::OpenCm119, source))?;
+        let cm119 = selected
+            .cm119
+            .as_ref()
+            .map(|config| {
+                provider
+                    .open_cm119(config)
+                    .map_err(|source| ServiceFailure(HardwareOperation::OpenCm119, source))
+            })
+            .transpose()?;
         let parallel = parallel
             .map(|plan| {
                 provider
@@ -2425,7 +2541,7 @@ impl ServiceDevices {
         Ok(Self {
             cm119,
             parallel,
-            ptt_inverted: selected.cm119.ptt_inverted,
+            ptt_inverted: selected.ptt_inverted(),
         })
     }
 
@@ -2434,30 +2550,36 @@ impl ServiceDevices {
         parallel: Option<&ParallelPlan>,
         outputs: &mut OutputState,
     ) -> Result<(), ServiceFailure> {
-        let cm119 = self
-            .cm119
-            .schedule_pulse(Cm119Pulse {
-                cancel_ptt: true,
-                cancel_gpio_mask: outputs.site[0].snapshot().output_mask as u8,
-                ..Cm119Pulse::default()
-            })
-            .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source))
-            .and_then(|()| {
-                self.cm119
-                    .publish_outputs(Cm119Outputs {
-                        ptt_asserted: false,
-                        gpio_output_mask: outputs.cm119,
-                    })
-                    .map_err(|source| ServiceFailure(HardwareOperation::PublishCm119, source))?;
-                outputs.site[0].submitted(u32::from(outputs.cm119));
-                self.cm119
-                    .service()
-                    .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
-            });
-        outputs.site[0].serviced(cm119.is_ok());
-        if cm119.is_err() {
-            outputs.site[0].reject(SiteError::Fault);
-        }
+        let cm119 = if let Some(device) = &mut self.cm119 {
+            let result = device
+                .schedule_pulse(Cm119Pulse {
+                    cancel_ptt: true,
+                    cancel_gpio_mask: outputs.site[0].snapshot().output_mask as u8,
+                    ..Cm119Pulse::default()
+                })
+                .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source))
+                .and_then(|()| {
+                    device
+                        .publish_outputs(Cm119Outputs {
+                            ptt_asserted: false,
+                            gpio_output_mask: outputs.cm119,
+                        })
+                        .map_err(|source| {
+                            ServiceFailure(HardwareOperation::PublishCm119, source)
+                        })?;
+                    outputs.site[0].submitted(u32::from(outputs.cm119));
+                    device
+                        .service()
+                        .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
+                });
+            outputs.site[0].serviced(result.is_ok());
+            if result.is_err() {
+                outputs.site[0].reject(SiteError::Fault);
+            }
+            result
+        } else {
+            Ok(())
+        };
         // Attempt both banks even when one fails. Successful closes are not
         // repeated; failed closes keep their handle for retry, never a second owner.
         let port = if let Some(device) = self.parallel.take() {
@@ -2511,7 +2633,10 @@ impl OutputState {
     ) -> Self {
         Self {
             native_outputs: None,
-            cm119: selected.cm119.output_initial_mask,
+            cm119: selected
+                .cm119
+                .as_ref()
+                .map_or(0, |cm119| cm119.output_initial_mask),
             parallel: parallel.map_or(0, |plan| plan.config.output_initial_mask),
             remote_radio,
             remote_radio_dirty: remote_radio.is_some(),
@@ -2521,9 +2646,19 @@ impl OutputState {
             site: [
                 SiteBankState::new(
                     0,
-                    u32::from(selected.cm119.output_enable_mask),
+                    u32::from(
+                        selected
+                            .cm119
+                            .as_ref()
+                            .map_or(0, |cm119| cm119.output_enable_mask),
+                    ),
                     0,
-                    u32::from(selected.cm119.output_initial_mask),
+                    u32::from(
+                        selected
+                            .cm119
+                            .as_ref()
+                            .map_or(0, |cm119| cm119.output_initial_mask),
+                    ),
                 ),
                 SiteBankState::new(
                     0,
@@ -2541,16 +2676,26 @@ impl OutputState {
         worker: &ServiceWorker,
     ) -> Result<(), ServiceFailure> {
         let safe_high = self.site.each_ref().map(SiteBankState::safe_high);
-        let caps = devices
-            .cm119
-            .capabilities()
-            .map_err(|error| ServiceFailure(HardwareOperation::OpenCm119, error))?;
-        self.site[0] = SiteBankState::new(
-            (caps.input_pin_mask as u32) & u32::from(worker.cm119_input_mask),
-            (caps.output_pin_mask as u32) & u32::from(worker.selected.cm119.output_enable_mask),
-            u32::from(worker.clip_led_mask),
-            u32::from(self.cm119),
-        );
+        self.site[0] = if let Some(device) = &devices.cm119 {
+            let caps = device
+                .capabilities()
+                .map_err(|error| ServiceFailure(HardwareOperation::OpenCm119, error))?;
+            SiteBankState::new(
+                (caps.input_pin_mask as u32) & u32::from(worker.cm119_input_mask),
+                (caps.output_pin_mask as u32)
+                    & u32::from(
+                        worker
+                            .selected
+                            .cm119
+                            .as_ref()
+                            .map_or(0, |cm119| cm119.output_enable_mask),
+                    ),
+                u32::from(worker.clip_led_mask),
+                u32::from(self.cm119),
+            )
+        } else {
+            SiteBankState::new(0, 0, 0, 0)
+        };
         self.site[0].restore_safe_high(safe_high[0]);
         if let Some((device, plan)) = devices.parallel.as_ref().zip(worker.parallel.as_ref()) {
             let caps = device
@@ -2590,7 +2735,7 @@ impl OutputState {
         if mask != 0 {
             let result = match bank {
                 SiteBank::Cm119 => devices
-                    .cm119
+                    .cm119(HardwareOperation::PulseCm119)?
                     .schedule_pulse(Cm119Pulse {
                         cancel_gpio_mask: mask,
                         ..Cm119Pulse::default()
@@ -2662,7 +2807,7 @@ impl OutputState {
                     },
                 };
                 devices
-                    .cm119
+                    .cm119(HardwareOperation::PulseCm119)?
                     .schedule_pulse(pulse)
                     .map_err(|source| ServiceFailure(HardwareOperation::PulseCm119, source))?;
                 apply_persistent(&mut self.cm119, bit, request);
@@ -2712,8 +2857,11 @@ impl OutputState {
         for (site, high) in self.site.iter_mut().zip(state.site_safe_high) {
             site.restore_safe_high(high);
         }
-        let cm119_mask =
-            selected.cm119.output_enable_mask & !(self.site[0].snapshot().claimed_mask as u8);
+        let cm119_mask = selected
+            .cm119
+            .as_ref()
+            .map_or(0, |cm119| cm119.output_enable_mask)
+            & !(self.site[0].snapshot().claimed_mask as u8);
         self.cm119 = (self.cm119 & !cm119_mask) | (state.cm119_output_mask & cm119_mask);
         if let Some(plan) = parallel {
             let preserved = self.site[1].snapshot().claimed_mask as u8;
@@ -2813,7 +2961,7 @@ impl OutputState {
             return Ok(());
         }
         devices
-            .cm119
+            .cm119(HardwareOperation::PulseCm119)?
             .schedule_pulse(Cm119Pulse {
                 invert_gpio_mask: clip_led_mask,
                 duration_milliseconds: CLIP_LED_HOLD.as_millis() as u32,
@@ -2996,10 +3144,21 @@ fn service_commands(
             }
             Ok(ServiceCommand::SitePublish(bank, request)) => outputs.site_publish(bank, request),
             Ok(ServiceCommand::ReadEeprom(response)) => {
-                let _ = response.send(devices.cm119.read_eeprom());
+                let _ = response.send(
+                    devices
+                        .cm119
+                        .as_mut()
+                        .ok_or(GpioError::Unsupported)
+                        .and_then(Cm119Device::read_eeprom),
+                );
             }
             Ok(ServiceCommand::WriteEeprom(mut image, response)) => {
-                let result = devices.cm119.write_eeprom(&mut image).map(|()| image);
+                let result = devices
+                    .cm119
+                    .as_mut()
+                    .ok_or(GpioError::Unsupported)
+                    .and_then(|device| device.write_eeprom(&mut image))
+                    .map(|()| image);
                 let _ = response.send(result);
             }
             Ok(ServiceCommand::SelectChannel(channel)) => {
@@ -3042,57 +3201,69 @@ fn service_once(
         worker.clip_led_mask,
         worker.state.receive_clip_events(),
     )?;
-    devices
-        .cm119
-        .publish_outputs(Cm119Outputs {
-            ptt_asserted: radio.logical_ptt,
-            gpio_output_mask: outputs.cm119,
-        })
-        .map_err(|source| ServiceFailure(HardwareOperation::PublishCm119, source))?;
-    outputs.site[0].submitted(u32::from(outputs.cm119));
-    let acquisition = devices
-        .cm119
-        .service()
-        .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
-        .and_then(|()| {
-            devices
-                .cm119
-                .inputs()
-                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))
-        });
-    outputs.site[0].observe(
-        acquisition
-            .as_ref()
-            .ok()
-            .filter(|input| input.online)
-            .map(|input| u32::from(input.gpio_input_mask)),
-        worker.now_ms(),
-    );
-    outputs.site[0].serviced(acquisition.as_ref().is_ok_and(|input| input.online));
-    let cm119 = acquisition?;
-    let cm119_statistics = devices
-        .cm119
-        .statistics()
-        .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119Statistics, source))?;
-
-    let parallel_inputs = service_parallel_once(devices, outputs, worker, radio.logical_ptt)?;
-
-    worker.state.publish_inputs(hardware_inputs(
-        cm119,
-        worker.parallel.as_ref(),
-        parallel_inputs,
-        cm119_statistics,
-    ));
+    if let Some(device) = &devices.cm119 {
+        device
+            .publish_outputs(Cm119Outputs {
+                ptt_asserted: radio.logical_ptt,
+                gpio_output_mask: outputs.cm119,
+            })
+            .map_err(|source| ServiceFailure(HardwareOperation::PublishCm119, source))?;
+        outputs.site[0].submitted(u32::from(outputs.cm119));
+    }
+    let snapshot = devices.cm119_snapshot()?;
+    observe_cm119(outputs, snapshot, worker.now_ms());
+    let parallel = service_parallel_once(devices, outputs, worker, radio.logical_ptt)?;
+    worker
+        .state
+        .publish_inputs(collected_inputs(devices, worker, snapshot, parallel)?);
     input_tracker.publish(
-        cm119,
+        snapshot.map_or_else(Cm119Inputs::default, |(inputs, _)| inputs),
         worker.cm119_input_mask,
-        parallel_inputs,
+        parallel,
         worker.parallel.as_ref(),
         &worker.input_sender,
         &worker.statistics,
     );
-    worker.statistics.success(cm119_statistics);
+    worker
+        .statistics
+        .success(snapshot.map(|(_, statistics)| statistics));
     Ok(())
+}
+
+fn observe_cm119(
+    outputs: &mut OutputState,
+    snapshot: Option<(Cm119Inputs, Cm119Statistics)>,
+    now: u64,
+) {
+    outputs.site[0].observe(
+        snapshot
+            .filter(|(input, _)| input.online)
+            .map(|(input, _)| u32::from(input.gpio_input_mask)),
+        now,
+    );
+    outputs.site[0].serviced(snapshot.is_some_and(|(input, _)| input.online));
+}
+
+fn collected_inputs(
+    devices: &ServiceDevices,
+    worker: &ServiceWorker,
+    snapshot: Option<(Cm119Inputs, Cm119Statistics)>,
+    parallel: Option<ParallelInputs>,
+) -> Result<HardwareInputs, ServiceFailure> {
+    // Missing CM119 observations represent absent signals, not successful device I/O.
+    let (cm119, statistics) = snapshot.unwrap_or_default();
+    let mut inputs = hardware_inputs(cm119, worker.parallel.as_ref(), parallel, statistics);
+    if devices.cm119.is_none() {
+        if let Some((device, plan)) = devices.parallel.as_ref().zip(worker.parallel.as_ref()) {
+            let statistics = device.statistics().map_err(|error| {
+                ServiceFailure(HardwareOperation::ReadParallelStatistics, error)
+            })?;
+            inputs.physical_ptt = plan.ptt_mask != 0
+                && statistics.online
+                && (statistics.applied_output_mask & plan.ptt_mask != 0) != devices.ptt_inverted;
+        }
+    }
+    Ok(inputs)
 }
 
 fn service_parallel_once(
@@ -3156,62 +3327,45 @@ fn service_native_once(
         worker.clip_led_mask,
         worker.state.receive_clip_events(),
     );
-    let snapshots = devices
-        .cm119
-        .service()
-        .map_err(|source| ServiceFailure(HardwareOperation::ServiceCm119, source))
-        .and_then(|()| {
-            devices
-                .cm119
-                .inputs()
-                .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119, source))
-        });
-    outputs.site[0].observe(
-        snapshots
-            .as_ref()
-            .ok()
-            .filter(|input| input.online)
-            .map(|input| u32::from(input.gpio_input_mask)),
-        worker.now_ms(),
-    );
-    outputs.site[0].serviced(snapshots.as_ref().is_ok_and(|input| input.online));
-    let snapshots = snapshots.and_then(|inputs| {
-        let statistics = devices
-            .cm119
-            .statistics()
-            .map_err(|source| ServiceFailure(HardwareOperation::ReadCm119Statistics, source))?;
-        Ok((inputs, statistics))
-    });
-    let online = snapshots.as_ref().is_ok_and(|(inputs, _)| inputs.online);
-    let parallel = service_parallel_once(devices, outputs, worker, online && logical_ptt);
-    let mut inputs = match snapshots.as_ref() {
-        Ok((inputs, statistics)) if online => hardware_inputs(
-            *inputs,
-            worker.parallel.as_ref(),
+    let snapshots = devices.cm119_snapshot();
+    let snapshot = snapshots.as_ref().ok().copied().flatten();
+    observe_cm119(outputs, snapshot, worker.now_ms());
+    let ready = snapshots
+        .as_ref()
+        .is_ok_and(|snapshot| snapshot.is_none_or(|(inputs, _)| inputs.online));
+    let parallel = service_parallel_once(devices, outputs, worker, ready && logical_ptt);
+    let mut inputs = if ready {
+        collected_inputs(
+            devices,
+            worker,
+            snapshot,
             parallel.as_ref().ok().copied().flatten(),
-            *statistics,
-        ),
-        _ => HardwareInputs::default(),
+        )?
+    } else {
+        HardwareInputs::default()
     };
-    let requested = Cm119Outputs {
-        ptt_asserted: online && logical_ptt,
-        gpio_output_mask: outputs.cm119,
-    };
-    if outputs.native_outputs != Some(requested) {
-        if let Err(source) = devices.cm119.publish_outputs(requested) {
-            outputs.native_outputs = None;
-            inputs.physical_ptt = false;
-            worker.state.publish_inputs(inputs);
-            return Err(ServiceFailure(HardwareOperation::PublishCm119, source));
+    if let Some(device) = &devices.cm119 {
+        let requested = Cm119Outputs {
+            ptt_asserted: ready && logical_ptt,
+            gpio_output_mask: outputs.cm119,
+        };
+        if outputs.native_outputs != Some(requested) {
+            if let Err(source) = device.publish_outputs(requested) {
+                outputs.native_outputs = None;
+                inputs.physical_ptt = false;
+                worker.state.publish_inputs(inputs);
+                return Err(ServiceFailure(HardwareOperation::PublishCm119, source));
+            }
+            outputs.native_outputs = Some(requested);
         }
-        outputs.native_outputs = Some(requested);
+        outputs.site[0].submitted(u32::from(requested.gpio_output_mask));
     }
-    outputs.site[0].submitted(u32::from(requested.gpio_output_mask));
-    // Physical PTT reflects the serviced snapshot, never the newly queued output intent.
+    // Physical PTT is serviced feedback, never newly queued demand.
     worker.state.publish_inputs(inputs);
     parallel?;
-    let (_, statistics) = snapshots?;
-    worker.statistics.success(statistics);
+    worker
+        .statistics
+        .success(snapshots?.map(|(_, statistics)| statistics));
     Ok(())
 }
 
@@ -3391,8 +3545,11 @@ impl ServiceStatistics {
         }
     }
 
-    fn success(&self, value: Cm119Statistics) {
+    fn success(&self, value: Option<Cm119Statistics>) {
         self.cycles.fetch_add(1, Ordering::Relaxed);
+        let Some(value) = value else {
+            return;
+        };
         self.cm119_input_reads
             .store(value.input_read_count, Ordering::Relaxed);
         self.cm119_output_applies

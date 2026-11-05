@@ -32,7 +32,9 @@ pub struct HardwarePlan {
     /// Extra playback latency requested from PortAudio, in milliseconds.
     pub output_extra_buffer_ms: u32,
     /// CM119 settings which do not depend on the resolved USB topology.
-    pub cm119: Cm119Plan,
+    pub cm119: Option<Cm119Plan>,
+    /// Polarity of the explicitly selected physical PTT output.
+    pub ptt_inverted: bool,
     /// Optional parallel-port settings and signal assignments.
     pub parallel: Option<ParallelPlan>,
 }
@@ -46,8 +48,6 @@ pub struct Cm119Plan {
     pub required_serial: Option<String>,
     /// CM119 wiring layout.
     pub profile: Cm119Profile,
-    /// Whether the dedicated physical PTT output is inverted.
-    pub ptt_inverted: bool,
     /// Ordinary GPIO pins configured as outputs, excluding dedicated PTT.
     pub output_enable_mask: u8,
     /// Initial values for enabled ordinary GPIO outputs.
@@ -79,7 +79,19 @@ pub struct SelectedHardwarePlan {
     /// Fixed-48-kHz `PortAudio` stream inputs.
     pub stream: StreamConfig,
     /// CM119 adapter setup using the same canonical USB topology.
-    pub cm119: Cm119Config,
+    pub cm119: Option<Cm119Config>,
+    /// PTT polarity also applies to independently selected parallel control.
+    pub ptt_inverted: bool,
+}
+
+impl SelectedHardwarePlan {
+    /// Preserve the configured CM119 polarity when present; generic audio uses
+    /// the independent GPIO polarity retained without a CM119 configuration.
+    pub fn ptt_inverted(&self) -> bool {
+        self.cm119
+            .as_ref()
+            .map_or(self.ptt_inverted, |cm119| cm119.ptt_inverted)
+    }
 }
 
 /// Failure to bind an adapter-selected audio endpoint to CM119 GPIO.
@@ -131,22 +143,39 @@ impl HardwarePlan {
         {
             return Err(HardwarePlanError::ChannelLayoutMismatch);
         }
-        if self
+        let cm119 = self
             .cm119
-            .required_usb_port_path
-            .as_deref()
-            .is_some_and(|path| path != selected.interface_path)
-        {
-            return Err(HardwarePlanError::UsbIdentityMismatch);
-        }
-        if self
-            .cm119
-            .required_serial
-            .as_deref()
-            .is_some_and(|serial| selected.serial.as_deref() != Some(serial))
-        {
-            return Err(HardwarePlanError::SerialMismatch);
-        }
+            .as_ref()
+            .map(|plan| {
+                let path = selected
+                    .interface_path
+                    .as_ref()
+                    .ok_or(HardwarePlanError::UsbIdentityMismatch)?;
+                if plan
+                    .required_usb_port_path
+                    .as_ref()
+                    .is_some_and(|requested| requested != path)
+                {
+                    return Err(HardwarePlanError::UsbIdentityMismatch);
+                }
+                if plan
+                    .required_serial
+                    .as_ref()
+                    .is_some_and(|serial| selected.serial.as_ref() != Some(serial))
+                {
+                    return Err(HardwarePlanError::SerialMismatch);
+                }
+                Ok(Cm119Config {
+                    usb_port_path: path.clone(),
+                    vendor_id: 0,
+                    product_id: 0,
+                    profile: plan.profile,
+                    ptt_inverted: self.ptt_inverted,
+                    output_enable_mask: plan.output_enable_mask,
+                    output_initial_mask: plan.output_initial_mask,
+                })
+            })
+            .transpose()?;
         Ok(SelectedHardwarePlan {
             stream: StreamConfig {
                 maximum_receive_frame_count: maximum_frame_count,
@@ -158,15 +187,8 @@ impl HardwarePlan {
                 extra_input_buffer_milliseconds: self.input_extra_buffer_ms,
                 extra_output_buffer_milliseconds: self.output_extra_buffer_ms,
             },
-            cm119: Cm119Config {
-                usb_port_path: selected.interface_path.clone(),
-                vendor_id: 0,
-                product_id: 0,
-                profile: self.cm119.profile,
-                ptt_inverted: self.cm119.ptt_inverted,
-                output_enable_mask: self.cm119.output_enable_mask,
-                output_initial_mask: self.cm119.output_initial_mask,
-            },
+            cm119,
+            ptt_inverted: self.ptt_inverted,
         })
     }
 }
@@ -207,16 +229,16 @@ pub fn hardware_plan(channel: &ChannelConfiguration) -> HardwarePlan {
         },
         input_extra_buffer_ms: hardware.input_extra_buffer_ms,
         output_extra_buffer_ms: hardware.output_extra_buffer_ms,
-        cm119: Cm119Plan {
+        cm119: Some(Cm119Plan {
             required_usb_port_path: gpio_usb_port_path,
             required_serial: serial,
             profile,
-            ptt_inverted: hardware.ptt_inverted,
             output_enable_mask,
             output_initial_mask,
             input_mask,
             clip_led_mask,
-        },
+        }),
+        ptt_inverted: hardware.ptt_inverted,
         parallel: parallel_plan(hardware),
     }
 }

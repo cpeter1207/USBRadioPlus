@@ -74,6 +74,12 @@ pub(crate) unsafe extern "C" fn visit(
         let channel = resolved.config();
         let physical = resolved.physical();
         let hardware = usbradioplus_station::native_hardware_plan(channel, physical);
+        // This ABI retains the configured CM119 profile even when a selected
+        // remote composition later omits HID ownership for generic ALSA audio.
+        let cm119 = hardware
+            .cm119
+            .as_ref()
+            .ok_or(Status::InvalidConfiguration)?;
         let radio = usbradioplus_station::native_radio_session_config(channel, 1, 4096)
             .map_err(|_| Status::InvalidConfiguration)?;
         radio.with_abi(|radio| {
@@ -115,16 +121,16 @@ pub(crate) unsafe extern "C" fn visit(
                 output_device_channels: physical.output_device_channels,
                 input_extra_buffer_ms: hardware.input_extra_buffer_ms,
                 output_extra_buffer_ms: hardware.output_extra_buffer_ms,
-                cm119_profile: match hardware.cm119.profile {
+                cm119_profile: match cm119.profile {
                     Cm119Profile::DudeUsb => 0,
                     Cm119Profile::SphUsb => 1,
                     Cm119Profile::Nhrc => 2,
                     Cm119Profile::Custom => 3,
                 },
-                ptt_inverted: u32::from(hardware.cm119.ptt_inverted),
-                gpio_output_enable_mask: u32::from(hardware.cm119.output_enable_mask),
-                gpio_output_initial_mask: u32::from(hardware.cm119.output_initial_mask),
-                clip_led_mask: u32::from(hardware.cm119.clip_led_mask),
+                ptt_inverted: u32::from(hardware.ptt_inverted),
+                gpio_output_enable_mask: u32::from(cm119.output_enable_mask),
+                gpio_output_initial_mask: u32::from(cm119.output_initial_mask),
+                clip_led_mask: u32::from(cm119.clip_led_mask),
                 receive_graph: physical.receive_graph.as_ptr(),
                 receive_graph_length: physical.receive_graph.len() as u32,
                 transmit_graph: physical.transmit_graph.as_ptr(),

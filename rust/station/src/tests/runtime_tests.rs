@@ -760,7 +760,7 @@ fn selected(prepared: &crate::PreparedStation, maximum: u32) -> SelectedHardware
         .hardware()
         .select(
             &SelectedDevice {
-                interface_path: "3-1:1.0".to_owned(),
+                interface_path: Some("3-1:1.0".to_owned()),
                 serial: None,
                 alsa_card_index: 1,
                 input_device_index: 2,

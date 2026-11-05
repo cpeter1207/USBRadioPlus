@@ -13,9 +13,33 @@ fn channel(hardware: HardwareConfig) -> ChannelConfiguration {
     }
 }
 
+#[test]
+fn generic_alsa_hardware_plan_does_not_require_a_cm119_identity() {
+    let mut plan = hardware_plan(&channel(HardwareConfig::default()));
+    plan.cm119 = None;
+    let selected = SelectedDevice {
+        interface_path: None,
+        serial: None,
+        alsa_card_index: 7,
+        input_device_index: 3,
+        output_device_index: 4,
+        input_channels: ChannelCount::Mono,
+        output_channels: ChannelCount::Stereo,
+    };
+    let bound = plan.select(&selected, 960).unwrap();
+    assert!(bound.cm119.is_none());
+    assert_eq!(bound.stream.input_device_index, 3);
+    assert_eq!(bound.stream.output_device_index, 4);
+    assert!(
+        hardware_plan(&channel(HardwareConfig::default()))
+            .select(&selected, 960)
+            .is_err()
+    );
+}
+
 fn selected_device() -> SelectedDevice {
     SelectedDevice {
-        interface_path: "3-1".to_owned(),
+        interface_path: Some("3-1".to_owned()),
         serial: Some("CM119".to_owned()),
         alsa_card_index: 2,
         input_device_index: 4,
@@ -37,9 +61,9 @@ fn defaults_select_automatically_and_prepare_no_optional_outputs() {
     assert_eq!(plan.audio_selector.serial, None);
     assert_eq!(plan.audio_selector.input_channels, ChannelCount::Mono);
     assert_eq!(plan.audio_selector.output_channels, ChannelCount::Stereo);
-    assert_eq!(plan.cm119.profile, Cm119Profile::DudeUsb);
-    assert_eq!(plan.cm119.output_enable_mask, 0);
-    assert_eq!(plan.cm119.output_initial_mask, 0);
+    assert_eq!(plan.cm119.as_ref().unwrap().profile, Cm119Profile::DudeUsb);
+    assert_eq!(plan.cm119.as_ref().unwrap().output_enable_mask, 0);
+    assert_eq!(plan.cm119.as_ref().unwrap().output_initial_mask, 0);
     assert_eq!(plan.parallel, None);
 }
 
@@ -90,9 +114,15 @@ fn native_hardware_keeps_composition_defaults_and_the_common_parallel_plan() {
         assert_eq!(plan.audio_selector.policy, policy);
         assert_eq!(plan.audio_selector.input_channels, input);
         assert_eq!(plan.audio_selector.output_channels, output);
-        assert_eq!(plan.cm119.profile, profile);
-        assert_eq!(plan.cm119.output_enable_mask, ordinary_outputs);
-        assert_eq!(plan.cm119.output_initial_mask, ordinary_outputs);
+        assert_eq!(plan.cm119.as_ref().unwrap().profile, profile);
+        assert_eq!(
+            plan.cm119.as_ref().unwrap().output_enable_mask,
+            ordinary_outputs
+        );
+        assert_eq!(
+            plan.cm119.as_ref().unwrap().output_initial_mask,
+            ordinary_outputs
+        );
         assert!(plan.parallel.is_some());
         assert_eq!(plan.parallel, hardware_plan(resolved.config()).parallel);
     }
@@ -147,7 +177,14 @@ fn identity_uses_audio_identifier_then_checks_gpio_path_and_serial() {
     assert_eq!(plan.audio_selector.policy, SelectionPolicy::Exact);
     assert_eq!(plan.audio_selector.identifier.as_deref(), Some("hw:2,0"));
     assert_eq!(plan.audio_selector.serial.as_deref(), Some("CM119"));
-    assert_eq!(plan.cm119.required_usb_port_path.as_deref(), Some("3-1"));
+    assert_eq!(
+        plan.cm119
+            .as_ref()
+            .unwrap()
+            .required_usb_port_path
+            .as_deref(),
+        Some("3-1")
+    );
 
     let selected = selected_device();
     let bound = plan.select(&selected, 960).unwrap();
@@ -157,17 +194,17 @@ fn identity_uses_audio_identifier_then_checks_gpio_path_and_serial() {
     assert_eq!(bound.stream.output_device_index, 5);
     assert_eq!(bound.stream.extra_input_buffer_milliseconds, 20);
     assert_eq!(bound.stream.extra_output_buffer_milliseconds, 35);
-    assert_eq!(bound.cm119.usb_port_path, "3-1");
-    assert_eq!(bound.cm119.vendor_id, 0);
-    assert_eq!(bound.cm119.product_id, 0);
+    assert_eq!(bound.cm119.as_ref().unwrap().usb_port_path, "3-1");
+    assert_eq!(bound.cm119.as_ref().unwrap().vendor_id, 0);
+    assert_eq!(bound.cm119.as_ref().unwrap().product_id, 0);
 
     let mut mismatch = selected.clone();
-    mismatch.interface_path = "3-2".to_owned();
+    mismatch.interface_path = Some("3-2".to_owned());
     assert_eq!(
         plan.select(&mismatch, 960),
         Err(HardwarePlanError::UsbIdentityMismatch)
     );
-    mismatch.interface_path = "3-1".to_owned();
+    mismatch.interface_path = Some("3-1".to_owned());
     mismatch.serial = Some("other".to_owned());
     assert_eq!(
         plan.select(&mismatch, 960),
@@ -205,8 +242,8 @@ fn dude_usb_keeps_only_ordinary_outputs_and_clip_led() {
     };
     let plan = hardware_plan(&channel(config));
 
-    assert_eq!(plan.cm119.output_enable_mask, 0xb3);
-    assert_eq!(plan.cm119.output_initial_mask, 0x11);
+    assert_eq!(plan.cm119.as_ref().unwrap().output_enable_mask, 0xb3);
+    assert_eq!(plan.cm119.as_ref().unwrap().output_initial_mask, 0x11);
 }
 
 #[test]
@@ -218,9 +255,9 @@ fn sph_usb_rejects_nonordinary_outputs_including_dedicated_ptt() {
     };
     let plan = hardware_plan(&channel(config));
 
-    assert_eq!(plan.cm119.profile, Cm119Profile::SphUsb);
-    assert_eq!(plan.cm119.output_enable_mask, 1);
-    assert_eq!(plan.cm119.output_initial_mask, 1);
+    assert_eq!(plan.cm119.as_ref().unwrap().profile, Cm119Profile::SphUsb);
+    assert_eq!(plan.cm119.as_ref().unwrap().output_enable_mask, 1);
+    assert_eq!(plan.cm119.as_ref().unwrap().output_initial_mask, 1);
 }
 
 #[test]

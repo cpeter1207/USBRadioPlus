@@ -33,6 +33,7 @@ static MIXER_LEVEL_WRITES: AtomicU32 = AtomicU32::new(0);
 static MIXER_SWITCH_WRITES: AtomicU32 = AtomicU32::new(0);
 static TUNING_IO_CALLS: AtomicU32 = AtomicU32::new(0);
 static GPIO_OPENS: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_APPLIED_MASK: AtomicU32 = AtomicU32::new(0);
 static GPIO_INITIAL_BYTE: AtomicU32 = AtomicU32::new(0);
 static GPIO_PUBLISHES: AtomicU32 = AtomicU32::new(0);
 static GPIO_ONLINE: AtomicU32 = AtomicU32::new(1);
@@ -103,6 +104,7 @@ fn reset_test_state() {
     MIXER_SWITCH_WRITES.store(0, Ordering::Release);
     TUNING_IO_CALLS.store(0, Ordering::Release);
     GPIO_OPENS.store(0, Ordering::Release);
+    PARALLEL_APPLIED_MASK.store(0, Ordering::Release);
     GPIO_INITIAL_BYTE.store(0, Ordering::Release);
     GPIO_PUBLISHES.store(0, Ordering::Release);
     GPIO_ONLINE.store(1, Ordering::Release);
@@ -276,20 +278,25 @@ fn configured_hardware_gains_validate_before_adapter_access_and_skip_omitted_con
         assert!(matches!(
             HardwareMixers::apply_native_gains(
                 audio_provider(),
-                &selected.interface_path,
+                selected.interface_path.as_deref().unwrap(),
                 [Some(gain), None, None],
                 None
             ),
             Err(AudioError::InvalidArgument)
         ));
     }
-    HardwareMixers::apply_native_gains(audio_provider(), &selected.interface_path, [None; 3], None)
-        .unwrap();
+    HardwareMixers::apply_native_gains(
+        audio_provider(),
+        selected.interface_path.as_deref().unwrap(),
+        [None; 3],
+        None,
+    )
+    .unwrap();
     assert_eq!(FAILURE.swap(0, Ordering::AcqRel), FAIL_AUDIO_PATHS);
     assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), 0);
     HardwareMixers::apply_native_gains(
         audio_provider(),
-        &selected.interface_path,
+        selected.interface_path.as_deref().unwrap(),
         [Some(3.0), None, Some(-3.0)],
         None,
     )
@@ -331,10 +338,15 @@ fn hardware_local_repeat_is_app_rpt_only_and_tracks_receiver_state() {
     let provider = audio_provider();
     let selected = provider.select_device(&plan.audio_selector).unwrap();
     let paths = provider
-        .cm119_mixer_paths(&selected.interface_path)
+        .cm119_mixer_paths(selected.interface_path.as_deref().unwrap())
         .unwrap()
         .sidetone;
-    let mixers = open_paths(provider, &selected.interface_path, &paths).unwrap();
+    let mixers = open_paths(
+        provider,
+        selected.interface_path.as_deref().unwrap(),
+        &paths,
+    )
+    .unwrap();
     let mut sidetone = HardwareSidetone::new(paths, mixers, 750).unwrap().unwrap();
     assert_eq!(sidetone.mixers[0].normalized().unwrap(), 0);
     assert!(!sidetone.mixers[0].enabled().unwrap());
@@ -375,7 +387,7 @@ fn hardware_preflight_and_mixers_report_each_adapter_boundary_failure() {
     ));
 
     let mut mismatched = plan.clone();
-    mismatched.cm119.required_usb_port_path = Some("another-device".into());
+    mismatched.cm119.as_mut().unwrap().required_usb_port_path = Some("another-device".into());
     assert!(matches!(
         HardwareStation::preflight(&mismatched, false, audio_provider(), gpio_provider()),
         Err(HardwareStationError::Plan(
@@ -449,18 +461,28 @@ fn hardware_preflight_and_mixers_report_each_adapter_boundary_failure() {
     ));
     MIXER_PATHS_MODE.store(0, Ordering::Release);
     let paths = audio_provider()
-        .cm119_mixer_paths(&selected.interface_path)
+        .cm119_mixer_paths(selected.interface_path.as_deref().unwrap())
         .unwrap()
         .sidetone;
-    let sidetone_mixers = open_paths(audio_provider(), &selected.interface_path, &paths).unwrap();
+    let sidetone_mixers = open_paths(
+        audio_provider(),
+        selected.interface_path.as_deref().unwrap(),
+        &paths,
+    )
+    .unwrap();
     FAILURE.store(FAIL_MIXER_LEVEL, Ordering::Release);
     assert!(HardwareSidetone::new(paths, sidetone_mixers, 500).is_err());
 
     let paths = audio_provider()
-        .cm119_mixer_paths(&selected.interface_path)
+        .cm119_mixer_paths(selected.interface_path.as_deref().unwrap())
         .unwrap()
         .sidetone;
-    let sidetone_mixers = open_paths(audio_provider(), &selected.interface_path, &paths).unwrap();
+    let sidetone_mixers = open_paths(
+        audio_provider(),
+        selected.interface_path.as_deref().unwrap(),
+        &paths,
+    )
+    .unwrap();
     let mut sidetone = HardwareSidetone::new(paths, sidetone_mixers, 500)
         .unwrap()
         .unwrap();
@@ -1607,6 +1629,7 @@ unsafe extern "C" fn parallel_statistics(
             struct_size: size_of::<GpioParallelStatistics>() as u32,
             abi_version: GPIO_ABI,
             online: 1,
+            applied_output_mask: PARALLEL_APPLIED_MASK.load(Ordering::Acquire),
             ..GpioParallelStatistics::default()
         };
     }
@@ -1937,28 +1960,31 @@ fn native_selection_preserves_physical_layout_profile_and_identity_without_tunin
                         (policy == SelectionPolicy::Exact).then(|| "ABC".to_owned());
                     plan.audio_selector.input_channels = input;
                     plan.audio_selector.output_channels = output;
-                    plan.cm119.profile = profile;
-                    plan.cm119.ptt_inverted = true;
-                    plan.cm119.output_enable_mask = 0x21;
-                    plan.cm119.output_initial_mask = 0x20;
-                    plan.cm119.clip_led_mask = 1;
+                    plan.cm119.as_mut().unwrap().profile = profile;
+                    plan.ptt_inverted = true;
+                    plan.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+                    plan.cm119.as_mut().unwrap().output_initial_mask = 0x20;
+                    plan.cm119.as_mut().unwrap().clip_led_mask = 1;
                     let (device, bound) =
                         select_native_hardware(&plan, audio_provider(), gpio_provider(), 480)
                             .unwrap();
-                    assert_eq!(device.interface_path, "3-1:1.0");
+                    assert_eq!(device.interface_path.as_deref(), Some("3-1:1.0"));
                     assert_eq!(device.serial.as_deref(), Some("ABC"));
                     assert_eq!(bound.stream.input_channels, input);
                     assert_eq!(bound.stream.output_channels, output);
                     assert_eq!(bound.stream.maximum_receive_frame_count, 480);
-                    assert_eq!(bound.cm119.usb_port_path, "3-1");
+                    assert_eq!(bound.cm119.as_ref().unwrap().usb_port_path, "3-1");
                     assert_eq!(
-                        (bound.cm119.vendor_id, bound.cm119.product_id),
+                        (
+                            bound.cm119.as_ref().unwrap().vendor_id,
+                            bound.cm119.as_ref().unwrap().product_id
+                        ),
                         (0x0d8c, 0x000c)
                     );
-                    assert_eq!(bound.cm119.profile, profile);
-                    assert!(bound.cm119.ptt_inverted);
-                    assert_eq!(bound.cm119.output_enable_mask, 0x21);
-                    assert_eq!(bound.cm119.output_initial_mask, 0x20);
+                    assert_eq!(bound.cm119.as_ref().unwrap().profile, profile);
+                    assert!(bound.cm119.as_ref().unwrap().ptt_inverted);
+                    assert_eq!(bound.cm119.as_ref().unwrap().output_enable_mask, 0x21);
+                    assert_eq!(bound.cm119.as_ref().unwrap().output_initial_mask, 0x20);
                 }
             }
         }
@@ -2064,6 +2090,56 @@ fn native_service_publishes_inputs_and_unkeys_without_mixer_or_eeprom_io() {
     service.stop().unwrap();
     assert_eq!(PTT.load(Ordering::Acquire), 0);
     assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn generic_audio_service_keeps_parallel_ptt_independent_of_absent_cm119() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, mut selected) = selected_hardware(true);
+    plan.cm119 = None;
+    selected.cm119 = None;
+    selected.ptt_inverted = false;
+    let parallel = plan.parallel.as_mut().unwrap();
+    parallel.ptt_mask = 4;
+    parallel.config.output_enable_mask |= 4;
+    let state = SharedHardwareState::default();
+    let (worker, _, _) = service_worker(&plan, &selected, state.clone());
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    assert!(devices.cm119.is_none());
+    assert_eq!(
+        devices
+            .cm119(HardwareOperation::ReadEeprom)
+            .err()
+            .unwrap()
+            .1,
+        GpioError::Unsupported
+    );
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert!(
+        !state.inputs().physical_ptt,
+        "queued demand is not applied PTT"
+    );
+    PARALLEL_APPLIED_MASK.store(4, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert!(state.inputs().physical_ptt);
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert!(
+        state.inputs().physical_ptt,
+        "unkey intent cannot erase serviced feedback"
+    );
+    PARALLEL_APPLIED_MASK.store(0, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert!(!state.inputs().physical_ptt);
+    assert_eq!(worker.statistics.snapshot().cm119.input_read_count, 0);
+    assert_eq!(outputs.site[0].snapshot().output_mask, 0);
+    assert_eq!(GPIO_PUBLISHES.load(Ordering::Acquire), 0);
+    devices
+        .close_outputs(plan.parallel.as_ref(), &mut outputs)
+        .unwrap();
 }
 
 #[test]
@@ -2194,7 +2270,7 @@ fn native_maintenance_rejects_changed_identity_and_invalid_gains_before_acquisit
         match field {
             0 => changed.stream.input_device_index += 1,
             1 => changed.stream.output_device_index += 1,
-            _ => changed.cm119.usb_port_path = "another-device".to_owned(),
+            _ => changed.cm119.as_mut().unwrap().usb_port_path = "another-device".to_owned(),
         }
         assert!(matches!(
             HardwareMaintenance::native(
@@ -2479,10 +2555,10 @@ fn site_owner_spare_writes_share_native_handle_and_report_read_failure() {
     let _guard = test_guard();
     reset_test_state();
     let (mut plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x21;
-    selected.cm119.output_initial_mask = 1;
-    plan.cm119.input_mask = 0x02;
-    plan.cm119.clip_led_mask = 1;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+    selected.cm119.as_mut().unwrap().output_initial_mask = 1;
+    plan.cm119.as_mut().unwrap().input_mask = 0x02;
+    plan.cm119.as_mut().unwrap().clip_led_mask = 1;
     let (mut worker, sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     worker.native = true;
@@ -2782,7 +2858,7 @@ fn site_owner_generation_exhaustion_rejects_binding_without_mutation() {
         return;
     }
     let (plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x20;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x20;
     let (worker, _sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     let devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
@@ -2906,7 +2982,7 @@ fn site_owner_binding_cancels_prior_pulses_before_claiming_output() {
     let _guard = test_guard();
     reset_test_state();
     let (plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x21;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
     let (worker, sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
@@ -2959,8 +3035,8 @@ fn site_owner_start_uses_safe_transfer_before_open_and_preserves_it_for_retry() 
     let _guard = test_guard();
     reset_test_state();
     let mut service = hardware_service(false, true);
-    service.selected.cm119.output_enable_mask = 0x21;
-    service.selected.cm119.output_initial_mask = 1;
+    service.selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+    service.selected.cm119.as_mut().unwrap().output_initial_mask = 1;
     let state = HardwareTransientState {
         cm119_output_mask: 0x21,
         parallel_output_mask: 0,
@@ -2988,7 +3064,7 @@ fn site_owner_failed_start_retires_safely_and_retains_failed_cleanup() {
         for blocked in [false, true] {
             reset_test_state();
             let mut service = hardware_service(false, true);
-            service.selected.cm119.ptt_inverted = true;
+            service.selected.cm119.as_mut().unwrap().ptt_inverted = true;
             let parallel = service.parallel.as_mut().unwrap();
             parallel.config.output_enable_mask = 0xff;
             parallel.ptt_mask = 1;
@@ -3028,9 +3104,9 @@ fn site_owner_stop_applies_safe_levels_and_rejects_queued_generation() {
     reset_test_state();
     for native in [false, true] {
         let (mut plan, mut selected) = selected_hardware(true);
-        selected.cm119.output_enable_mask = 0x21;
-        selected.cm119.output_initial_mask = 1;
-        plan.cm119.clip_led_mask = 1;
+        selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+        selected.cm119.as_mut().unwrap().output_initial_mask = 1;
+        plan.cm119.as_mut().unwrap().clip_led_mask = 1;
         let parallel = plan.parallel.as_mut().unwrap();
         parallel.config.output_enable_mask = 0xff;
         parallel.ptt_mask = 1;
@@ -3111,8 +3187,8 @@ fn site_owner_recovery_opens_at_safe_levels_without_replaying_departed_commands(
     let _guard = test_guard();
     reset_test_state();
     let (plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x20;
-    selected.cm119.output_initial_mask = 0;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x20;
+    selected.cm119.as_mut().unwrap().output_initial_mask = 0;
     let (worker, sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     let devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
@@ -3204,8 +3280,8 @@ fn site_owner_replacement_restores_safe_levels_not_retired_intent() {
     reset_test_state();
     for safe_high in [false, true] {
         let (mut plan, mut selected) = selected_hardware(true);
-        selected.cm119.output_enable_mask = 0x21;
-        selected.cm119.output_initial_mask = 1;
+        selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+        selected.cm119.as_mut().unwrap().output_initial_mask = 1;
         let parallel = plan.parallel.as_mut().unwrap();
         parallel.config.output_enable_mask = 0xff;
         parallel.config.output_initial_mask = 2;
@@ -3301,7 +3377,7 @@ fn site_owner_stop_clears_unclaimed_parallel_bits_and_deasserts_inverted_ptt() {
     reset_test_state();
     for inverted in [false, true] {
         let (mut plan, mut selected) = selected_hardware(true);
-        selected.cm119.ptt_inverted = inverted;
+        selected.cm119.as_mut().unwrap().ptt_inverted = inverted;
         let parallel = plan.parallel.as_mut().unwrap();
         parallel.config.output_enable_mask = 0xff;
         parallel.config.output_initial_mask = 0x20;
@@ -3343,8 +3419,8 @@ fn service_worker(
             statistics: Arc::new(ServiceStatistics::new(plan.parallel.is_some())),
             stop: Arc::new(AtomicBool::new(false)),
             receiver: command_receiver,
-            cm119_input_mask: plan.cm119.input_mask,
-            clip_led_mask: plan.cm119.clip_led_mask,
+            cm119_input_mask: plan.cm119.as_ref().map_or(0, |cm119| cm119.input_mask),
+            clip_led_mask: plan.cm119.as_ref().map_or(0, |cm119| cm119.clip_led_mask),
             input_sender,
             clock: Instant::now(),
             site: std::array::from_fn(|_| Arc::new(SiteCache::default())),
@@ -3606,10 +3682,15 @@ fn one_service_cycle_identifies_each_adapter_failure() {
     .unwrap();
 
     let paths = audio_provider()
-        .cm119_mixer_paths(&selected.cm119.usb_port_path)
+        .cm119_mixer_paths(&selected.cm119.as_ref().unwrap().usb_port_path)
         .unwrap()
         .sidetone;
-    let mixers = open_paths(audio_provider(), &selected.cm119.usb_port_path, &paths).unwrap();
+    let mixers = open_paths(
+        audio_provider(),
+        &selected.cm119.as_ref().unwrap().usb_port_path,
+        &paths,
+    )
+    .unwrap();
     let mut sidetone = HardwareSidetone::new(paths, mixers, 500).unwrap().unwrap();
     sidetone.applied = None;
     FAILURE.store(FAIL_MIXER_SWITCH, Ordering::Release);
@@ -4111,7 +4192,7 @@ fn input_edges_and_statistics_cover_online_offline_and_overflow_states() {
         eeprom_read_count: 5,
         eeprom_write_count: 6,
     };
-    statistics.success(cm119);
+    statistics.success(Some(cm119));
     let parallel = usbradioplus_gpio::ParallelStatistics {
         input_read_count: 7,
         output_apply_count: 8,

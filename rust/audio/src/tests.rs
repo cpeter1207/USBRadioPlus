@@ -363,6 +363,7 @@ static VALID: Descriptor = Descriptor {
     usb_device_select: Some(device_select),
     stream_get_timing: Some(stream_timing),
     cm119_mixer_paths_resolve: Some(mixer_paths),
+    alsa_device_resolve: None,
 };
 
 // SAFETY: The test descriptor and all referenced storage are immutable/static.
@@ -459,9 +460,67 @@ fn descriptor_and_selection_validate_complete_results() {
         .unwrap()
         .select_device(&selector())
         .unwrap();
-    assert_eq!(selected.interface_path, "3-1:1.0");
+    assert_eq!(selected.interface_path.as_deref(), Some("3-1:1.0"));
     assert_eq!(selected.serial.as_deref(), Some("ABC"));
     assert_eq!(selected.alsa_card_index, 2);
+}
+
+#[test]
+fn generic_alsa_selection_requires_its_complete_optional_provider_tail() {
+    let audio = provider(&VALID).unwrap();
+    let mut request = selector();
+    request.identifier = Some("hw:7,0".to_owned());
+    request.serial = None;
+    assert_eq!(
+        audio.select_alsa_device(&request),
+        Err(AudioError::IncompatibleAdapter)
+    );
+    unsafe extern "C" fn resolve(
+        name: *const c_char,
+        input: u32,
+        output: u32,
+        selected: *mut RawDeviceSelection,
+    ) -> c_int {
+        // SAFETY: the wrapper lends a NUL selector and complete output.
+        assert_eq!(unsafe { CStr::from_ptr(name) }, c"hw:7,0");
+        assert_eq!((input, output), (1, 2));
+        // SAFETY: this synchronous fixture borrows a complete result.
+        unsafe {
+            *selected = RawDeviceSelection {
+                struct_size: size_of::<RawDeviceSelection>() as u32,
+                abi_version: ABI_VERSION,
+                alsa_card_index: 7,
+                input_device_index: 3,
+                output_device_index: 4,
+            };
+        }
+        0
+    }
+    let mut table = VALID;
+    table.alsa_device_resolve = Some(resolve);
+    let selected = provider(Box::leak(Box::new(table)))
+        .unwrap()
+        .select_alsa_device(&request)
+        .unwrap();
+    assert_eq!(selected.interface_path, None);
+    assert_eq!(selected.serial, None);
+    assert_eq!(
+        (
+            selected.alsa_card_index,
+            selected.input_device_index,
+            selected.output_device_index
+        ),
+        (7, 3, 4)
+    );
+    table.struct_size = REQUIRED_DESCRIPTOR_SIZE as u32;
+    assert_eq!(
+        provider(Box::leak(Box::new(table)))
+            .unwrap()
+            .select_alsa_device(&request),
+        Err(AudioError::IncompatibleAdapter)
+    );
+    table.struct_size += 1;
+    assert!(provider(Box::leak(Box::new(table))).is_err());
 }
 
 #[test]
@@ -646,7 +705,7 @@ fn abi_two_failure_results_and_callback_lifetimes_are_owned() {
         endpoints(&mut receive_context, &mut transmit_context);
     assert_eq!(
         AudioProvider {
-            descriptor: Box::leak(Box::new(without_destroy)),
+            descriptor: without_destroy,
         }
         .open_stream(stream_config(1, 1), receive_endpoint, transmit_endpoint,)
         .err(),
@@ -673,7 +732,7 @@ fn abi_two_failure_results_and_callback_lifetimes_are_owned() {
     no_lifecycle.stream_destroy = None;
     let stream = AudioStream {
         provider: AudioProvider {
-            descriptor: Box::leak(Box::new(no_lifecycle)),
+            descriptor: no_lifecycle,
         },
         // SAFETY: `handle` is non-null and remains live until reclaimed below.
         handle: unsafe { NonNull::new_unchecked(handle.cast()) },
@@ -836,7 +895,7 @@ fn mixer_failures_release_partial_handles_and_validate_values() {
     without_destroy.mixer_destroy = None;
     assert_eq!(
         AudioProvider {
-            descriptor: Box::leak(Box::new(without_destroy)),
+            descriptor: without_destroy,
         }
         .open_mixer("3-1:1.0", &paths.receive[0])
         .err(),
@@ -865,7 +924,7 @@ fn mixer_failures_release_partial_handles_and_validate_values() {
     no_destroy.mixer_destroy = None;
     let mixer = Mixer {
         provider: AudioProvider {
-            descriptor: Box::leak(Box::new(no_destroy)),
+            descriptor: no_destroy,
         },
         // SAFETY: `handle` is non-null and remains live until reclaimed below.
         handle: unsafe { NonNull::new_unchecked(handle.cast()) },
