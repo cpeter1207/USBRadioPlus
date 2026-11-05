@@ -15,7 +15,7 @@ use usbradioplus_core::{
     ChannelConfiguration, ConfigDocument, GpioMode, HardwareInterfaceType, NativeDeviceSelection,
     ResolvedNativeConfiguration, ResolvedRemoteConfiguration,
 };
-use usbradioplus_driver::{HardwareMaintenance, HardwarePreflight, HardwareService};
+use usbradioplus_driver::{HardwareMaintenance, HardwarePreflight, HardwareService, RemoteSetup};
 use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_gpio::GpioAdapter;
 use usbradioplus_radio::{
@@ -146,6 +146,7 @@ struct NativeStation {
     gains: [Option<f64>; 3],
     pending: Option<NativeUpdateConfiguration>,
     remote: Option<ResolvedRemoteConfiguration>,
+    remote_dsp: Option<usbradioplus_station::RemoteDspControl>,
 }
 
 impl NativeStation {
@@ -255,6 +256,22 @@ pub(crate) unsafe extern "C" fn create(
                     .map_err(|_| Status::IncompatibleAbi)?,
             )
         };
+        // Admit selected dynamic providers before preflight can acquire hardware.
+        // Keep only the original-control pump here; actual rig contexts open on
+        // the existing physical service worker after its outputs are safe.
+        let (remote_setup, remote_dsp) = remote
+            .as_ref()
+            .map(|remote| {
+                RemoteSetup::prepare(
+                    remote.clone(),
+                    hardware.clone(),
+                    configuration.station.receive.cos_assignment,
+                    radio.qualification.subaudible_source,
+                )
+            })
+            .transpose()
+            .map_err(|_| Status::SetupFailed)?
+            .unzip();
         let (preflight, selected) = HardwarePreflight::native(
             &hardware,
             configuration.station.hardware.eeprom_enabled,
@@ -284,7 +301,7 @@ pub(crate) unsafe extern "C" fn create(
                 .map_err(|_| Status::SetupFailed)?;
         let (runtime, control) = StationRuntime::open_native_planned(media, plan, &selected, audio)
             .map_err(|_| Status::SetupFailed)?;
-        let maintenance = HardwareMaintenance::native(
+        let mut maintenance = HardwareMaintenance::native(
             &hardware,
             preflight,
             selected,
@@ -294,6 +311,11 @@ pub(crate) unsafe extern "C" fn create(
             gains,
         )
         .map_err(|_| Status::SetupFailed)?;
+        if let Some(setup) = remote_setup {
+            maintenance
+                .bind_remote(setup)
+                .map_err(|_| Status::SetupFailed)?;
+        }
         let station = Box::new(NativeStation {
             maintenance,
             runtime,
@@ -304,6 +326,7 @@ pub(crate) unsafe extern "C" fn create(
             gains,
             pending: None,
             remote,
+            remote_dsp,
         });
         // SAFETY: output storage was validated and the caller receives sole ownership.
         unsafe {
@@ -319,6 +342,23 @@ pub(crate) unsafe extern "C" fn start(handle: *mut c_void) -> c_int {
         unsafe { handle.cast::<NativeStation>().as_mut() }
             .ok_or(Status::InvalidArgument)?
             .start()
+    })
+}
+
+pub(crate) unsafe extern "C" fn service(handle: *mut c_void) -> c_int {
+    ffi_status(|| {
+        let station =
+            // SAFETY: the host serializes this live station's non-audio control calls.
+            unsafe { handle.cast::<NativeStation>().as_mut() }.ok_or(Status::InvalidArgument)?;
+        if let Some(control) = &mut station.remote_dsp {
+            control.pump(
+                &mut station.runtime,
+                &mut station.control,
+                &station.factory,
+                station.radio_provider,
+            );
+        }
+        Ok(())
     })
 }
 

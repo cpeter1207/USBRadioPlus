@@ -1410,6 +1410,11 @@ impl HardwareMaintenance {
         &self.service
     }
 
+    /// Install pre-admitted remote providers before starting this stopped owner.
+    pub fn bind_remote(&mut self, setup: RemoteSetup) -> Result<(), HardwareStationError> {
+        self.service.bind_remote(setup)
+    }
+
     /// Apply native startup gains before acquiring GPIO and starting callbacks.
     /// Omitted controls skip discovery entirely; a failure remains retryable.
     pub fn start(&mut self) -> Result<(), HardwareStationError> {

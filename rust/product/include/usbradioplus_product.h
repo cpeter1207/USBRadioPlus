@@ -1299,6 +1299,9 @@ typedef struct UrpAstDescriptor {
 	int (*link_observer_read)(const void *observer, struct UrpAstLinkObservation *output);
 	/** Destroy one independent observer after its reads return; null is harmless. */
 	void (*link_observer_destroy)(void *observer);
+	/** Advance remote DSP adoption on the original serialized control owner.
+	 * This never waits for CAT I/O, graph preparation or callback acknowledgments. */
+	int (*native_service)(void *native);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

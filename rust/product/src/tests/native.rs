@@ -202,6 +202,25 @@ fn native_create_accepts_the_current_processing_configuration_abi() {
 }
 
 #[test]
+fn native_service_advances_only_the_existing_control_owner() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    // SAFETY: creation transfers this sole live handle; the null case retains no owner.
+    unsafe {
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_service.unwrap()(ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        api.native_destroy.unwrap()(handle);
+    }
+}
+
+#[test]
 fn native_configuration_visit_preserves_shared_gpio_identity_fallback_through_create() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     fixture::clear_failure();

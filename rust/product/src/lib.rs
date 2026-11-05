@@ -782,12 +782,15 @@ pub struct UrpAstDescriptor {
         Option<unsafe extern "C" fn(*const c_void, *mut UrpAstLinkObservation) -> c_int>,
     /// Release an observer only after its reads return; null is harmless.
     pub link_observer_destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    /// Advance original-control remote DSP adoption without waiting for I/O.
+    pub native_service: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_service: Some(native::service),
     native_processing_validate: Some(native_processing::validate),
     native_link_prepare: Some(native_processing::link_prepare),
     link_process_f32: Some(native_processing::link_process_f32),
