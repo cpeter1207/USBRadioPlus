@@ -13,6 +13,12 @@ mod ffmpeg_graph;
 mod native_configuration;
 mod native_stream;
 mod processing_profile;
+mod remote_configuration;
+pub use remote_configuration::{
+    RemoteAudioSource, RemoteBackend, RemoteConfigurationError, RemoteDtmfAccess, RemoteMemory,
+    RemoteOperatingState, RemoteScanList, RemoteSignal, RemoteSignalSource,
+    ResolvedRemoteConfiguration,
+};
 mod profile_resolution;
 mod stage_order;
 mod station_config;
@@ -48,3 +54,7 @@ pub use station_config::{
 #[cfg(test)]
 #[path = "tests/native_configuration_tests.rs"]
 mod native_configuration_tests;
+
+#[cfg(test)]
+#[path = "tests/remote_configuration_tests.rs"]
+mod remote_configuration_tests;
