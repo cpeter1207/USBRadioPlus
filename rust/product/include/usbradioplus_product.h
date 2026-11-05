@@ -1067,6 +1067,19 @@ typedef struct UrpNativePhysicalStatus {
 typedef int (*UrpNativeConfigurationSink)(void *context,
 					  const struct UrpNativeStationConfig *config);
 
+/** Copied remote operation. Identifiers and units match the declared operating
+ * catalog; no caller-owned pointer is retained. */
+typedef struct UrpRemoteOperation {
+	uint32_t struct_size; /**< Exact complete record size, 40 bytes. */
+	uint32_t abi_version; /**< One. */
+	uint32_t operation; /**< Shared remote operation identifier, 1 through 27. */
+	uint32_t selector; /**< Setting, memory, scan, preset or catalog selector. */
+	int64_t signed_value; /**< Signed step in Hz. */
+	uint64_t magnitude; /**< Unsigned operand in the operation's declared units. */
+	uint32_t decimal_places; /**< Exact input precision, zero through six. */
+	uint32_t flags; /**< Operation-specific direction/enable/sign flags. */
+} UrpRemoteOperation;
+
 /** Versioned product operations. Check struct_size before accessing an appended tail. */
 typedef struct UrpAstDescriptor {
 	/**
@@ -1302,6 +1315,24 @@ typedef struct UrpAstDescriptor {
 	/** Advance remote DSP adoption on the original serialized control owner.
 	 * This never waits for CAT I/O, graph preparation or callback acknowledgments. */
 	int (*native_service)(void *native);
+	/** Submit without physical I/O. Source flags: local1, active2. Success
+	 * transfers a ticket retained independently of the originating host object. */
+	int (*native_remote_submit)(void *native, const UrpRemoteOperation *operation,
+		uint32_t source_flags, void **ticket);
+	/** Same nonblocking submission on an ASL channel's taskprocessor. */
+	int (*channel_remote_submit)(void *channel, const UrpRemoteOperation *operation,
+		uint32_t source_flags, void **ticket);
+	/** Publish active1/valid2; revocation is terminal for this ticket. */
+	int (*remote_source)(void *ticket, uint32_t flags);
+	/** Copy a version1 JSON completion through the synchronous UTF-8 sink.
+	 * Zero means copied; URP_AST_RELOAD_PENDING means no result. The document's
+	 * kind identifies applied, error, value, status, memories, scans, scan or
+	 * capabilities. It contains machine values, never rendered telemetry.
+	 * Status flags distinguish requested/applied/observed presence; observed_fields
+	 * alone identifies which observed state fields are physical readings. */
+	int (*remote_take)(void *ticket, UrpNativeProcessingDiagnostic sink, void *context);
+	/** Revoke and release after source/take calls stop; never waits for CAT. */
+	void (*remote_destroy)(void *ticket);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

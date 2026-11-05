@@ -6,6 +6,8 @@
 #![deny(warnings)]
 
 mod maintenance;
+mod remote;
+pub use remote::UrpRemoteOperation;
 mod native;
 pub use maintenance::UrpNativePhysicalStatus;
 mod native_configuration;
@@ -785,12 +787,33 @@ pub struct UrpAstDescriptor {
     pub link_observer_destroy: Option<unsafe extern "C" fn(*mut c_void)>,
     /// Advance original-control remote DSP adoption without waiting for I/O.
     pub native_service: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Submit one copied operation; source flags are local1 and active2.
+    pub native_remote_submit: Option<remote::UrpRemoteSubmit>,
+    /// Submit on the serialized ASL channel owner using the same operation ABI.
+    pub channel_remote_submit: Option<remote::UrpRemoteSubmit>,
+    /// Publish active1/valid2; source revocation is terminal for this ticket.
+    pub remote_source: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
+    /// Copy versioned JSON through a synchronous sink; ReloadPending means empty.
+    pub remote_take: Option<
+        unsafe extern "C" fn(
+            *mut c_void,
+            Option<UrpNativeProcessingDiagnostic>,
+            *mut c_void,
+        ) -> c_int,
+    >,
+    /// Revoke and release a ticket without waiting for the physical owner.
+    pub remote_destroy: Option<unsafe extern "C" fn(*mut c_void)>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_remote_submit: Some(remote::native_submit),
+    channel_remote_submit: Some(remote::channel_submit),
+    remote_source: Some(remote::source),
+    remote_take: Some(remote::take),
+    remote_destroy: Some(remote::destroy),
     native_service: Some(native::service),
     native_processing_validate: Some(native_processing::validate),
     native_link_prepare: Some(native_processing::link_prepare),

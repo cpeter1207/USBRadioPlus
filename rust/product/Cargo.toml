@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 libc = "0.2"
+serde_json = "1.0"
 usbradioplus-asl3 = { path = "../asl3" }
 usbradioplus-audio = { path = "../audio" }
 usbradioplus-core = { path = "../core" }
@@ -19,6 +20,7 @@ usbradioplus-driver = { path = "../driver" }
 usbradioplus-ffmpeg = { path = "../ffmpeg" }
 usbradioplus-gpio = { path = "../gpio" }
 usbradioplus-radio = { path = "../radio" }
+usbradioplus-remote = { path = "../remote" }
 usbradioplus-ring = { path = "../ring" }
 usbradioplus-rnnoise = { path = "../rnnoise" }
 usbradioplus-samplerate = { path = "../samplerate" }

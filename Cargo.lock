@@ -343,6 +343,7 @@ name = "usbradioplus-product"
 version = "0.1.0-alpha19"
 dependencies = [
  "libc",
+ "serde_json",
  "usbradioplus-asl3",
  "usbradioplus-audio",
  "usbradioplus-core",
@@ -350,6 +351,7 @@ dependencies = [
  "usbradioplus-ffmpeg",
  "usbradioplus-gpio",
  "usbradioplus-radio",
+ "usbradioplus-remote",
  "usbradioplus-ring",
  "usbradioplus-rnnoise",
  "usbradioplus-runtime",
