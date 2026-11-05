@@ -3391,6 +3391,34 @@ fn site_owner_stop_failure_retains_port_until_safe_write_succeeds() {
 }
 
 #[test]
+fn hardware_stop_poll_retains_a_busy_physical_owner_without_waiting() {
+    let _guard = test_guard();
+    reset_test_state();
+    let mut service = hardware_service(false, true);
+    let (release, wait) = std::sync::mpsc::channel();
+    service.worker = Some(thread::spawn(move || {
+        wait.recv().unwrap();
+        ServiceExit {
+            sidetone: None,
+            retiring: None,
+            failure: None,
+        }
+    }));
+    let before = Instant::now();
+    assert!(!service.poll_stop().unwrap());
+    assert!(before.elapsed() < Duration::from_millis(100));
+    assert!(service.worker.is_some());
+    assert!(service.stop.load(Ordering::Acquire));
+    release.send(()).unwrap();
+    while !service.worker.as_ref().unwrap().is_finished() {
+        thread::yield_now();
+    }
+    assert!(service.poll_stop().unwrap());
+    assert!(service.worker.is_none());
+    assert!(service.poll_stop().unwrap());
+}
+
+#[test]
 fn site_owner_recovery_opens_at_safe_levels_without_replaying_departed_commands() {
     let _guard = test_guard();
     reset_test_state();

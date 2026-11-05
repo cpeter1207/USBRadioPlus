@@ -2362,6 +2362,25 @@ impl HardwareService {
         Ok(())
     }
 
+    /// Request fail-safe retirement without waiting for rig I/O. A false result
+    /// retains the creating worker and every physical handle for the next poll.
+    /// The caller must retain this service until true, including on setup errors.
+    pub fn poll_stop(&mut self) -> Result<bool, HardwareStationError> {
+        if let Some(queue) = &self.remote_queue {
+            queue.retire();
+        }
+        if let Some(worker) = &self.worker {
+            self.stop.store(true, Ordering::Release);
+            worker.thread().unpark();
+            self.sender = None;
+            self.input_events = None;
+            if !worker.is_finished() {
+                return Ok(false);
+            }
+        }
+        self.stop().map(|()| true)
+    }
+
     fn queue(&self, command: OutputCommand) -> Result<(), HardwareStationError> {
         self.validate_command(command)?;
         self.queue_service(ServiceCommand::Output(command))
