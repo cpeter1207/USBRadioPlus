@@ -21,7 +21,7 @@ pub enum RemoteAudioSource {
     /// CM119 audio plus its existing HID/mixer capabilities.
     Cm119,
     /// Generic onboard USB sound, without assumed CM119 HID.
-    Usb,
+    Alsa,
 }
 
 /// Remote operating command authorization; status remains read-only and public.
@@ -487,7 +487,7 @@ impl ResolvedRemoteConfiguration {
         };
         let audio_source = match values.text("audio_source").unwrap_or("cm119") {
             "cm119" => RemoteAudioSource::Cm119,
-            "usb" => RemoteAudioSource::Usb,
+            "alsa" => RemoteAudioSource::Alsa,
             _ => return Err(values.error("audio_source")),
         };
         let hamlib_model = values.text("hamlib_model").unwrap_or_default().to_owned();
@@ -844,7 +844,7 @@ fn overlay(
 fn valid_value(key: &str, value: &str) -> bool {
     match key {
         "enabled" => bool_value(value).is_some(),
-        "audio_source" => matches!(value, "cm119" | "usb"),
+        "audio_source" => matches!(value, "cm119" | "alsa"),
         "backend" => matches!(value, "hamlib" | "parallel_channel" | "parallel_rtx"),
         "dtmf_access" => matches!(value, "open" | "locked" | "disabled"),
         "dtmf_prefix" => !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()),

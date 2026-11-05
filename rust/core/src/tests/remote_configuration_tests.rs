@@ -166,3 +166,18 @@ fn remote_configuration_invalid_values_warn_and_keep_safe_inherited_defaults() {
     assert_eq!(config.poll_interval_ms, 600);
     assert_eq!(config.warnings.len(), 1);
 }
+
+#[test]
+fn remote_configuration_uses_the_adr_alsa_audio_category() {
+    let text = CONFIG.replace("enabled=yes", "enabled=yes\naudio_source=alsa");
+    let config = ResolvedRemoteConfiguration::from_document(
+        &ConfigDocument::new(text),
+        "test",
+        "524950",
+        &StationConfig::default(),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(format!("{:?}", config.audio_source), "Alsa");
+    assert!(config.warnings.is_empty());
+}
