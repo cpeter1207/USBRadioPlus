@@ -48,6 +48,7 @@ fn remote_dsp_prepares_off_owner_and_commits_after_both_callback_acknowledgments
         port.apply(
             remote_dsp_target(),
             usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
             std::time::Duration::from_secs(2),
             || false,
         )
@@ -65,6 +66,19 @@ fn remote_dsp_prepares_off_owner_and_commits_after_both_callback_acknowledgments
         before.radio().receive.signaling
     );
     assert_eq!(control.plan().hardware(), before.hardware());
+    assert_eq!(
+        control
+            .plan()
+            .configuration()
+            .station
+            .receive
+            .cos_assignment,
+        usbradioplus_core::CarrierSource::External
+    );
+    assert_eq!(
+        control.plan().radio().qualification.carrier_source,
+        usbradioplus_radio::CarrierSource::External
+    );
     assert!(!dsp.is_busy());
 }
 
@@ -81,6 +95,7 @@ fn remote_dsp_cancelled_half_update_retains_storage_until_reverse_acknowledgment
         port.apply(
             remote_dsp_target(),
             usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
             std::time::Duration::from_secs(2),
             || cancelled.load(std::sync::atomic::Ordering::Acquire),
         )
@@ -115,6 +130,7 @@ fn remote_dsp_timeout_keeps_admission_bounded_and_control_retirement_terminal() 
         port.apply(
             remote_dsp_target(),
             usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
             std::time::Duration::ZERO,
             || false
         ),
@@ -124,6 +140,7 @@ fn remote_dsp_timeout_keeps_admission_bounded_and_control_retirement_terminal() 
         port.apply(
             remote_dsp_target(),
             usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
             std::time::Duration::ZERO,
             || false
         ),
@@ -134,6 +151,7 @@ fn remote_dsp_timeout_keeps_admission_bounded_and_control_retirement_terminal() 
         port.apply(
             remote_dsp_target(),
             usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
             std::time::Duration::ZERO,
             || false
         ),
@@ -154,6 +172,7 @@ fn remote_dsp_recaptures_a_revised_generation_without_overwriting_tuner_settings
         port.apply(
             remote_dsp_target(),
             usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
             std::time::Duration::from_secs(2),
             || {
                 if let Some((waiting, released)) = first.take() {

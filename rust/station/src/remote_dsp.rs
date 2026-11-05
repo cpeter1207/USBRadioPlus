@@ -33,6 +33,7 @@ pub enum RemoteDspError {
 struct Exchange {
     target: RemoteOperatingState,
     external_decode: SubaudibleSource,
+    carrier: usbradioplus_core::CarrierSource,
     preparation: ArrayQueue<StationUpdatePreparation>,
     ready: ArrayQueue<Result<StationUpdate, StationUpdateError>>,
     result: ArrayQueue<Result<(), RemoteDspError>>,
@@ -66,6 +67,7 @@ impl RemoteDspPort {
         &self,
         target: RemoteOperatingState,
         external_decode: SubaudibleSource,
+        carrier: usbradioplus_core::CarrierSource,
         timeout: Duration,
         mut cancelled: impl FnMut() -> bool,
     ) -> Result<(), RemoteDspError> {
@@ -75,6 +77,7 @@ impl RemoteDspPort {
         let exchange = Arc::new(Exchange {
             target,
             external_decode,
+            carrier,
             preparation: ArrayQueue::new(1),
             ready: ArrayQueue::new(1),
             result: ArrayQueue::new(1),
@@ -106,6 +109,7 @@ impl RemoteDspPort {
                 let candidate = preparation
                     .plan()
                     .clone()
+                    .with_remote_carrier(exchange.carrier)
                     .with_remote_signaling(&exchange.target, exchange.external_decode)
                     .map_err(StationUpdateError::Preparation)
                     .and_then(|plan| preparation.prepare(plan));

@@ -354,6 +354,8 @@ pub enum CarrierSource {
     Dsp,
     /// Use audio-level VOX detection.
     Vox,
+    /// Use a separately published radio-control carrier observation.
+    External,
     /// Use a normal-polarity CM119 input.
     Usb,
     /// Use an inverted CM119 input.
@@ -370,6 +372,7 @@ impl fmt::Display for CarrierSource {
             Self::Disabled => "no",
             Self::Dsp => "dsp",
             Self::Vox => "vox",
+            Self::External => "external",
             Self::Usb => "usb",
             Self::UsbInverted => "usbinvert",
             Self::Parallel => "pp",
@@ -1958,6 +1961,8 @@ fn parse_carrier_source(value: &str) -> Result<CarrierSource, String> {
         Ok(CarrierSource::Dsp)
     } else if value.eq_ignore_ascii_case("vox") {
         Ok(CarrierSource::Vox)
+    } else if value.eq_ignore_ascii_case("external") {
+        Ok(CarrierSource::External)
     } else if value.eq_ignore_ascii_case("usb") {
         Ok(CarrierSource::Usb)
     } else if value.eq_ignore_ascii_case("usbinvert") {
@@ -1967,7 +1972,7 @@ fn parse_carrier_source(value: &str) -> Result<CarrierSource, String> {
     } else if value.eq_ignore_ascii_case("ppinvert") {
         Ok(CarrierSource::ParallelInverted)
     } else {
-        Err("requires no, dsp, vox, usb, usbinvert, pp, or ppinvert".to_owned())
+        Err("requires no, dsp, vox, external, usb, usbinvert, pp, or ppinvert".to_owned())
     }
 }
 

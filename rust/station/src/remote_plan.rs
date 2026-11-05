@@ -25,6 +25,16 @@ fn dcs(value: RemoteSignal) -> Result<DcsCode, RadioError> {
 }
 
 impl StationPlan {
+    /// Retain the selected carrier provider in both configuration and the radio
+    /// plan, so later tune updates cannot revert it to the original DSP input.
+    pub fn with_remote_carrier(self, carrier: usbradioplus_core::CarrierSource) -> Self {
+        let mut configuration = self.configuration().clone();
+        configuration.station.receive.cos_assignment = carrier;
+        let mut radio = *self.radio();
+        radio.qualification.carrier_source = crate::carrier_source(carrier);
+        self.with_radio_configuration(configuration, radio)
+    }
+
     /// Prepare effective DSP signaling for an already RF-admitted complete state.
     /// External qualification must name a real selected hardware input; generic
     /// rig DCD is never substituted for decoded CTCSS/DCS. Frequency/VFO/power
