@@ -158,10 +158,7 @@ pub fn prepare_remote_operation(
                 operation.flags & 1
             };
             if kind == Kind::ScanPreset {
-                request.selector = scan
-                    .map(|scan| scan.list)
-                    .or_else(|| config.scan_lists.first().map(|scan| scan.selector))
-                    .ok_or_else(unsupported)?;
+                request.selector = scan.map(|scan| scan.list).ok_or_else(unsupported)?;
                 request.value_ms = config
                     .scan_presets_ms
                     .get(operation.selector as usize)
@@ -230,7 +227,11 @@ pub fn prepare_remote_operation(
                     request.fields = 32;
                     request.state.transmit_vfo = positive()?.try_into().map_err(|_| invalid())?;
                 }
-                7 | 20 => return Err(unsupported()),
+                7 => {
+                    request.fields = 1 << 13;
+                    request.state.flags = (request.state.flags & !8) | (u32::from(value != 0) << 3);
+                }
+                20 => return Err(unsupported()),
                 8 => {
                     request.fields = 64;
                     request.state.offset_hz = value;
@@ -462,5 +463,59 @@ pub(crate) mod tests {
             panic!("RF-affecting settings must not bypass engine admission")
         };
         assert_eq!((request.fields, request.state.rit_hz), (128, -250));
+    }
+
+    #[test]
+    fn remote_scan_shortcut_requires_an_already_selected_list() {
+        let mut config = configuration();
+        config.scan_lists.push(usbradioplus_core::RemoteScanList {
+            selector: 7,
+            name: "local".into(),
+            members: vec![1],
+            dwell_ms: 500,
+            resume_delay_ms: 2000,
+            settle_ms: 0,
+            priority: None,
+        });
+        config.scan_presets_ms[0] = Some(500);
+        let request = RemoteOperation::new(Kind::ScanPreset);
+        assert!(prepare_remote_operation(&config, &current(), None, &[], request).is_err());
+        // SAFETY: this scan snapshot contains only scalar fields.
+        let mut scan: raw::RptAdvRemoteScanSnapshot = unsafe { std::mem::zeroed() };
+        scan.list = 7;
+        let PreparedRemoteOperation::Core(request) =
+            prepare_remote_operation(&config, &current(), Some(&scan), &[], request).unwrap()
+        else {
+            panic!("not core")
+        };
+        assert_eq!((request.selector, request.value_ms), (7, 500));
+    }
+
+    #[test]
+    fn remote_split_scalar_changes_only_split_routing() {
+        let setting = Setting {
+            selector: 7,
+            name: "split".into(),
+            readable: true,
+            writable: true,
+            value_kind: 1,
+            units: 0,
+            decimal_places: 0,
+            minimum: 0,
+            maximum: 1,
+            choices: vec![],
+        };
+        let mut operation = RemoteOperation::new(Kind::SetSetting);
+        operation.selector = 7;
+        operation.magnitude = 1;
+        let PreparedRemoteOperation::Core(request) =
+            prepare_remote_operation(&configuration(), &current(), None, &[setting], operation)
+                .unwrap()
+        else {
+            panic!("not core")
+        };
+        assert_eq!(request.fields, 1 << 13);
+        assert_eq!(request.state.flags & 8, 8);
+        assert_eq!(request.state.transmit_hz, request.state.receive_hz);
     }
 }
