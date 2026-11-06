@@ -26,15 +26,29 @@ fn processing_text_copies_synchronous_chunks_and_preserves_status() {
     }
     let mut descriptor = descriptor();
     // SAFETY: the complete descriptor is retained and its optional entry is absent.
-    let empty = unsafe { execute(&descriptor, ptr::null_mut(), ControlOperation::ProcessingText) };
+    let empty = unsafe {
+        execute(
+            &descriptor,
+            ptr::null_mut(),
+            ControlOperation::ProcessingText,
+        )
+    };
     assert!(matches!(empty, ControlResult::ProcessingText(0, ref bytes) if bytes.is_empty()));
     assert_eq!(empty.status(), URP_AST_OK);
     descriptor.channel_processing_status_text = Some(text);
     for mut expected in [URP_AST_OK, -37] {
         // SAFETY: the synchronous callback borrows this live status and output.
-        let result = unsafe { execute(&descriptor, (&mut expected as *mut i32).cast(), ControlOperation::ProcessingText) };
+        let result = unsafe {
+            execute(
+                &descriptor,
+                (&mut expected as *mut i32).cast(),
+                ControlOperation::ProcessingText,
+            )
+        };
         assert_eq!(result.status(), expected);
-        assert!(matches!(result, ControlResult::ProcessingText(_, ref bytes) if bytes == b"transmit_integrated_lufs=-23.05\n"));
+        assert!(
+            matches!(result, ControlResult::ProcessingText(_, ref bytes) if bytes == b"transmit_integrated_lufs=-23.05\n")
+        );
     }
 }
 

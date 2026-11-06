@@ -240,7 +240,11 @@ impl StationControlHost {
     /// Read final-programme loudness from the generation actually adopted by TX,
     /// including an update awaiting its independent RX acknowledgement.
     pub fn transmit_loudness(&self) -> Option<usbradioplus_core::OutputLoudnessSnapshot> {
-        let _storage = self._updates.storage.lock().expect("update storage poisoned");
+        let _storage = self
+            ._updates
+            .storage
+            .lock()
+            .expect("update storage poisoned");
         let pointer = self._updates.transmit_processing.load(Ordering::Acquire);
         // SAFETY: control storage retains every adopted owner until its successor
         // is acknowledged. This control-plane lock prevents reclamation here.

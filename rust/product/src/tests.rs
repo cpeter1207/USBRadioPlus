@@ -11,7 +11,10 @@ mod link_observer;
 unsafe extern "C" fn append_processing_text(context: *mut c_void, text: *const u8, length: u32) {
     // SAFETY: synchronous diagnostics retain the owned output and complete span.
     let (output, text) = unsafe {
-        (&mut *context.cast::<String>(), std::slice::from_raw_parts(text, length as usize))
+        (
+            &mut *context.cast::<String>(),
+            std::slice::from_raw_parts(text, length as usize),
+        )
     };
     output.push_str(std::str::from_utf8(text).unwrap());
 }
@@ -20,16 +23,44 @@ unsafe extern "C" fn append_processing_text(context: *mut c_void, text: *const u
 fn processing_text_formats_measured_and_unmeasured_epochs() {
     use usbradioplus_core::OutputLoudnessSnapshot;
     use usbradioplus_station::CallbackStatistics;
-    let observation = CallbackStatistics { receive_calls: 2, transmit_calls: 3, receive_failures: 4, transmit_failures: 5 };
-    let measured = maintenance::processing_status_text(observation, Some(OutputLoudnessSnapshot {
-        epoch: 7, sample_count: 48000, integrated_lufs: Some(-23.05), true_peak_dbtp: Some(-1.1),
-    }));
-    for expected in ["radio_receive_calls=2\n", "radio_transmit_calls=3\n", "radio_receive_failures=4\n", "radio_transmit_failures=5\n", "transmit_loudness_meter_enabled=1\n", "transmit_loudness_epoch=7\n", "transmit_loudness_sample_count=48000\n", "transmit_loudness_valid=1\n", "transmit_integrated_lufs=-23.05\n", "transmit_true_peak_dbtp=-1.10\n"] {
+    let observation = CallbackStatistics {
+        receive_calls: 2,
+        transmit_calls: 3,
+        receive_failures: 4,
+        transmit_failures: 5,
+    };
+    let measured = maintenance::processing_status_text(
+        observation,
+        Some(OutputLoudnessSnapshot {
+            epoch: 7,
+            sample_count: 48000,
+            integrated_lufs: Some(-23.05),
+            true_peak_dbtp: Some(-1.1),
+        }),
+    );
+    for expected in [
+        "radio_receive_calls=2\n",
+        "radio_transmit_calls=3\n",
+        "radio_receive_failures=4\n",
+        "radio_transmit_failures=5\n",
+        "transmit_loudness_meter_enabled=1\n",
+        "transmit_loudness_epoch=7\n",
+        "transmit_loudness_sample_count=48000\n",
+        "transmit_loudness_valid=1\n",
+        "transmit_integrated_lufs=-23.05\n",
+        "transmit_true_peak_dbtp=-1.10\n",
+    ] {
         assert!(measured.contains(expected), "{expected}");
     }
-    let warmup = maintenance::processing_status_text(observation, Some(OutputLoudnessSnapshot {
-        epoch: 8, sample_count: 1, integrated_lufs: None, true_peak_dbtp: Some(-20.0),
-    }));
+    let warmup = maintenance::processing_status_text(
+        observation,
+        Some(OutputLoudnessSnapshot {
+            epoch: 8,
+            sample_count: 1,
+            integrated_lufs: None,
+            true_peak_dbtp: Some(-20.0),
+        }),
+    );
     assert!(warmup.contains("transmit_loudness_valid=0\n"));
     assert!(warmup.contains("transmit_integrated_lufs=unavailable\n"));
     assert!(warmup.contains("transmit_true_peak_dbtp=-20.00\n"));
@@ -1380,8 +1411,18 @@ fn exported_operations_contain_panics_and_reject_null_handles() {
         );
         assert_eq!(channel_command(ptr::null_mut(), ptr::null_mut()), -1);
         assert_eq!(channel_get_status(ptr::null_mut(), ptr::null_mut()), -1);
-        assert_eq!(channel_processing_status_text(ptr::null_mut(), None, ptr::null_mut()), -1);
-        assert_eq!(channel_processing_status_text(ptr::null_mut(), Some(append_processing_text), ptr::null_mut()), -1);
+        assert_eq!(
+            channel_processing_status_text(ptr::null_mut(), None, ptr::null_mut()),
+            -1
+        );
+        assert_eq!(
+            channel_processing_status_text(
+                ptr::null_mut(),
+                Some(append_processing_text),
+                ptr::null_mut()
+            ),
+            -1
+        );
         assert_eq!(channel_service(ptr::null_mut()), -1);
         driver_destroy(ptr::null_mut());
         channel_destroy(ptr::null_mut());
@@ -1728,8 +1769,17 @@ fn complete_driver_channel_lifecycle_crosses_the_c_boundary() {
     );
     assert_eq!(status.running, 0);
     let mut processing_text = String::new();
-    // SAFETY: the live channel and synchronous output sink remain owned here.
-    assert_eq!(unsafe { channel_processing_status_text(channel, Some(append_processing_text), ptr::from_mut(&mut processing_text).cast()) }, URP_AST_OK);
+    assert_eq!(
+        // SAFETY: the live channel and synchronous output sink remain owned here.
+        unsafe {
+            channel_processing_status_text(
+                channel,
+                Some(append_processing_text),
+                ptr::from_mut(&mut processing_text).cast(),
+            )
+        },
+        URP_AST_OK
+    );
     assert!(processing_text.contains("transmit_loudness_meter_enabled=0\n"));
     assert!(processing_text.contains("transmit_integrated_lufs=unavailable\n"));
     let mut prestart = command(URP_AST_COMMAND_GET_MIXER, URP_AST_MIXER_RECEIVE, 0);
@@ -1851,8 +1901,17 @@ fn complete_driver_channel_lifecycle_crosses_the_c_boundary() {
     assert_eq!(unsafe { channel_service(channel) }, URP_AST_OK);
 
     processing_text.clear();
-    // SAFETY: the live physical channel and synchronous output remain retained.
-    assert_eq!(unsafe { channel_processing_status_text(channel, Some(append_processing_text), ptr::from_mut(&mut processing_text).cast()) }, URP_AST_OK);
+    assert_eq!(
+        // SAFETY: the live physical channel and synchronous output remain retained.
+        unsafe {
+            channel_processing_status_text(
+                channel,
+                Some(append_processing_text),
+                ptr::from_mut(&mut processing_text).cast(),
+            )
+        },
+        URP_AST_OK
+    );
     assert!(processing_text.contains("radio_transmit_calls=1\n"));
     assert!(processing_text.contains("transmit_true_peak_dbtp=unavailable\n"));
 

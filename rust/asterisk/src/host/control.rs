@@ -199,7 +199,11 @@ unsafe fn execute(
             ControlOperation::ProcessingText => {
                 let mut output = Vec::new();
                 let result = match descriptor.channel_processing_status_text {
-                    Some(call) => call(channel, Some(append_processing_text), (&mut output as *mut Vec<u8>).cast()),
+                    Some(call) => call(
+                        channel,
+                        Some(append_processing_text),
+                        (&mut output as *mut Vec<u8>).cast(),
+                    ),
                     None => URP_AST_OK,
                 };
                 ControlResult::ProcessingText(result, output)
@@ -275,11 +279,16 @@ unsafe fn execute(
 }
 
 unsafe extern "C" fn append_processing_text(context: *mut c_void, text: *const u8, length: u32) {
-    if length == 0 { return; }
+    if length == 0 {
+        return;
+    }
     // SAFETY: the product's synchronous sink lends a complete text span and
     // execute retains this exclusively borrowed vector until the call returns.
     let (output, text) = unsafe {
-        (&mut *context.cast::<Vec<u8>>(), std::slice::from_raw_parts(text, length as usize))
+        (
+            &mut *context.cast::<Vec<u8>>(),
+            std::slice::from_raw_parts(text, length as usize),
+        )
     };
     output.extend_from_slice(text);
 }

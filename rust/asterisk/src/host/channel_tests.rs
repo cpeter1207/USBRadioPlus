@@ -218,6 +218,10 @@ fn channel_forwarders_preserve_typed_outputs_and_admission_failures() {
     );
     assert_eq!(command.value, 17);
     assert_eq!(read_status(&channel, &mut output), URP_AST_ASTERISK_FAILURE);
+    assert_eq!(
+        processing_status_text(&channel),
+        Err(URP_AST_ASTERISK_FAILURE)
+    );
     assert_eq!(output.running, 1);
     with_state(|state| state.taskprocessor_push_result = 0);
     calls.lock().unwrap().result = URP_AST_OK;

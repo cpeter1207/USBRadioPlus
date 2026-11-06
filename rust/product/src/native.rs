@@ -463,7 +463,10 @@ pub(crate) unsafe extern "C" fn processing_status_text(
         let station = unsafe { handle.cast::<NativeStation>().as_ref() };
         let station = station.ok_or(Status::InvalidArgument)?;
         let observation = station.runtime.hardware_state().callback_statistics();
-        let text = crate::maintenance::processing_status_text(observation, station.control.transmit_loudness());
+        let text = crate::maintenance::processing_status_text(
+            observation,
+            station.control.transmit_loudness(),
+        );
         // SAFETY: the synchronous sink borrows this complete UTF-8 span only.
         unsafe { sink(context, text.as_ptr(), text.len() as u32) };
         Ok(())

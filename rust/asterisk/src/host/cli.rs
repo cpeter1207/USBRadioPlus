@@ -194,8 +194,8 @@ pub(super) trait CliBackend {
     fn select_active(&mut self, name: &str) -> i32;
     /// Read active-channel identity and status atomically with teardown exclusion.
     fn active_status(&mut self) -> Result<(String, UrpAstChannelStatus), i32>;
-    /// Copy optional programme-processing diagnostics on the control owner.
-    fn processing_text(&mut self) -> Result<String, i32>;
+    /// Copy diagnostics for the channel named by the captured status snapshot.
+    fn processing_text(&mut self, name: &str) -> Result<String, i32>;
     /// Change echo mode on the active live channel.
     fn set_echo(&mut self, enabled: bool) -> i32;
     /// Change transmitter state on the active live channel.
@@ -449,7 +449,7 @@ fn processing_stats(backend: &mut impl CliBackend, args: &[&str]) -> CliResult {
         return CliResult::failure("");
     };
     let mut output = format_status(&name, &status);
-    match backend.processing_text() {
+    match backend.processing_text(&name) {
         Ok(text) => output.push_str(&text),
         Err(_) => return CliResult::failure(""),
     }
@@ -769,8 +769,9 @@ impl CliBackend for ProductionBackend {
             .unwrap_or_else(|status| status)
     }
 
-    fn processing_text(&mut self) -> Result<String, i32> {
-        self.with_active(channel::processing_status_text)?
+    fn processing_text(&mut self, name: &str) -> Result<String, i32> {
+        channel::with_live_channel(name, channel::processing_status_text)
+            .ok_or(URP_AST_NOT_READY)?
     }
 
     fn set_transmit(&mut self, keyed: bool, ctcss_tenths_hz: u32) -> i32 {

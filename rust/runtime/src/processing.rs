@@ -314,7 +314,8 @@ impl NativeProcessingFactory {
             transmit_loudness: None,
             transmit_dcs_normal_filter: prepare(plan.dcs_filter(descriptions, false))?,
             transmit_dcs_turnoff_filter: prepare(plan.dcs_filter(descriptions, true))?,
-        }.with_transmit_meter(plan, maximum_frame_count, None)
+        }
+        .with_transmit_meter(plan, maximum_frame_count, None)
     }
 
     /// Construct a factory from process-lifetime adapter capabilities.
@@ -471,7 +472,8 @@ impl NativeProcessingFactory {
                 &previous.transmit_dcs_turnoff_filter,
                 0,
             )?,
-        }.with_transmit_meter(&plan, maximum, Some(previous))
+        }
+        .with_transmit_meter(&plan, maximum, Some(previous))
     }
 
     /// Prepare an inverse handoff to retained original processors without
@@ -548,7 +550,12 @@ impl NativeProcessingFactory {
                 &current.transmit_dcs_turnoff_filter,
                 0,
             )?,
-        }.with_transmit_meter(&target_plan, self.stream.maximum_frame_count(), Some(current))
+        }
+        .with_transmit_meter(
+            &target_plan,
+            self.stream.maximum_frame_count(),
+            Some(current),
+        )
     }
 
     fn replacement_graph(
@@ -601,7 +608,13 @@ impl NativeProcessingFactory {
                 },
                 transition: UnsafeCell::new(GraphTransition {
                     output: vec![0.0; maximum].into_boxed_slice(),
-                    prime_remaining: (lookahead_frames + if lookahead_frames == 0 { GRAPH_TRANSITION_FRAMES } else { LIMITER_PRIME_MARGIN_FRAMES }).max(maximum),
+                    prime_remaining: (lookahead_frames
+                        + if lookahead_frames == 0 {
+                            GRAPH_TRANSITION_FRAMES
+                        } else {
+                            LIMITER_PRIME_MARGIN_FRAMES
+                        })
+                    .max(maximum),
                     faded: 0,
                     use_pending: None,
                 }),
@@ -808,8 +821,14 @@ impl ProcessingGeneration {
         maximum: u32,
         previous: Option<&Self>,
     ) -> Result<Self, ProcessingRuntimeError> {
-        if plan.voice_telemetry.as_ref().is_some_and(|chain| chain.transmit_tail.loudness_meter_enabled) {
-            self.transmit_loudness = if let Some(previous) = previous.filter(|previous| Arc::ptr_eq(&self.transmit_program.0, &previous.transmit_program.0)) {
+        if plan
+            .voice_telemetry
+            .as_ref()
+            .is_some_and(|chain| chain.transmit_tail.loudness_meter_enabled)
+        {
+            self.transmit_loudness = if let Some(previous) = previous.filter(|previous| {
+                Arc::ptr_eq(&self.transmit_program.0, &previous.transmit_program.0)
+            }) {
                 previous.transmit_loudness.clone()
             } else {
                 None
@@ -831,7 +850,9 @@ impl ProcessingGeneration {
     /// Final transmit programme since this graph's meter epoch began. Preparation
     /// and graph warmup are excluded; pauses retain integrated history.
     pub fn transmit_loudness(&self) -> Option<OutputLoudnessSnapshot> {
-        self.transmit_loudness.as_ref().map(|stage| stage.observer.snapshot())
+        self.transmit_loudness
+            .as_ref()
+            .map(|stage| stage.observer.snapshot())
     }
 
     // Private: safe public Clone would permit two independent audio owners.
@@ -887,7 +908,14 @@ impl ProcessingGeneration {
             transmit_program: match transmit_loudness {
                 Some(stage) => {
                     // SAFETY: this generation retains the stage for its sole TX owner.
-                    unsafe { ProcessorPort::from_raw(NonNull::from(stage.as_ref()).cast(), metered_graph_process, None, None) }
+                    unsafe {
+                        ProcessorPort::from_raw(
+                            NonNull::from(stage.as_ref()).cast(),
+                            metered_graph_process,
+                            None,
+                            None,
+                        )
+                    }
                 }
                 None => graph_port(transmit_program),
             },
@@ -957,14 +985,24 @@ unsafe extern "C" fn metered_graph_process(
     // SAFETY: the retained stage is borrowed by its sole TX callback owner.
     let stage = unsafe { context.as_ref() };
     // SAFETY: the graph validates the caller's complete input/output spans.
-    let result = unsafe { graph_process(stage.graph.pointer().cast().as_ptr(), input, output, frame_count) };
+    let result = unsafe {
+        graph_process(
+            stage.graph.pointer().cast().as_ptr(),
+            input,
+            output,
+            frame_count,
+        )
+    };
     if result != PORT_OK {
         return result;
     }
     // SAFETY: successful graph processing validated this exact output span;
     // its final handoff mix is complete and TX exclusively owns the meter.
     let (samples, meter) = unsafe {
-        (slice::from_raw_parts(output, frame_count as usize), &mut *stage.meter.get())
+        (
+            slice::from_raw_parts(output, frame_count as usize),
+            &mut *stage.meter.get(),
+        )
     };
     match meter.process(samples) {
         Ok(()) => PORT_OK,

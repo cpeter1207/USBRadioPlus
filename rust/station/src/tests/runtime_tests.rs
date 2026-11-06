@@ -1126,7 +1126,10 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     let before = control.radio().radio().snapshot().unwrap();
     let mut configuration = control.plan().configuration().clone();
     configuration.local.input_gain_db = 3.0;
-    configuration.voice_telemetry.transmit_tail.loudness_meter_enabled = true;
+    configuration
+        .voice_telemetry
+        .transmit_tail
+        .loudness_meter_enabled = true;
     let plan = StationPlan::new("usb", configuration, control.plan().transport(), 21, 960).unwrap();
     let update = runtime
         .prepare_update(&control, plan, &factory(), radio_provider())

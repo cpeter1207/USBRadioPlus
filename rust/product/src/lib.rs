@@ -817,7 +817,13 @@ pub struct UrpAstDescriptor {
     pub channel_activation_status: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     /// Copy final-programme processing diagnostics through a synchronous UTF-8 sink
     /// on the serialized channel owner. No fixed status record is extended.
-    pub channel_processing_status_text: Option<unsafe extern "C" fn(*mut c_void, Option<UrpNativeProcessingDiagnostic>, *mut c_void) -> c_int>,
+    pub channel_processing_status_text: Option<
+        unsafe extern "C" fn(
+            *mut c_void,
+            Option<UrpNativeProcessingDiagnostic>,
+            *mut c_void,
+        ) -> c_int,
+    >,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
@@ -2746,7 +2752,10 @@ unsafe extern "C" fn channel_processing_status_text(
             || (usbradioplus_station::CallbackStatistics::default(), None),
             |hardware| {
                 let control = hardware.control();
-                (control.hardware_state().callback_statistics(), control.transmit_loudness())
+                (
+                    control.hardware_state().callback_statistics(),
+                    control.transmit_loudness(),
+                )
             },
         );
         let text = maintenance::processing_status_text(observation, loudness);
