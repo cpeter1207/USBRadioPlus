@@ -403,3 +403,277 @@ fn remote_split_scalar_changes_only_split_routing() {
     assert_eq!(request.state.flags & 8, 8);
     assert_eq!(request.state.transmit_hz, request.state.receive_hz);
 }
+
+fn scalar_metadata(
+    selector: u32,
+    kind: u32,
+    units: u32,
+    places: u32,
+    minimum: i64,
+    maximum: i64,
+) -> Setting {
+    Setting {
+        selector,
+        name: "typed control".into(),
+        readable: true,
+        writable: true,
+        value_kind: kind,
+        units,
+        decimal_places: places,
+        minimum,
+        maximum,
+        choices: vec![],
+    }
+}
+
+#[test]
+fn remote_scalar_metadata_and_entered_precision_are_validated_before_programming() {
+    let base = scalar_metadata(100, 4, 6, 2, -100_000, 100_000);
+    let mut operation = RemoteOperation::new(Kind::SetSetting);
+    operation.selector = 100;
+    operation.magnitude = 12_500;
+    operation.decimal_places = 4;
+    assert_eq!(scalar(&base, operation), Ok(125));
+    operation.flags = 1;
+    assert_eq!(scalar(&base, operation), Ok(-125));
+    operation.flags = 0;
+    operation.magnitude = 12_501;
+    assert!(scalar(&base, operation).is_err());
+    operation.magnitude = 100;
+    operation.decimal_places = 0;
+    for case in 0..8 {
+        let mut setting = base.clone();
+        let mut request = operation;
+        match case {
+            0 => setting.writable = false,
+            1 => setting.value_kind = 6,
+            2 => request.flags = 2,
+            3 => request.decimal_places = 7,
+            4 => setting.decimal_places = 7,
+            5 => {
+                setting.value_kind = 2;
+                request.flags = 1;
+            }
+            6 => request.magnitude = u64::MAX,
+            _ => {
+                setting.maximum = 99;
+                setting.decimal_places = 0;
+            }
+        }
+        assert!(scalar(&setting, request).is_err(), "scalar case {case}");
+    }
+    let mut discrete = scalar_metadata(105, 5, 0, 0, 0, 10);
+    discrete.choices = vec![1, 3];
+    operation.magnitude = 2;
+    assert!(scalar(&discrete, operation).is_err());
+    operation.magnitude = 3;
+    assert_eq!(scalar(&discrete, operation), Ok(3));
+    let dcs = scalar_metadata(14, 2, 3, 0, 0, 511);
+    operation.flags = 0;
+    operation.magnitude = 2450;
+    operation.decimal_places = 1;
+    assert!(
+        scalar(&dcs, operation).is_err(),
+        "DCS entry must be integral octal digits even when exactly scalable"
+    );
+}
+
+#[test]
+fn remote_common_controls_become_only_their_matching_whole_state_fields() {
+    for (selector, kind, value, flags, minimum, maximum, expected) in [
+        (1, 2, 146_940_000, 0, 1, 500_000_000, 1),
+        (2, 2, 146_340_000, 0, 1, 500_000_000, 2),
+        (3, 5, 1, 0, 1, 12, 4),
+        (4, 2, 2400, 0, 0, 10000, 8),
+        (5, 5, 1, 0, 0, 5, 16),
+        (6, 5, 2, 0, 0, 5, 32),
+        (8, 3, 600_000, 1, -1_000_000, 1_000_000, 64),
+        (10, 3, 100, 0, -10000, 10000, 256),
+        (11, 2, 2500, 0, 0, 10000, 512),
+    ] {
+        let setting = scalar_metadata(selector, kind, 0, 0, minimum, maximum);
+        let mut operation = RemoteOperation::new(Kind::SetSetting);
+        operation.selector = selector;
+        operation.magnitude = value;
+        operation.flags = flags;
+        let PreparedRemoteOperation::Core(request) =
+            prepare_remote_operation(&configuration(), &current(), None, &[setting], operation)
+                .unwrap()
+        else {
+            panic!("common operating control bypassed Core")
+        };
+        assert_eq!(request.fields, expected, "selector {selector}");
+        match selector {
+            1 => assert_eq!(request.state.receive_hz, value),
+            2 => assert_eq!(request.state.transmit_hz, value),
+            3 => assert_eq!(request.state.mode, value as u32),
+            4 => assert_eq!(request.state.bandwidth_hz, value as u32),
+            5 => assert_eq!(request.state.receive_vfo, value as u32),
+            6 => assert_eq!(request.state.transmit_vfo, value as u32),
+            8 => assert_eq!(request.state.offset_hz, -600_000),
+            10 => assert_eq!(request.state.xit_hz, 100),
+            11 => assert_eq!((request.state.power_mw, request.state.flags & 2), (2500, 2)),
+            _ => unreachable!(),
+        }
+    }
+    // Raw dependency catalogs contain these controls, but none may escape as an
+    // auxiliary write if accidentally passed before controller projection.
+    for selector in [20, 22, 23] {
+        let setting = scalar_metadata(selector, 2, 0, 0, 0, 10_000);
+        let mut operation = RemoteOperation::new(Kind::SetSetting);
+        operation.selector = selector;
+        assert!(
+            prepare_remote_operation(&configuration(), &current(), None, &[setting], operation)
+                .is_err()
+        );
+    }
+}
+
+#[test]
+fn remote_frequency_tone_and_scan_reject_invalid_flags_without_changing_routing() {
+    let mut receive_only = current();
+    receive_only.applied.flags &= !1;
+    receive_only.applied.transmit_hz = 0;
+    let mut frequency = RemoteOperation::new(Kind::Frequency);
+    frequency.flags = 3;
+    frequency.magnitude = 146_940_000;
+    assert_eq!(core(frequency).state.offset_hz, 600_000);
+    frequency.flags = 2;
+    let PreparedRemoteOperation::Core(request) =
+        prepare_remote_operation(&configuration(), &receive_only, None, &[], frequency).unwrap()
+    else {
+        panic!("frequency")
+    };
+    assert_eq!(
+        (request.state.receive_hz, request.state.transmit_hz),
+        (146_940_000, 0)
+    );
+    let mut step = RemoteOperation::new(Kind::Step);
+    step.signed_value = 5000;
+    let PreparedRemoteOperation::Core(request) =
+        prepare_remote_operation(&configuration(), &receive_only, None, &[], step).unwrap()
+    else {
+        panic!("step")
+    };
+    assert_eq!((request.fields, request.state.transmit_hz), (1, 0));
+    for flags in [0, 4] {
+        frequency.flags = flags;
+        assert!(
+            prepare_remote_operation(&configuration(), &current(), None, &[], frequency).is_err()
+        );
+    }
+    for kind in [
+        Kind::Tone,
+        Kind::ToneEnabled,
+        Kind::ScanDirection,
+        Kind::Inhibit,
+    ] {
+        let mut operation = RemoteOperation::new(kind);
+        operation.flags = 4;
+        assert!(
+            prepare_remote_operation(&configuration(), &current(), None, &[], operation).is_err()
+        );
+    }
+    for flags in [0, 1] {
+        let mut operation = RemoteOperation::new(Kind::ScanDirection);
+        operation.flags = flags;
+        assert_eq!(core(operation).direction, flags);
+    }
+    for magnitude in [499, 3001] {
+        let mut operation = RemoteOperation::new(Kind::Tone);
+        operation.magnitude = magnitude;
+        assert!(
+            prepare_remote_operation(&configuration(), &current(), None, &[], operation).is_err()
+        );
+    }
+    for (source, control) in [(2, 0), (1, 2)] {
+        let mut snapshot = current();
+        snapshot.applied.decode.source = source;
+        snapshot.applied.decode.control_source = control;
+        let mut operation = RemoteOperation::new(Kind::Tone);
+        operation.magnitude = 1148;
+        assert!(
+            prepare_remote_operation(&configuration(), &snapshot, None, &[], operation).is_err()
+        );
+    }
+    let mut rig_programmed = current();
+    rig_programmed.applied.decode.control_source = 3;
+    let mut tone = RemoteOperation::new(Kind::Tone);
+    tone.magnitude = 1148;
+    let PreparedRemoteOperation::Core(request) =
+        prepare_remote_operation(&configuration(), &rig_programmed, None, &[], tone).unwrap()
+    else {
+        panic!("rig-programmed tone")
+    };
+    assert_eq!(
+        (request.fields, request.state.decode.ctcss_tenths_hz),
+        (2048, 1148)
+    );
+    assert!(
+        prepare_remote_operation(
+            &configuration(),
+            &current(),
+            None,
+            &[],
+            RemoteOperation::new(Kind::Status)
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn remote_signal_scalar_programming_respects_independent_decoder_control() {
+    let settings = crate::remote_catalog::controller_catalog(
+        vec![],
+        &usbradioplus_remote::SelectedCapabilities::default(),
+    );
+    for (selector, magnitude, places, field) in [
+        (12, 1148, 1, 1024),
+        (13, 1148, 1, 2048),
+        (16, 1, 0, 1024),
+        (17, 1, 0, 2048),
+    ] {
+        let mut operation = RemoteOperation::new(Kind::SetSetting);
+        operation.selector = selector;
+        operation.magnitude = magnitude;
+        operation.decimal_places = places;
+        let mut snapshot = current();
+        if selector == 13 {
+            snapshot.applied.decode.source = 2;
+            snapshot.applied.decode.control_source = 3;
+        }
+        let PreparedRemoteOperation::Core(request) =
+            prepare_remote_operation(&configuration(), &snapshot, None, &settings, operation)
+                .unwrap()
+        else {
+            panic!("signal")
+        };
+        assert_eq!(request.fields, field);
+        if selector <= 13 {
+            assert_eq!(
+                if selector == 12 {
+                    request.state.encode.ctcss_tenths_hz
+                } else {
+                    request.state.decode.ctcss_tenths_hz
+                },
+                1148
+            );
+        }
+    }
+    let mut snapshot = current();
+    snapshot.applied.decode.control_source = 3;
+    let mut operation = RemoteOperation::new(Kind::SetSetting);
+    operation.selector = 15;
+    operation.magnitude = 245;
+    assert!(
+        prepare_remote_operation(&configuration(), &snapshot, None, &settings, operation).is_err(),
+        "rig DCS programming is not implemented by the shared rig composition"
+    );
+    snapshot.applied.decode.control_source = 2;
+    operation.selector = 13;
+    operation.magnitude = 1148;
+    operation.decimal_places = 1;
+    assert!(
+        prepare_remote_operation(&configuration(), &snapshot, None, &settings, operation).is_err()
+    );
+}

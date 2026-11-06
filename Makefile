@@ -95,6 +95,10 @@ endif
 ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),4)
 $(error USBRadioPlus requires librptadvradio descriptor ABI 4 from alpha.4 or newer)
 endif
+RPTADV_RADIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadvradio)),0.1.0-alpha.9,0.1.0~alpha9)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(RPTADV_RADIO_MIN_VERSION) rptadvradio && echo yes),)
+$(error USBRadioPlus requires librptadvradio alpha9 or newer for independent/open carrier signaling)
+endif
 RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
 RPTADV_RADIO_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadvradio)/librptadvradio.so.4
 RPTADV_RADIO_BUILD_DEP :=
@@ -160,8 +164,9 @@ RADIO_PACKAGES := rptadv_portaudio_alsa_adapter rptadv_gpio_adapter rptadv_rnnoi
 ifeq ($(shell $(PKG_CONFIG) --exists $(RADIO_PACKAGES) && echo yes),)
 $(error USBRadioPlus requires the released audio, GPIO, and RNNoise adapter development packages)
 endif
-ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.2.0~alpha3 rptadv_portaudio_alsa_adapter && echo yes),)
-$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.2.0~alpha3 or newer)
+AUDIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadv_portaudio_alsa_adapter)),0.2.0-alpha.4,0.2.0~alpha4)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(AUDIO_MIN_VERSION) rptadv_portaudio_alsa_adapter && echo yes),)
+$(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.2.0~alpha4 or newer)
 endif
 GPIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadv_gpio_adapter)),0.1.0-alpha.4,0.1.0~alpha4)
 ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(GPIO_MIN_VERSION) rptadv_gpio_adapter && echo yes),)

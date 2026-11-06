@@ -15,12 +15,14 @@ INSTALLER = ROOT / "packaging/repository/install-usbradioplus.sh"
 ## Released provider minimums required by the Debian source package.
 BUILD_PROVIDER_MINIMUMS = (
     ("rate_adjusting_pcm_ring3", "3.0.0~alpha1"),
-    ("rptadvradio", "0.1.0~alpha5"),
+    ("rptadvradio", "0.1.0~alpha9"),
     ("rptadv_samplerate_adapter", "0.1.0~alpha2"),
     ("rptadv_ffmpeg_adapter", "0.1.0~alpha2"),
-    ("rptadv_portaudio_alsa_adapter", "0.2.0~alpha3"),
+    ("rptadv_portaudio_alsa_adapter", "0.2.0~alpha4"),
     ("rptadv_gpio_adapter", "0.1.0~alpha2"),
     ("rptadv_rnnoise_adapter", "0.1.0~alpha2"),
+    ("rptadvradio", "0.1.0-alpha.9"),
+    ("rptadv_portaudio_alsa_adapter", "0.2.0-alpha.4"),
 )
 
 
@@ -234,7 +236,8 @@ def test_build_dependency_guards_require_released_adapter_minimum(
     start = source.index("\npkg-config ") + 1
     end = source.index("\nif ! pkg-config --exists rnnoise", start)
     prefix, alpha = minimum.rsplit("alpha", maxsplit=1)
-    version = f"{prefix}alpha{int(alpha) + offset}"
+    separator = "." if alpha.startswith(".") else ""
+    version = f"{prefix}alpha{separator}{int(alpha.lstrip('.')) + offset}"
     for package, current in BUILD_PROVIDER_MINIMUMS:
         (tmp_path / f"{package}.pc").write_text(
             f"abi_version=4\nName: {package}\nDescription: installer fixture\n"

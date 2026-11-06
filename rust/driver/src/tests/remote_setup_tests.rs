@@ -62,3 +62,16 @@ fn remote_setup_generic_audio_has_no_cm119_owner() {
     .unwrap();
     assert!(setup.hardware().cm119.is_none());
 }
+
+#[test]
+fn remote_setup_errors_format_the_selected_cause_without_transport_options() {
+    assert_eq!(
+        RemoteSetupError::Provider(ProviderError::Incompatible).to_string(),
+        "incompatible remote radio provider"
+    );
+    assert!(
+        RemoteSetupError::Call(CallError(-1001))
+            .to_string()
+            .contains("-1001")
+    );
+}

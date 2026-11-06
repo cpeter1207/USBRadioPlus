@@ -125,7 +125,6 @@ fn scalar(setting: &Setting, operation: RemoteOperation) -> Result<i64, RemoteRe
     if value < setting.minimum
         || value > setting.maximum
         || !setting.choices.is_empty() && !setting.choices.contains(&value)
-        || setting.value_kind == 1 && !matches!(value, 0 | 1)
     {
         return Err(invalid());
     }

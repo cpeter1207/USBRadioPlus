@@ -243,3 +243,7 @@ impl Drop for RemoteDspControl {
         self.port.live.store(false, Ordering::Release);
     }
 }
+
+#[cfg(test)]
+#[path = "tests/remote_dsp_tests.rs"]
+mod tests;

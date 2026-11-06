@@ -34,7 +34,7 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha2)" in control
     assert "librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1)" in control
     assert "libsamplerate" not in control
-    assert "librptadvradio-dev (>= 0.1.0~alpha5)" in control
+    assert "librptadvradio-dev (>= 0.1.0~alpha9)" in control
     assert "--variable=abi_version rptadvradio),4" in makefile
     for soname in (
         "librate_adjusting_pcm_ring3.so.3",
@@ -107,7 +107,7 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
         assert not any(word in dependency for word in ("asterisk", "ASLDepends", "rpt-advanced"))
         assert "usbradioplus (= " not in dependency
     assert "libusbradioplus-product1 (= ${binary:Version})" in development
-    assert "librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3)" in runtime
+    assert "librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha4)" in runtime
     for provider in ("librptadvremote", "librptadv-hamlib-adapter"):
         assert f"{provider}1 (>= 0.1.0~alpha1)" in runtime
         assert f"{provider}-dev (>= 0.1.0~alpha1)" in paragraphs[0]

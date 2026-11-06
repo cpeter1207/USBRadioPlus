@@ -1574,7 +1574,7 @@ fn remote_option_acknowledges_pending_retirement_and_rejects_partial_envelopes()
     descriptor.channel_quiesce = Some(quiesce);
     let calls = Mutex::new(DriverCalls::default());
     let (_channel, mut owner) = callback_channel(&descriptor, &calls);
-    for case in 0..5 {
+    for case in 0..7 {
         // SAFETY: all zero fields are valid empty inputs or nullable output pointers.
         let mut request: crate::UrpAstRemoteControl = unsafe { std::mem::zeroed() };
         request.struct_size = size_of::<crate::UrpAstRemoteControl>() as u32;
@@ -1586,6 +1586,8 @@ fn remote_option_acknowledges_pending_retirement_and_rejects_partial_envelopes()
             2 => request.struct_size -= 1,
             3 => request.abi_version = 2,
             4 => request.source_flags = 4,
+            5 => request.operation = 0,
+            6 => with_state(|state| state.taskprocessor_push_result = -1),
             _ => (),
         }
         // SAFETY: the retained owner and complete writable request outlive dispatch.
@@ -1608,6 +1610,7 @@ fn remote_option_acknowledges_pending_retirement_and_rejects_partial_envelopes()
         );
         assert_eq!(request.accepted_abi_version, u32::from(case == 0));
         assert!(request.ticket.context.is_null());
+        with_state(|state| state.taskprocessor_push_result = 0);
     }
 }
 
@@ -2127,4 +2130,17 @@ fn jitter_mapping_preserves_every_asterisk_setting() {
         ..resolved
     });
     assert_eq!(disabled.flags, 0);
+}
+
+#[test]
+fn direct_call_rejects_terminal_activation_failure_without_starting_delivery() {
+    assert!(
+        start_media(
+            true,
+            || -1,
+            || panic!("no delivery after failure"),
+            || panic!("caller retains failed owner")
+        )
+        .is_err()
+    );
 }

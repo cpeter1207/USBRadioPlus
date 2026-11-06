@@ -19,8 +19,15 @@ fn legacy_parallel_work_keeps_generation_ownership_without_a_caller_ticket() {
     queue.submit_parallel(request).unwrap();
     let work = queue.next_ordinary().unwrap();
     assert_eq!(work.parallel_request(), Some(request));
+    assert!(work.operation().is_none());
     assert!(work.source().valid && !work.source().active);
     work.complete(Err(RemoteRequestError::Rejected(-123)));
+    assert_eq!(queue.parallel_error(), -123);
+    queue.submit_parallel(request).unwrap();
+    queue
+        .next_ordinary()
+        .unwrap()
+        .complete(Err(RemoteRequestError::Busy));
     assert_eq!(queue.parallel_error(), -123);
     queue.submit_parallel(request).unwrap();
     queue.retire();
@@ -33,6 +40,12 @@ fn legacy_parallel_work_keeps_generation_ownership_without_a_caller_ticket() {
 #[test]
 fn remote_queue_has_explicit_backpressure_and_reserved_stop() {
     let queue = RemoteQueue::new(2);
+    let mut invalid = RemoteOperation::new(Kind::Tune);
+    invalid.operation = u32::MAX;
+    assert!(matches!(
+        queue.submit(invalid, true, false),
+        Err(RemoteRequestError::Rejected(-1003))
+    ));
     let request = RemoteOperation::new(Kind::Tune);
     let first = queue.submit(request, true, false).unwrap();
     let second = queue.submit(request, false, true).unwrap();

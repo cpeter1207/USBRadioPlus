@@ -193,3 +193,104 @@ fn remote_status_preserves_exact_units_and_truthful_observation_presence() {
     assert_eq!(decoded["entries"][0]["name"], "local \"channels\"");
     assert_eq!(decoded["entries"][0]["dwell_ms"], 500);
 }
+
+#[test]
+fn remote_reply_copies_all_catalog_forms_and_failure_causes() {
+    use super::*;
+    use usbradioplus_core::{RemoteMemory, RemoteOperatingState, RemoteScanList};
+    for (error, reason) in [
+        (RemoteRequestError::Busy, "busy"),
+        (RemoteRequestError::Stopped, "stopped"),
+        (RemoteRequestError::StaleSource, "stale_source"),
+        (RemoteRequestError::Rejected(-42), "rejected"),
+    ] {
+        let value = reply(Err(error));
+        assert_eq!(value["reason"], reason);
+        assert_eq!(value["version"], 1);
+    }
+    let definition = Setting {
+        selector: 11,
+        name: "power".into(),
+        readable: true,
+        writable: true,
+        value_kind: 2,
+        units: 2,
+        decimal_places: 0,
+        minimum: 0,
+        maximum: 10_000,
+        choices: vec![2500, 5000],
+    };
+    assert_eq!(
+        reply(Ok(RemoteReply::Value {
+            setting: definition.clone(),
+            value: 2500
+        }))["value"],
+        2500
+    );
+    assert_eq!(
+        reply(Ok(RemoteReply::Capabilities(vec![definition])))["entries"][0]["choices"],
+        json!([2500, 5000])
+    );
+    let memory = RemoteMemory {
+        selector: 1,
+        name: "Local".into(),
+        state: RemoteOperatingState {
+            receive_hz: 146_520_000,
+            transmit_hz: Some(146_520_000),
+            mode: 1,
+            ..RemoteOperatingState::default()
+        },
+    };
+    assert_eq!(
+        reply(Ok(RemoteReply::Memories(vec![memory])))["entries"][0]["name"],
+        "Local"
+    );
+    let definition = RemoteScanList {
+        selector: 2,
+        name: "Local".into(),
+        members: vec![1],
+        dwell_ms: 500,
+        resume_delay_ms: 2000,
+        settle_ms: 0,
+        priority: None,
+    };
+    assert!(
+        reply(Ok(RemoteReply::Scan {
+            definition: definition.clone(),
+            state: None
+        }))["state"]
+            .is_null()
+    );
+    // SAFETY: the provider's copied snapshot contains only scalar fields.
+    let mut snapshot: raw::RptAdvRemoteSnapshot = unsafe { std::mem::zeroed() };
+    snapshot.requested.receive_hz = 146_520_000;
+    snapshot.requested.transmit_hz = 146_520_000;
+    snapshot.requested.mode = 1;
+    snapshot.requested.flags = 1;
+    snapshot.applied = snapshot.requested;
+    snapshot.observed = snapshot.requested;
+    snapshot.flags = raw::RPTADV_REMOTE_APPLIED
+        | raw::RPTADV_REMOTE_OBSERVED
+        | raw::RPTADV_REMOTE_PTT_APPLIED
+        | raw::RPTADV_REMOTE_PTT_HIGH;
+    let value = reply(Ok(RemoteReply::Status {
+        request_error: 0,
+        snapshot: Box::new(snapshot),
+        scan: None,
+    }));
+    assert_eq!(value["serviced_ptt"], true);
+    assert!(
+        value["observed_values"].is_null(),
+        "no observed fields are invented"
+    );
+    // Reject an unknown enum returned across the provider ABI instead of
+    // inventing a valid state or publishing untrusted telemetry fragments.
+    snapshot.requested.encode.source = u32::MAX;
+    let invalid = reply(Ok(RemoteReply::Status {
+        request_error: 0,
+        snapshot: Box::new(snapshot),
+        scan: None,
+    }));
+    assert_eq!(invalid["reason"], "rejected");
+    assert_eq!(invalid["code"], -1003);
+}

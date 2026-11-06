@@ -14,7 +14,7 @@ fn remote_dsp_target() -> usbradioplus_core::RemoteOperatingState {
     }
 }
 
-fn remote_dsp_render(runtime: &mut StationRuntime, transmit: bool) {
+pub(crate) fn remote_dsp_render(runtime: &mut StationRuntime, transmit: bool) {
     let input = [0.0; 1920];
     assert_eq!(
         // SAFETY: the fixture has no background audio worker; this test is its sole RX owner.
@@ -736,7 +736,7 @@ fn stopped_pending_update_drains_both_owners_before_rollback_and_restart() {
 
 impl StationRuntime {
     // Tests have no delivery task; join the production snapshot/preparation steps.
-    fn prepare_update(
+    pub(crate) fn prepare_update(
         &self,
         control: &StationControlHost,
         plan: StationPlan,
@@ -1050,7 +1050,7 @@ fn selected(prepared: &crate::PreparedStation, maximum: u32) -> SelectedHardware
         .unwrap()
 }
 
-fn runtime(generation: u64) -> (StationRuntime, StationControlHost) {
+pub(crate) fn runtime(generation: u64) -> (StationRuntime, StationControlHost) {
     let prepared = prepared(crate::ControllerTransport::RptAdvanced, generation);
     let selected = selected(&prepared, ADVANCED_FRAME_SAMPLES as u32);
     let media = prepared
@@ -1461,6 +1461,22 @@ fn failed_update_preparation_and_incompatible_stream_leave_active_plan_untouched
         runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
         Err(crate::StationUpdateError::Incompatible)
     ));
+    let document = usbradioplus_core::ConfigDocument::new(
+        "[remote_base usb]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\n[remote_memory usb local]\nselector=1\nrx_frequency_hz=146520000\nmode=FM\n",
+    );
+    let definition = usbradioplus_core::ResolvedRemoteConfiguration::from_document(
+        &document,
+        "test",
+        "usb",
+        &original.configuration().station,
+    )
+    .unwrap()
+    .unwrap();
+    let incompatible = original.clone().with_remote_configuration(Some(definition));
+    assert!(matches!(
+        runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
     assert_eq!(control.plan(), &original);
 }
 
@@ -1675,6 +1691,44 @@ fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
     assert_eq!(capture.metadata_flags, 9);
     assert!(runtime.hardware.remote_activity().linked_receiving);
     assert!(runtime.hardware.remote_activity().ctcss_requested);
+    runtime.hardware.publish_remote_control(RemoteRadioControl {
+        enabled: true,
+        receive_permitted: true,
+        transmit_permitted: true,
+        ..Default::default()
+    });
+    assert_eq!(
+        // SAFETY: the stopped runtime owns this RX context and complete input span.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 4) },
+        CALLBACK_OK
+    );
+    assert_eq!(capture.keyed, 1);
+    assert_eq!(capture.samples, [0.5; 4]);
+    capture.tx_keyed = 0;
+    assert_eq!(
+        // SAFETY: the stopped runtime owns this TX context and complete output span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_OK
+    );
+    assert_eq!(output, [0.0; 8], "a new permitted key must admit the burst");
+    assert!(!runtime.hardware.outputs().logical_ptt);
+    capture.tx_keyed = 1;
+    // SAFETY: the same stopped runtime owns this callback and complete output span.
+    let permitted = unsafe {
+        transmit_callback(
+            runtime._transmit_context.get().cast(),
+            output.as_mut_ptr(),
+            4,
+        )
+    };
+    assert_eq!(permitted, CALLBACK_OK);
+    assert_eq!(output, [-0.375; 8]);
     let calls = capture.transmit_calls;
     capture.metadata_source = 2;
     output.fill(1.0);
@@ -1734,6 +1788,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
     STOPS.set(0);
     DESTROYS.set(0);
     let (mut runtime, mut control) = runtime(20);
+    assert!(!runtime.running());
     let hardware = runtime.hardware_state();
     assert_eq!(control.hardware_state().inputs(), HardwareInputs::default());
     hardware.publish_inputs(HardwareInputs {
@@ -1750,6 +1805,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
 
     runtime.start().unwrap();
     runtime.start().unwrap();
+    assert!(runtime.running());
     assert_eq!(STARTS.get(), 1);
     assert_eq!(f32::from_bits(OUTPUT_SAMPLE.get()), 0.25);
     assert_eq!(hardware.receive_observation().input_peak, 0.5);
@@ -1788,6 +1844,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
     assert_eq!(runtime.timing().unwrap().output_latency_seconds, 0.02);
     runtime.stop().unwrap();
     runtime.stop().unwrap();
+    assert!(!runtime.running());
     assert_eq!(STOPS.get(), 1);
     runtime.suspend().unwrap();
     runtime.suspend().unwrap();
@@ -1823,6 +1880,8 @@ struct DirectCapture {
     transmit_calls: u32,
     metadata_flags: u32,
     metadata_source: u32,
+    metadata_calls: u32,
+    fail_metadata_after: u32,
 }
 
 unsafe extern "C" fn direct_metadata(context: *mut c_void, flags: u32, source: *mut u32) -> c_int {
@@ -1830,7 +1889,12 @@ unsafe extern "C" fn direct_metadata(context: *mut c_void, flags: u32, source: *
     unsafe {
         let capture = &mut *context.cast::<DirectCapture>();
         capture.metadata_flags = flags;
+        capture.metadata_calls += 1;
         *source = capture.metadata_source;
+        if capture.fail_metadata_after != 0 && capture.metadata_calls > capture.fail_metadata_after
+        {
+            return -1;
+        }
     }
     0
 }
@@ -2397,4 +2461,43 @@ fn metadata_omits_voter_status_when_it_is_not_reportable() {
         );
         assert_eq!(metadata.statuses, [None, None]);
     }
+}
+
+#[test]
+fn direct_remote_metadata_failure_after_render_silences_the_current_frame() {
+    let (mut media, selected) =
+        media_with_maximum(crate::ControllerTransport::RptAdvanced, 24, 960);
+    let mut capture = DirectCapture {
+        tx_keyed: 1,
+        ctcss_enabled: 1,
+        fail_metadata_after: 1,
+        ..Default::default()
+    };
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        metadata: Some(direct_metadata),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: this stopped fixture retains the exclusive callback state until teardown.
+    unsafe { media.set_direct_callbacks(callbacks) }.unwrap();
+    let (runtime, _control) = StationRuntime::open(media, &selected, audio_provider()).unwrap();
+    let mut output = [1.0; 8];
+    // SAFETY: this test is the sole callback owner and lends a complete stereo span.
+    let result = unsafe {
+        transmit_callback(
+            runtime._transmit_context.get().cast(),
+            output.as_mut_ptr(),
+            4,
+        )
+    };
+    assert_eq!(result, CALLBACK_FAILED);
+    assert_eq!(capture.transmit_calls, 1);
+    assert_eq!(capture.metadata_calls, 2);
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.outputs().logical_ptt);
 }

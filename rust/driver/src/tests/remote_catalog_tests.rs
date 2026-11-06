@@ -100,12 +100,14 @@ fn remote_signal_queries_use_acknowledged_dsp_values_and_keep_native_reads_nativ
     state.encode.inverted = 1;
     state.decode.source = 2;
     state.decode.control_source = 3;
+    state.decode.inverted = 1;
     state.decode.ctcss_tenths_hz = 1148;
     for (selector, expected) in [
         (14, Some(0o245)),
         (16, Some(1)),
         (400, Some(1)),
         (403, Some(1)),
+        (404, Some(1)),
         (401, Some(2)),
         (402, Some(3)),
         (13, None),

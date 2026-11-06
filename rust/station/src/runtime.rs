@@ -1168,4 +1168,4 @@ fn unpack_outputs(value: u32) -> HardwareOutputs {
 
 #[cfg(test)]
 #[path = "tests/runtime_tests.rs"]
-mod tests;
+pub(crate) mod tests;

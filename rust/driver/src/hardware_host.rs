@@ -1606,9 +1606,13 @@ impl HardwareMaintenance {
                     HardwareStationError::ControlQueueFull
                 }
             })?;
-            if let Some(worker) = &self.service.worker {
-                worker.thread().unpark();
-            }
+            // An accepting queue is published only with its serialized live owner.
+            self.service
+                .worker
+                .as_ref()
+                .expect("accepting remote queue retains its worker")
+                .thread()
+                .unpark();
             return Ok(());
         }
         self.service.queue_service(match request {
@@ -2237,9 +2241,11 @@ impl HardwareService {
             .as_ref()
             .ok_or(RemoteRequestError::Stopped)?
             .submit(operation, local, active)?;
-        if let Some(worker) = &self.worker {
-            worker.thread().unpark();
-        }
+        self.worker
+            .as_ref()
+            .expect("accepting remote queue retains its worker")
+            .thread()
+            .unpark();
         Ok(ticket)
     }
 
@@ -2833,12 +2839,8 @@ impl OutputState {
         devices: &ServiceDevices,
     ) -> Result<(), ServiceFailure> {
         if let Some(encoder) = encoder {
-            if !self.site[encoder.bank.index()].reserve(u32::from(encoder.mask)) {
-                return Err(ServiceFailure(
-                    HardwareOperation::RemoteControl,
-                    GpioError::Unsupported,
-                ));
-            }
+            // Startup/recovery bind signaling before site commands can own a pin.
+            assert!(self.site[encoder.bank.index()].reserve(u32::from(encoder.mask)));
             self.set_encoder(false);
             self.encoder = Some(encoder);
             self.set_encoder(false);
@@ -2974,6 +2976,8 @@ impl OutputState {
             );
             self.site[1].restore_safe_high(safe_high[1]);
         }
+        // Recovery rebuilds site claims; retain the existing radio-signaling owner.
+        self.bind_encoder(self.encoder, devices)?;
         Ok(())
     }
 
@@ -3647,10 +3651,18 @@ fn service_remote_ptt(
         let Some(plan) = worker.parallel.as_ref() else {
             return Ok(());
         };
-        let device = devices
-            .parallel
-            .as_ref()
-            .expect("a parallel plan retains its owner");
+        let Some(device) = devices.parallel.as_ref() else {
+            // Safe close can consume this bank while another bank still retries.
+            // A closed output is already OFF, but cannot acknowledge a key request.
+            return if worker.ptt_for(RemotePttSource::Parallel, false) {
+                Err(ServiceFailure(
+                    HardwareOperation::ConfirmParallelPtt,
+                    GpioError::Io,
+                ))
+            } else {
+                Ok(())
+            };
+        };
         device
             .schedule_pulse(ParallelPulse {
                 cancel_mask: plan.ptt_mask,

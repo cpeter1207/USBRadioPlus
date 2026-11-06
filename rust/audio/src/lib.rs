@@ -569,8 +569,7 @@ impl AudioProvider {
                 size.min(size_of::<Descriptor>()),
             );
         }
-        if (descriptor.struct_size as usize) < REQUIRED_DESCRIPTOR_SIZE
-            || descriptor.abi_version != ABI_VERSION
+        if descriptor.abi_version != ABI_VERSION
             || descriptor.capability_name.is_null()
             || !descriptor_complete(&descriptor)
         {

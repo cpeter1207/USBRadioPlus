@@ -97,6 +97,11 @@ fn native_remote_command_options_use_the_shared_resolver_before_hardware() {
             1,
             "65",
         ),
+        (
+            source.replace("backend=hamlib", "backend=hamlib\ndtmf_access=disabled"),
+            0,
+            "6",
+        ),
     ] {
         let options = resolve_remote(&source).commands.unwrap();
         assert_eq!((options.enabled, options.access), (1, access));

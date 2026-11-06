@@ -407,7 +407,9 @@ fn signal(
         }
     }
     if let Some(tone) = values.scaled(&tone_key, 1)? {
-        if !(500..=3000).contains(&tone) || values.text(&code_key).is_some() {
+        // Overlay already admits only valid tone values; this is a real
+        // cross-field conflict, independent of either value's syntax.
+        if values.text(&code_key).is_some() {
             return Err(values.error(&tone_key));
         }
         result.tone_tenths_hz = tone;
@@ -421,7 +423,7 @@ fn signal(
     if let Some(code) = values.text(&code_key) {
         let code = code
             .parse::<DcsCode>()
-            .map_err(|_| values.error(&code_key))?;
+            .expect("overlay admitted the DCS code");
         result.dcs_code = u32::from(code.value());
         result.inverted = code.polarity() == DcsPolarity::Inverted;
         result.tone_tenths_hz = 0;
@@ -431,7 +433,7 @@ fn signal(
         result.enabled = true;
     }
     if let Some(selected) = selected_source {
-        result.source = source(selected).ok_or_else(|| values.error(&source_key))?;
+        result.source = source(selected).expect("overlay admitted the signaling source");
         result.enabled = result.source != RemoteSignalSource::Disabled;
         if result.source == RemoteSignalSource::External
             && values.text(&tone_key).is_none()
@@ -523,10 +525,10 @@ impl ResolvedRemoteConfiguration {
             "parallel_rtx" => RemoteBackend::ParallelRtx,
             _ => return Err(values.error("backend")),
         };
+        // These defaulted values have already passed overlay's validation.
         let audio_source = match values.text("audio_source").unwrap_or("cm119") {
-            "cm119" => RemoteAudioSource::Cm119,
             "alsa" => RemoteAudioSource::Alsa,
-            _ => return Err(values.error("audio_source")),
+            _ => RemoteAudioSource::Cm119,
         };
         let hamlib_model = values.text("hamlib_model").unwrap_or_default().to_owned();
         if backend == RemoteBackend::Hamlib
@@ -559,13 +561,6 @@ impl ResolvedRemoteConfiguration {
         let retries = values.number("retries", 2)?;
         let timeout_retries = values.number("timeout_retries", 0)?;
         let poll_interval_ms = values.number("poll_interval_ms", 500_u64)?;
-        if !(1..=10_000).contains(&timeout_ms)
-            || retries > 10
-            || timeout_retries > 100
-            || poll_interval_ms == 0
-        {
-            return Err(values.error("transport/poll interval"));
-        }
         let modes = values
             .required("allowed_modes")?
             .split(',')
@@ -637,8 +632,8 @@ impl ResolvedRemoteConfiguration {
                     transmit_hz,
                     mode,
                     bandwidth_hz: memory.number("bandwidth_hz", 0)?,
-                    receive_vfo: vfo(&memory, "receive_vfo")?,
-                    transmit_vfo: vfo(&memory, "transmit_vfo")?,
+                    receive_vfo: vfo(&memory, "receive_vfo"),
+                    transmit_vfo: vfo(&memory, "transmit_vfo"),
                     split: memory
                         .text("split")
                         .and_then(bool_value)
@@ -706,8 +701,7 @@ impl ResolvedRemoteConfiguration {
                 .transpose()?;
             let dwell_ms = scan.number("dwell_ms", 500_u64)?;
             let settle_ms = scan.number("settle_ms", 0_u64)?;
-            if dwell_ms == 0
-                || dwell_ms.checked_add(settle_ms).is_none()
+            if dwell_ms.checked_add(settle_ms).is_none()
                 || priority.is_some_and(|member| !members.contains(&member))
             {
                 return Err(scan.error("timing/priority"));
@@ -725,21 +719,11 @@ impl ResolvedRemoteConfiguration {
         }
         let dtmf_access = match values.text("dtmf_access").unwrap_or("locked") {
             "open" => RemoteDtmfAccess::Open,
-            "locked" => RemoteDtmfAccess::Locked,
             "disabled" => RemoteDtmfAccess::Disabled,
-            _ => return Err(values.error("dtmf_access")),
+            _ => RemoteDtmfAccess::Locked,
         };
         let dtmf_prefix = values.text("dtmf_prefix").unwrap_or("6").to_owned();
-        if dtmf_prefix.is_empty()
-            || dtmf_prefix.len() > 63
-            || !dtmf_prefix.bytes().all(|byte| byte.is_ascii_digit())
-        {
-            return Err(values.error("dtmf_prefix"));
-        }
         let tune_duration_ms = values.number("tune_duration_ms", 1000)?;
-        if !(1..=5000).contains(&tune_duration_ms) {
-            return Err(values.error("tune_duration_ms"));
-        }
         let ptt_source = values.text("ptt_source").map(str::to_owned);
         let cor_source = values.text("cor_source").map(str::to_owned);
         if ptt_source
@@ -796,15 +780,15 @@ impl ResolvedRemoteConfiguration {
     }
 }
 
-fn vfo(values: &Values<'_>, key: &str) -> Result<u32, RemoteConfigurationError> {
+fn vfo(values: &Values<'_>, key: &str) -> u32 {
+    // Memory overlay has already validated this defaulted enum.
     match values.text(key).unwrap_or("current") {
-        "current" => Ok(0),
-        "A" => Ok(1),
-        "B" => Ok(2),
-        "main" => Ok(3),
-        "sub" => Ok(4),
-        "memory" => Ok(5),
-        _ => Err(values.error(key)),
+        "A" => 1,
+        "B" => 2,
+        "main" => 3,
+        "sub" => 4,
+        "memory" => 5,
+        _ => 0,
     }
 }
 

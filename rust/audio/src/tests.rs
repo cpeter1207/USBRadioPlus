@@ -523,6 +523,79 @@ fn generic_alsa_selection_requires_its_complete_optional_provider_tail() {
     );
     table.struct_size += 1;
     assert!(provider(Box::leak(Box::new(table))).is_err());
+    table = VALID;
+    table.alsa_device_resolve = Some(resolve);
+    let audio = provider(Box::leak(Box::new(table))).unwrap();
+    for invalid in [
+        DeviceSelector {
+            policy: SelectionPolicy::Automatic,
+            ..request.clone()
+        },
+        DeviceSelector {
+            serial: Some("ABC".into()),
+            ..request.clone()
+        },
+        DeviceSelector {
+            identifier: None,
+            ..request.clone()
+        },
+        DeviceSelector {
+            identifier: Some("hw:7\0,0".into()),
+            ..request.clone()
+        },
+    ] {
+        assert_eq!(
+            audio.select_alsa_device(&invalid),
+            Err(AudioError::InvalidArgument)
+        );
+    }
+    unsafe extern "C" fn invalid_resolve(
+        name: *const c_char,
+        _: u32,
+        _: u32,
+        selected: *mut RawDeviceSelection,
+    ) -> c_int {
+        // SAFETY: the wrapper lends a NUL name and a complete writable result.
+        let name = unsafe { CStr::from_ptr(name) }.to_bytes();
+        // SAFETY: selected is writable for this synchronous call.
+        unsafe {
+            *selected = RawDeviceSelection {
+                struct_size: size_of::<RawDeviceSelection>() as u32,
+                abi_version: ABI_VERSION,
+                alsa_card_index: 7,
+                input_device_index: 3,
+                output_device_index: 4,
+            };
+        }
+        // SAFETY: the same complete result remains exclusively borrowed.
+        let selected = unsafe { &mut *selected };
+        match name {
+            b"small" => selected.struct_size = 0,
+            b"input" => selected.input_device_index = -1,
+            b"output" => selected.output_device_index = -1,
+            _ => selected.abi_version += 1,
+        }
+        0
+    }
+    table.alsa_device_resolve = Some(invalid_resolve);
+    let audio = provider(Box::leak(Box::new(table))).unwrap();
+    for name in ["small", "input", "output", "abi"] {
+        request.identifier = Some(name.into());
+        assert_eq!(
+            audio.select_alsa_device(&request),
+            Err(if name == "abi" {
+                AudioError::IncompatibleAdapter
+            } else {
+                AudioError::AdapterFailure
+            })
+        );
+    }
+    table = VALID;
+    table.capability_name = c"wrong".as_ptr();
+    assert_eq!(
+        provider(Box::leak(Box::new(table))).err(),
+        Some(AudioError::IncompatibleAdapter)
+    );
 }
 
 #[test]

@@ -37,12 +37,26 @@ fn remote_reload_keeps_operating_signaling_and_adopts_new_audio_gains() {
     .unwrap()
     .unwrap();
     let initial = original.with_remote_configuration(Some(definition));
+    assert_eq!(
+        initial.clone().retain_remote_operating(&initial).unwrap(),
+        initial
+    );
     assert!(initial.hardware().cm119.is_none());
     let current = initial
         .clone()
         .with_remote_carrier(usbradioplus_core::CarrierSource::External)
         .with_remote_signaling(&state(), SubaudibleSource::Disabled)
         .unwrap();
+    let mut explicit_state = state();
+    explicit_state.encode.tone_tenths_hz = 1230;
+    let explicit = current
+        .clone()
+        .with_remote_signaling(&explicit_state, SubaudibleSource::Disabled)
+        .unwrap();
+    assert_eq!(
+        explicit.clone().retain_remote_operating(&current).unwrap(),
+        explicit
+    );
     let mut changed = initial.configuration().clone();
     changed.station.hardware.output_a_gain_db += 3.0;
     let next = initial
@@ -210,4 +224,101 @@ fn remote_signaling_mode_changes_preserve_profiles_and_conditioning_corners() {
             .transmit
             .preemphasis_enabled
     );
+}
+
+#[test]
+fn remote_signaling_covers_dcs_external_polarities_and_rejects_invalid_plans() {
+    let (original, _) = prepared(crate::ControllerTransport::RptAdvanced, 4).into_parts();
+    let mut requested = state();
+    requested.decode.tone_tenths_hz = 0;
+    requested.decode.dcs_code = 0o23;
+    requested.decode.inverted = true;
+    requested.encode.tone_tenths_hz = 0;
+    requested.encode.dcs_code = 0o245;
+    let updated = original
+        .clone()
+        .with_remote_signaling(&requested, SubaudibleSource::Disabled)
+        .unwrap();
+    assert!(matches!(
+        updated.radio().receive.signaling,
+        ReceiveSignaling::Dcs(_)
+    ));
+    assert!(matches!(
+        updated.radio().transmit.signaling,
+        TransmitSignaling::Dcs(_)
+    ));
+    for source in [
+        SubaudibleSource::Usb,
+        SubaudibleSource::UsbInverted,
+        SubaudibleSource::ParallelInverted,
+    ] {
+        requested.decode.source = Source::External;
+        let updated = original
+            .clone()
+            .with_remote_signaling(&requested, source)
+            .unwrap();
+        assert_eq!(updated.radio().qualification.subaudible_source, source);
+    }
+    for encode in [false, true] {
+        for dcs in [false, true] {
+            let mut invalid = state();
+            let signal = if encode {
+                &mut invalid.encode
+            } else {
+                &mut invalid.decode
+            };
+            signal.tone_tenths_hz = if dcs { 0 } else { u32::MAX };
+            signal.dcs_code = u32::MAX;
+            assert!(
+                original
+                    .clone()
+                    .with_remote_signaling(&invalid, SubaudibleSource::Disabled)
+                    .is_err()
+            );
+        }
+    }
+    requested = state();
+    requested.encode.source = Source::Disabled;
+    assert!(
+        original
+            .clone()
+            .with_remote_signaling(&requested, SubaudibleSource::Disabled)
+            .is_err()
+    );
+    let mut radio = *original.radio();
+    radio.generation_id = u64::MAX;
+    let overflow = original
+        .clone()
+        .with_radio_configuration(original.configuration().clone(), radio);
+    assert!(
+        overflow
+            .with_remote_signaling(&state(), SubaudibleSource::Disabled)
+            .is_err()
+    );
+    for (mask, local_mode) in [(0, 0), (0, 1), (0, 2), (1, 1)] {
+        let mut processing = original.processing().clone();
+        processing.receive_ctcss_mask = mask;
+        processing.local = if local_mode == 0 {
+            None
+        } else {
+            let mut local = usbradioplus_core::ProcessingChain::shipped(
+                usbradioplus_core::ChainRole::LocalReceive,
+            );
+            local.receive.pl_filter = if local_mode == 2 {
+                usbradioplus_core::PlFilter::DecodedToneNotch
+            } else {
+                usbradioplus_core::PlFilter::Disabled
+            };
+            Some(local)
+        };
+        let updated = original
+            .clone()
+            .with_explicit_processing(processing)
+            .with_remote_signaling(&state(), SubaudibleSource::Disabled)
+            .unwrap();
+        assert_eq!(
+            updated.processing().receive_ctcss_mask != 0,
+            mask != 0 || local_mode == 2
+        );
+    }
 }
