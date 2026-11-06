@@ -110,9 +110,10 @@ pub fn radio_session_config(
             ConfigVadMode::On => VadMode::On,
         },
         vad_hang_ms: receive.vad_hang_ms,
-        vad_external_delay: transport == ControllerTransport::RptAdvanced,
+        vad_external_delay: transport == ControllerTransport::RptAdvanced
+            && receive.vad_mode != ConfigVadMode::Off,
     };
-    if result.receive.vad_external_delay && receive.vad_mode != ConfigVadMode::Off {
+    if result.receive.vad_external_delay {
         result.receive.native_squelch_delay_frames = 0;
     }
     result.qualification = QualificationConfig {

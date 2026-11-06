@@ -339,12 +339,9 @@ fn vad_translation_preserves_vox_and_has_exactly_one_receive_delay_owner() {
             assert_eq!(got.receive.vad_hang_ms, 777);
             assert_eq!(got.receive.vox_hang_milliseconds, 4321);
             assert_eq!(got.receive.vox_threshold, 123);
-            assert_eq!(
-                got.receive.vad_external_delay,
-                transport == ControllerTransport::RptAdvanced
-            );
             let external_active =
                 transport == ControllerTransport::RptAdvanced && mode != ConfigVadMode::Off;
+            assert_eq!(got.receive.vad_external_delay, external_active);
             assert_eq!(
                 got.receive.native_squelch_delay_frames,
                 if external_active { 0 } else { 17 * 48 }
