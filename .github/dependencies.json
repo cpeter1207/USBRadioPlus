@@ -8,5 +8,15 @@
     "repository": "rate_adjusting_pcm_ring",
     "sha": "ec582ca7c9424963b8ab032d219b37acb0311f70",
     "packages": ["librate-adjusting-pcm-ring3", "librate-adjusting-pcm-ring3-dev"]
+  },
+  {
+    "repository": "librptadvremote",
+    "sha": "041b16b253853d70ef02caf08e217fae06e7e2e3",
+    "packages": ["librptadvremote1", "librptadvremote-dev"]
+  },
+  {
+    "repository": "rptadv-hamlib-adapter",
+    "sha": "fb054d720c6b894008b277fe7cc9737dc7173ff1",
+    "packages": ["librptadv-hamlib-adapter1", "librptadv-hamlib-adapter-dev"]
   }
 ]

@@ -1,4 +1,38 @@
 use super::*;
+
+#[test]
+fn generic_external_cor_preserves_validity_without_changing_gpio_or_tone() {
+    for (external, expected) in [(None, 0), (Some(false), 2), (Some(true), 6)] {
+        let controls = ReceiveControls {
+            external_carrier: external,
+            hardware_subaudible: true,
+            ..ReceiveControls::default()
+        };
+        let raw = controls.as_raw();
+        assert_eq!(raw.hardware_carrier, 0);
+        assert_eq!(raw.hardware_subaudible, 1);
+        assert_eq!(raw.subaudible_override, expected);
+        assert_eq!(
+            ReceiveControls {
+                subaudible_override: true,
+                ..controls
+            }
+            .as_raw()
+            .subaudible_override,
+            expected | 1
+        );
+    }
+    let mut config = SessionConfig::new(1, 960, 960);
+    config.qualification.carrier_source = CarrierSource::External;
+    assert_eq!(config.as_raw().qualification.carrier_source, 7);
+    let copied = config
+        .with_abi(|pointer| {
+            // SAFETY: with_abi lends this complete synchronous configuration.
+            unsafe { SessionConfig::from_abi(pointer) }
+        })
+        .unwrap();
+    assert_eq!(copied.qualification.carrier_source, CarrierSource::External);
+}
 use crate::session::{
     EventOwner, bool_from_raw, bounded_frame_count, ctcss_from_raw, error_from_result, event,
     map_result, receive_frame_count, receive_result, ring_is_valid, session_snapshot,

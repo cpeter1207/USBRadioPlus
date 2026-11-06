@@ -379,7 +379,7 @@ impl SessionConfig {
                 native_squelch_delay_frames: receive.native_squelch_delay_frames,
             },
             qualification: QualificationConfig {
-                carrier_source: choice!(qualification.carrier_source, 0 => CarrierSource::Disabled, 1 => CarrierSource::DspNoise, 2 => CarrierSource::Vox, 3 => CarrierSource::Usb, 4 => CarrierSource::UsbInverted, 5 => CarrierSource::Parallel, 6 => CarrierSource::ParallelInverted),
+                carrier_source: choice!(qualification.carrier_source, 0 => CarrierSource::Disabled, 1 => CarrierSource::DspNoise, 2 => CarrierSource::Vox, 3 => CarrierSource::Usb, 4 => CarrierSource::UsbInverted, 5 => CarrierSource::Parallel, 6 => CarrierSource::ParallelInverted, 7 => CarrierSource::External),
                 subaudible_source: choice!(qualification.subaudible_source, 0 => SubaudibleSource::Disabled, 1 => SubaudibleSource::Usb, 2 => SubaudibleSource::UsbInverted, 3 => SubaudibleSource::Dsp, 4 => SubaudibleSource::Parallel, 5 => SubaudibleSource::ParallelInverted),
                 subaudible_override: boolean(qualification.subaudible_override)?,
                 advanced_transport: boolean(qualification.advanced_transport)?,
@@ -504,7 +504,9 @@ impl ReceiveControls {
             parallel_carrier: u32::from(self.parallel_carrier),
             hardware_subaudible: u32::from(self.hardware_subaudible),
             parallel_subaudible: u32::from(self.parallel_subaudible),
-            subaudible_override: u32::from(self.subaudible_override),
+            subaudible_override: u32::from(self.subaudible_override)
+                | (u32::from(self.external_carrier.is_some()) << 1)
+                | (u32::from(self.external_carrier == Some(true)) << 2),
         }
     }
 }

@@ -222,6 +222,7 @@ type DeviceResolve =
 type DeviceSelect = unsafe extern "C" fn(*const RawDeviceSelector, *mut RawDeviceMatch) -> c_int;
 type StreamGetTiming = unsafe extern "C" fn(*const OpaqueStream, *mut RawStreamTiming) -> c_int;
 type MixerPathsResolve = unsafe extern "C" fn(*const c_char, *mut RawMixerPaths) -> c_int;
+type AlsaResolve = unsafe extern "C" fn(*const c_char, u32, u32, *mut RawDeviceSelection) -> c_int;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -251,6 +252,7 @@ struct Descriptor {
     usb_device_select: Option<DeviceSelect>,
     stream_get_timing: Option<StreamGetTiming>,
     cm119_mixer_paths_resolve: Option<MixerPathsResolve>,
+    alsa_device_resolve: Option<AlsaResolve>,
 }
 
 const REQUIRED_DESCRIPTOR_SIZE: usize =
@@ -333,8 +335,8 @@ pub struct DeviceSelector {
 /// Exact PortAudio/ALSA device resolved from a stable USB identity.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SelectedDevice {
-    /// Canonical Linux USB interface path.
-    pub interface_path: String,
+    /// Canonical Linux USB interface path, absent for explicit generic ALSA audio.
+    pub interface_path: Option<String>,
     /// USB serial number when the device reports one.
     pub serial: Option<String>,
     /// Resolved ALSA card index.
@@ -539,7 +541,7 @@ pub struct Cm119MixerPaths {
 /// Validated process-lifetime PortAudio/ALSA capability.
 #[derive(Clone, Copy)]
 pub struct AudioProvider {
-    descriptor: &'static Descriptor,
+    descriptor: Descriptor,
 }
 
 impl AudioProvider {
@@ -550,15 +552,26 @@ impl AudioProvider {
     /// `raw_descriptor` must be null or point to immutable process-lifetime
     /// storage. Every advertised function must obey the adapter ABI.
     pub unsafe fn from_raw_descriptor(raw_descriptor: *const c_void) -> Result<Self, AudioError> {
-        let descriptor = NonNull::new(raw_descriptor.cast_mut().cast::<Descriptor>())
+        let pointer = NonNull::new(raw_descriptor.cast_mut().cast::<Descriptor>())
             .ok_or(AudioError::IncompatibleAdapter)?;
-        // SAFETY: The caller promises readable process-lifetime descriptor
-        // storage; only the fixed prefix is inspected before its size is used.
-        let descriptor = unsafe { descriptor.as_ref() };
-        if (descriptor.struct_size as usize) < REQUIRED_DESCRIPTOR_SIZE
-            || descriptor.abi_version != ABI_VERSION
+        // SAFETY: the published prefix is readable; copy only complete fields.
+        let size = unsafe { std::ptr::addr_of!((*pointer.as_ptr()).struct_size).read() } as usize;
+        if size < size_of::<Descriptor>() && size != REQUIRED_DESCRIPTOR_SIZE {
+            return Err(AudioError::IncompatibleAdapter);
+        }
+        // SAFETY: nullable function pointers and the remaining scalar fields admit zero.
+        let mut descriptor: Descriptor = unsafe { std::mem::zeroed() };
+        // SAFETY: size admission excludes partial optional fields and out-of-bounds reads.
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                pointer.as_ptr().cast::<u8>(),
+                std::ptr::from_mut(&mut descriptor).cast::<u8>(),
+                size.min(size_of::<Descriptor>()),
+            );
+        }
+        if descriptor.abi_version != ABI_VERSION
             || descriptor.capability_name.is_null()
-            || !descriptor_complete(descriptor)
+            || !descriptor_complete(&descriptor)
         {
             return Err(AudioError::IncompatibleAdapter);
         }
@@ -624,7 +637,7 @@ impl AudioProvider {
             return Err(AudioError::AdapterFailure);
         }
         Ok(SelectedDevice {
-            interface_path,
+            interface_path: Some(interface_path),
             serial: (!serial.is_empty()).then_some(serial),
             alsa_card_index: selected.selection.alsa_card_index,
             input_device_index: selected.selection.input_device_index,
@@ -634,6 +647,55 @@ impl AudioProvider {
         })
     }
 
+    /// Resolve an exact raw ALSA endpoint without assuming USB/HID capabilities.
+    pub fn select_alsa_device(
+        &self,
+        selector: &DeviceSelector,
+    ) -> Result<SelectedDevice, AudioError> {
+        let select = self
+            .descriptor
+            .alsa_device_resolve
+            .ok_or(AudioError::IncompatibleAdapter)?;
+        if selector.policy != SelectionPolicy::Exact || selector.serial.is_some() {
+            return Err(AudioError::InvalidArgument);
+        }
+        let name = CString::new(
+            selector
+                .identifier
+                .as_deref()
+                .ok_or(AudioError::InvalidArgument)?,
+        )
+        .map_err(|_| AudioError::InvalidArgument)?;
+        let mut selected = RawDeviceSelection {
+            struct_size: size_of::<RawDeviceSelection>() as u32,
+            ..Default::default()
+        };
+        // SAFETY: all borrowed spans and the complete output live through this call.
+        map_result(unsafe {
+            select(
+                name.as_ptr(),
+                selector.input_channels as u32,
+                selector.output_channels as u32,
+                &mut selected,
+            )
+        })?;
+        if selected.struct_size < size_of::<RawDeviceSelection>() as u32
+            || selected.input_device_index < 0
+            || selected.output_device_index < 0
+        {
+            return Err(AudioError::AdapterFailure);
+        }
+        validate_returned_abi(selected.abi_version)?;
+        Ok(SelectedDevice {
+            interface_path: None,
+            serial: None,
+            alsa_card_index: selected.alsa_card_index,
+            input_device_index: selected.input_device_index,
+            output_device_index: selected.output_device_index,
+            input_channels: selector.input_channels,
+            output_channels: selector.output_channels,
+        })
+    }
     /// Open one stopped fixed-48-kHz stream around live receive and transmit workers.
     pub fn open_stream<'receive, 'transmit>(
         self,

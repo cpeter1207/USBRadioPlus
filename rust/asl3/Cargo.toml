@@ -7,6 +7,9 @@ license = "GPL-2.0-only"
 description = "Single USBRadioPlus ASL3 compatibility adapter"
 publish = false
 
+[dependencies]
+usbradioplus-core = { path = "../core" }
+
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 missing_docs = "deny"

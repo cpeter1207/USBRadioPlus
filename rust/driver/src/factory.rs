@@ -154,6 +154,13 @@ impl StationFactory {
         self.processing.graph_descriptions()
     }
 
+    /// Nonblocking original-control progress for a remote DSP transaction.
+    /// Graph construction runs on the physical worker; this only advances the
+    /// existing station mailbox and both callback adoption acknowledgments.
+    pub fn service_remote(&self, station: &mut HardwareStation) {
+        station.service_remote(&self.processing, self.providers.radio);
+    }
+
     /// Capture immutable update ownership without compiling graphs on the delivery task.
     ///
     /// # Errors

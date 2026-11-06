@@ -64,6 +64,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-queue"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03e8bd762f7479489c70ed6c768ddca99d7296857de437a68dcb2a94365b3fae"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
+
+[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -276,6 +291,9 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 [[package]]
 name = "usbradioplus-asl3"
 version = "0.1.0-alpha19"
+dependencies = [
+ "usbradioplus-core",
+]
 
 [[package]]
 name = "usbradioplus-asterisk"
@@ -297,12 +315,14 @@ version = "0.1.0-alpha19"
 name = "usbradioplus-driver"
 version = "0.1.0-alpha19"
 dependencies = [
+ "crossbeam-queue",
  "usbradioplus-asl3",
  "usbradioplus-audio",
  "usbradioplus-core",
  "usbradioplus-ffmpeg",
  "usbradioplus-gpio",
  "usbradioplus-radio",
+ "usbradioplus-remote",
  "usbradioplus-ring",
  "usbradioplus-rnnoise",
  "usbradioplus-runtime",
@@ -323,6 +343,7 @@ name = "usbradioplus-product"
 version = "0.1.0-alpha19"
 dependencies = [
  "libc",
+ "serde_json",
  "usbradioplus-asl3",
  "usbradioplus-audio",
  "usbradioplus-core",
@@ -330,6 +351,7 @@ dependencies = [
  "usbradioplus-ffmpeg",
  "usbradioplus-gpio",
  "usbradioplus-radio",
+ "usbradioplus-remote",
  "usbradioplus-ring",
  "usbradioplus-rnnoise",
  "usbradioplus-runtime",
@@ -340,6 +362,15 @@ dependencies = [
 [[package]]
 name = "usbradioplus-radio"
 version = "0.1.0-alpha19"
+
+[[package]]
+name = "usbradioplus-remote"
+version = "0.1.0-alpha19"
+dependencies = [
+ "bindgen",
+ "libloading",
+ "usbradioplus-core",
+]
 
 [[package]]
 name = "usbradioplus-ring"
@@ -367,6 +398,7 @@ version = "0.1.0-alpha19"
 name = "usbradioplus-station"
 version = "0.1.0-alpha19"
 dependencies = [
+ "crossbeam-queue",
  "usbradioplus-asl3",
  "usbradioplus-audio",
  "usbradioplus-core",

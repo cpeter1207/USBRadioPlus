@@ -1,6 +1,27 @@
 use super::*;
 
 #[test]
+fn remote_configuration_is_retained_once_for_the_selected_host_channel() {
+    let text = "[524950]\n[ordinary]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n";
+    let resolved = DriverConfiguration::parse("radio.conf", text).unwrap();
+    assert_eq!(resolved.channels().len(), 2);
+    assert!(resolved.remote("ordinary").is_none());
+    let remote = resolved.remote("524950").unwrap();
+    assert_eq!(remote.hamlib_model, "RIG_MODEL_DUMMY");
+    assert_eq!(remote.memories[0].state.receive_hz, 146_520_000);
+    assert_eq!(remote.startup_memory, 1);
+    let invalid = text.replace("startup_memory=local", "startup_memory=missing");
+    let error = DriverConfiguration::parse("radio.conf", invalid).unwrap_err();
+    assert!(matches!(&error, DriverConfigurationError::Remote { name, .. } if name == "524950"));
+    assert!(
+        error
+            .to_string()
+            .starts_with("remote radio [524950] is invalid:")
+    );
+    assert!(std::error::Error::source(&error).is_some());
+}
+
+#[test]
 fn resolves_named_channels_once_in_file_order() {
     let configuration = DriverConfiguration::parse(
         "/etc/asterisk/usbradioplus.conf",

@@ -8,12 +8,14 @@ description = "USBRadioPlus channel-driver ownership and lifecycle"
 publish = false
 
 [dependencies]
+crossbeam-queue = "0.3"
 usbradioplus-asl3 = { path = "../asl3" }
 usbradioplus-audio = { path = "../audio" }
 usbradioplus-core = { path = "../core" }
 usbradioplus-ffmpeg = { path = "../ffmpeg" }
 usbradioplus-gpio = { path = "../gpio" }
 usbradioplus-radio = { path = "../radio" }
+usbradioplus-remote = { path = "../remote" }
 usbradioplus-ring = { path = "../ring" }
 usbradioplus-rnnoise = { path = "../rnnoise" }
 usbradioplus-runtime = { path = "../runtime" }

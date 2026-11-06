@@ -17,6 +17,9 @@ const FLAT_SECTIONS: &[&str] = &[
     "local",
     "link",
     "voice_telemetry",
+    "remote_base",
+    "remote_memory",
+    "remote_scan",
 ];
 
 /// Configuration-document operation failure.

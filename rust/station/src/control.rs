@@ -67,6 +67,8 @@ pub struct StationPlan {
     program_ring: ProgramRingPlan,
     radio: SessionConfig,
     processing: ExplicitNativeProcessingPlan,
+    remote: Option<usbradioplus_core::ResolvedRemoteConfiguration>,
+    pub(crate) remote_operating: Option<usbradioplus_core::RemoteOperatingState>,
 }
 
 impl StationPlan {
@@ -91,6 +93,8 @@ impl StationPlan {
             program_ring: program_ring_plan(ControllerTransport::RptAdvanced),
             radio,
             processing: processing.into(),
+            remote: None,
+            remote_operating: None,
         }
     }
 
@@ -123,6 +127,8 @@ impl StationPlan {
             channel: channel.into(),
             transport,
             configuration,
+            remote: None,
+            remote_operating: None,
         })
     }
 
@@ -173,6 +179,45 @@ impl StationPlan {
     pub fn with_explicit_processing(mut self, processing: ExplicitNativeProcessingPlan) -> Self {
         self.processing = processing;
         self
+    }
+
+    /// Replace effective radio settings while retaining the selected hardware,
+    /// transport, buffering, and exact processing profile/raw-graph ownership.
+    /// Preparation and mailbox admission still validate callback bounds and the
+    /// original generation. Device changes use the existing device-handoff path.
+    #[must_use]
+    pub fn with_radio_configuration(
+        mut self,
+        configuration: ChannelConfiguration,
+        radio: SessionConfig,
+    ) -> Self {
+        self.configuration = configuration;
+        self.radio = radio;
+        self
+    }
+
+    /// Attach already-resolved remote policy to a newly planned generation.
+    /// Generic ALSA audio owns no CM119 HID, EEPROM or mixer interface.
+    pub fn with_remote_configuration(
+        mut self,
+        remote: Option<usbradioplus_core::ResolvedRemoteConfiguration>,
+    ) -> Self {
+        if self.remote != remote {
+            self.remote_operating = None;
+        }
+        if remote
+            .as_ref()
+            .is_some_and(|remote| remote.audio_source == usbradioplus_core::RemoteAudioSource::Alsa)
+        {
+            self.hardware.cm119 = None;
+        }
+        self.remote = remote;
+        self
+    }
+
+    /// Generation-owned policy; a change requires the physical-owner handoff.
+    pub fn remote_configuration(&self) -> Option<&usbradioplus_core::ResolvedRemoteConfiguration> {
+        self.remote.as_ref()
     }
 
     /// Prepare and warm the plan's selected processing outside audio callbacks.

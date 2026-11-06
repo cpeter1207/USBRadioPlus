@@ -1029,11 +1029,18 @@ unsafe extern "C" fn call(
 
 fn start_media(
     direct: bool,
-    start: impl FnOnce() -> c_int,
+    mut start: impl FnMut() -> c_int,
     delivery: impl FnOnce() -> Result<(), ()>,
     stop: impl FnOnce(),
 ) -> Result<(), ()> {
-    if start() != URP_AST_OK {
+    // Direct controllers retain and poll readiness themselves. app_rpt needs
+    // an admitted station before its legacy delivery worker can be started.
+    let status = if direct {
+        start()
+    } else {
+        super::reload::complete_phase(start)
+    };
+    if status != URP_AST_OK && !(direct && status == super::super::URP_AST_RELOAD_PENDING) {
         return Err(());
     }
     if !direct && delivery().is_err() {
@@ -1279,6 +1286,32 @@ unsafe extern "C" fn setoption(
         // SAFETY: errno is thread-local on supported Linux targets.
         unsafe { *libc::__errno_location() = libc::EINVAL };
         return -1;
+    }
+    if option as u32 == super::super::URP_AST_OPTION_REMOTE_CONTROL {
+        use super::super::{URP_AST_REMOTE_OPTION_ABI_VERSION, UrpAstRemoteControl};
+        if data_length as usize != size_of::<UrpAstRemoteControl>() {
+            return -1;
+        }
+        // SAFETY: the complete borrowed envelope may be byte-aligned.
+        let mut request = unsafe { data.cast::<UrpAstRemoteControl>().read_unaligned() };
+        if request.struct_size as usize != size_of::<UrpAstRemoteControl>()
+            || request.abi_version != URP_AST_REMOTE_OPTION_ABI_VERSION
+            || !(1..=4).contains(&request.operation)
+            || request.source_flags & !3 != 0
+        {
+            return -1;
+        }
+        // SAFETY: clear output-only pointers before entering serialized dispatch.
+        request.ticket = unsafe { std::mem::zeroed() };
+        let ControlResult::Remote(status, mut response) =
+            channel.control(ControlOperation::Remote(request))
+        else {
+            return -1;
+        };
+        response.accepted_abi_version = URP_AST_REMOTE_OPTION_ABI_VERSION;
+        // SAFETY: the caller retains writable complete storage until setoption returns.
+        unsafe { data.cast::<UrpAstRemoteControl>().write_unaligned(response) };
+        return status;
     }
     if option as u32 == super::super::URP_AST_OPTION_SITE_IO {
         use super::super::UrpAstSiteControl;

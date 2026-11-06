@@ -12,6 +12,9 @@ mod control;
 mod hardware;
 mod media;
 mod program;
+mod remote_dsp;
+mod remote_plan;
+pub use remote_dsp::{RemoteDspControl, RemoteDspError, RemoteDspPort};
 mod runtime;
 
 use usbradioplus_core::{
@@ -42,8 +45,9 @@ pub use program::{
 };
 pub use runtime::{
     CallbackStatistics, ControllerRequests, HardwareInputs, HardwareOutputs, ReceiveObservation,
-    SharedHardwareState, StationControlHost, StationRuntime, StationRuntimeStatistics,
-    StationUpdate, StationUpdateError, StationUpdatePreparation,
+    RemoteHardwareSignals, RemoteRadioActivity, RemoteRadioControl, SharedHardwareState,
+    StationControlHost, StationRuntime, StationRuntimeStatistics, StationUpdate,
+    StationUpdateError, StationUpdatePreparation,
 };
 
 const TUNING_SCALE_MAXIMUM: u32 = 1_000;
@@ -181,6 +185,8 @@ fn carrier_source(source: ConfigCarrierSource) -> CarrierSource {
         ConfigCarrierSource::Disabled => CarrierSource::Disabled,
         ConfigCarrierSource::Dsp => CarrierSource::DspNoise,
         ConfigCarrierSource::Vox => CarrierSource::Vox,
+        ConfigCarrierSource::External => CarrierSource::External,
+        ConfigCarrierSource::Open => CarrierSource::Open,
         ConfigCarrierSource::Usb => CarrierSource::Usb,
         ConfigCarrierSource::UsbInverted => CarrierSource::UsbInverted,
         ConfigCarrierSource::Parallel => CarrierSource::Parallel,

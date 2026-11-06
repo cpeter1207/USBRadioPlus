@@ -408,6 +408,9 @@ fn is_shared_section(section: &str) -> bool {
         "local",
         "link",
         "voice_telemetry",
+        "remote_base",
+        "remote_memory",
+        "remote_scan",
     ]
     .iter()
     .any(|known| kind.eq_ignore_ascii_case(known))

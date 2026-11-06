@@ -5,12 +5,14 @@ Maintainer: Chris Peterson <cpeter1207@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13), cargo (>= 1.85), rustc (>= 1.85),
  libclang-dev, pkg-config, asl3-asterisk-dev,
  librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha2),
- librptadvradio-dev (>= 0.1.0~alpha5),
+ librptadvradio-dev (>= 0.1.0~alpha9),
  librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1),
  librptadv-ffmpeg-adapter-dev (>= 0.1.0~alpha2),
- librptadv-portaudio-alsa-adapter-dev (>= 0.2.0~alpha3),
+ librptadv-portaudio-alsa-adapter-dev (>= 0.2.0~alpha4),
  librptadv-gpio-adapter-dev (>= 0.1.0~alpha4),
  librptadv-rnnoise-adapter-dev (>= 0.1.0~alpha2),
+ librptadvremote-dev (>= 0.1.0~alpha1),
+ librptadv-hamlib-adapter-dev (>= 0.1.0~alpha1),
  ladspa-sdk, python3, python3-pytest
 Standards-Version: 4.7.2
 Homepage: https://github.com/cpeter1207/USBRadioPlus
@@ -44,14 +46,17 @@ Architecture: amd64 arm64
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends},
  librate-adjusting-pcm-ring3 (>= 3.0.0~alpha2),
- librptadvradio4 (>= 0.1.0~alpha5),
+ librptadvradio4 (>= 0.1.0~alpha9),
  librptadv-samplerate-adapter2 (>= 0.2.0~alpha1),
  librptadv-ffmpeg-adapter1 (>= 0.1.0~alpha2),
- librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha3),
+ librptadv-portaudio-alsa-adapter2 (>= 0.2.0~alpha4),
  librptadv-gpio-adapter1 (>= 0.1.0~alpha4),
- librptadv-rnnoise-adapter1 (>= 0.1.0~alpha2)
+ librptadv-rnnoise-adapter1 (>= 0.1.0~alpha2),
+ librptadvremote1 (>= 0.1.0~alpha1),
+ librptadv-hamlib-adapter1 (>= 0.1.0~alpha1)
 Breaks: usbradioplus (<< ${binary:Version}),
- rpt-advanced (<< 0.1.0~alpha19-1), librptadv-product1 (<< 0.1.0~alpha16-1)
+ rpt-advanced (<< 0.1.0~alpha20-1), librptadv-product2 (<< 0.1.0~alpha20-1),
+ librptadv-product1 (<< 0.1.0~alpha16-1)
 Replaces: usbradioplus (<< ${binary:Version})
 Description: shared USBRadioPlus radio product
  Versioned radio configuration, processing, and station lifecycle library with

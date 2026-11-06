@@ -8,6 +8,45 @@ use super::*;
 
 static TRANSMIT: AtomicU32 = AtomicU32::new(0);
 
+#[test]
+fn remote_control_dispatch_preserves_pending_and_ticket_ownership() {
+    unsafe extern "C" fn pending(_: *mut c_void) -> i32 {
+        1
+    }
+    let mut descriptor = descriptor();
+    descriptor.channel_quiesce = Some(pending);
+    // SAFETY: zero initializes the pointer-free request and empty result ticket.
+    let mut request: crate::UrpAstRemoteControl = unsafe { std::mem::zeroed() };
+    request.operation = crate::URP_AST_REMOTE_QUIESCE;
+    // SAFETY: the complete retained descriptor's fake callback ignores its context.
+    let result = unsafe {
+        execute(
+            &descriptor,
+            ptr::null_mut(),
+            ControlOperation::Remote(request),
+        )
+    };
+    assert_eq!(result.status(), 1);
+    assert!(matches!(result, ControlResult::Remote(1, _)));
+    for expected in [0, 1, -123] {
+        unsafe extern "C" fn activation(_: *mut c_void) -> i32 {
+            TRANSMIT.load(Ordering::Acquire) as i32
+        }
+        TRANSMIT.store(expected as u32, Ordering::Release);
+        descriptor.channel_activation_status = Some(activation);
+        request.operation = crate::URP_AST_REMOTE_READY;
+        // SAFETY: the complete descriptor and request remain borrowed for dispatch.
+        let result = unsafe {
+            execute(
+                &descriptor,
+                ptr::null_mut(),
+                ControlOperation::Remote(request),
+            )
+        };
+        assert_eq!(result.status(), expected);
+    }
+}
+
 unsafe extern "C" fn start(_channel: *mut c_void) -> i32 {
     17
 }
@@ -340,4 +379,87 @@ fn taskprocessor_failure_retains_ownership_and_success_returns_callback_result()
         support::with_state(|state| state.taskprocessor_push_calls),
         2
     );
+}
+
+#[test]
+fn remote_dispatch_validates_ticket_transfer_and_cleans_partial_results() {
+    use std::cell::Cell;
+    thread_local! { static MODE: Cell<i32> = const { Cell::new(0) }; static DROPS: Cell<u32> = const { Cell::new(0) }; }
+    unsafe extern "C" fn submit(
+        _: *mut c_void,
+        _: *const crate::UrpRemoteOperation,
+        _: u32,
+        out: *mut *mut c_void,
+    ) -> i32 {
+        // SAFETY: execute lends one complete writable ticket pointer.
+        unsafe {
+            *out = if MODE.get() == 1 {
+                ptr::null_mut()
+            } else {
+                ptr::dangling_mut::<u8>().cast()
+            };
+        }
+        if MODE.get() == 2 { -42 } else { 0 }
+    }
+    unsafe extern "C" fn source(_: *mut c_void, _: u32) -> i32 {
+        0
+    }
+    unsafe extern "C" fn take(
+        _: *mut c_void,
+        _: crate::UrpNativeProcessingDiagnostic,
+        _: *mut c_void,
+    ) -> i32 {
+        1
+    }
+    unsafe extern "C" fn destroy(_: *mut c_void) {
+        DROPS.set(DROPS.get() + 1);
+    }
+    unsafe extern "C" fn service(_: *mut c_void) -> i32 {
+        17
+    }
+    let mut table = descriptor();
+    table.channel_service = Some(service);
+    table.channel_remote_submit = Some(submit);
+    table.remote_source = Some(source);
+    table.remote_take = Some(take);
+    table.remote_destroy = Some(destroy);
+    DROPS.set(0);
+    for mode in 0..5 {
+        MODE.set(mode);
+        // SAFETY: the envelope is scalar data and nullable pointers.
+        let mut request: crate::UrpAstRemoteControl = unsafe { std::mem::zeroed() };
+        request.operation = crate::URP_AST_REMOTE_SUBMIT;
+        if mode == 3 {
+            table.remote_source = None;
+        }
+        if mode == 4 {
+            request.operation = 0;
+        }
+        // SAFETY: all fixture functions are synchronous and retain no pointers.
+        let result = unsafe { execute(&table, ptr::null_mut(), ControlOperation::Remote(request)) };
+        let ControlResult::Remote(status, response) = result else {
+            panic!("remote result expected")
+        };
+        match mode {
+            0 => {
+                assert_eq!(status, 0);
+                assert!(!response.ticket.context.is_null());
+                assert!(response.ticket.source.is_some() && response.ticket.take.is_some());
+                // SAFETY: the successful response transfers this exact fake ticket.
+                unsafe { response.ticket.destroy.unwrap()(response.ticket.context) };
+            }
+            2 => assert_eq!(status, -42),
+            _ => assert_eq!(status, URP_AST_ASTERISK_FAILURE),
+        }
+        assert_eq!(DROPS.get(), if mode < 2 { 1 } else { 2 });
+    }
+    // SAFETY: the complete table remains borrowed and service ignores the handle.
+    let result = unsafe { execute(&table, ptr::null_mut(), ControlOperation::Service) };
+    assert_eq!(result.status(), 17);
+    // SAFETY: zero initializes a complete scalar envelope.
+    let mut request: crate::UrpAstRemoteControl = unsafe { std::mem::zeroed() };
+    request.operation = crate::URP_AST_REMOTE_SERVICE;
+    // SAFETY: the service callback is the same synchronous retained fixture.
+    let result = unsafe { execute(&table, ptr::null_mut(), ControlOperation::Remote(request)) };
+    assert_eq!(result.status(), 17);
 }

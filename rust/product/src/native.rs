@@ -1,5 +1,9 @@
 //! Native ABI projection onto the shared configuration, physical and update owners.
 
+#[cfg(test)]
+#[path = "native_remote_tests.rs"]
+mod remote_tests;
+
 use crate::{
     AbiHeader, Status, UrpAstChannelCommand, UrpAstDirectCallbacks, UrpAstProviderManifest,
     copy_abi, ffi_status, output_pointer, required_utf8, write_abi,
@@ -9,9 +13,9 @@ use std::mem::{align_of, size_of};
 use usbradioplus_audio::AudioProvider;
 use usbradioplus_core::{
     ChannelConfiguration, ConfigDocument, GpioMode, HardwareInterfaceType, NativeDeviceSelection,
-    ResolvedNativeConfiguration,
+    ResolvedNativeConfiguration, ResolvedRemoteConfiguration,
 };
-use usbradioplus_driver::{HardwareMaintenance, HardwarePreflight, HardwareService};
+use usbradioplus_driver::{HardwareMaintenance, HardwarePreflight, HardwareService, RemoteSetup};
 use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_gpio::GpioAdapter;
 use usbradioplus_radio::{
@@ -141,6 +145,8 @@ struct NativeStation {
     file_configuration: ChannelConfiguration,
     gains: [Option<f64>; 3],
     pending: Option<NativeUpdateConfiguration>,
+    remote: Option<ResolvedRemoteConfiguration>,
+    remote_dsp: Option<usbradioplus_station::RemoteDspControl>,
 }
 
 impl NativeStation {
@@ -162,6 +168,21 @@ impl NativeStation {
         let audio = self.runtime.stop();
         let hardware = self.maintenance.stop();
         audio.map_err(|_| Status::SetupFailed)?;
+        self.finish_stopped_update()?;
+        hardware.map_err(|_| Status::SetupFailed)
+    }
+
+    fn poll_stop(&mut self) -> Result<bool, Status> {
+        self.runtime.stop().map_err(|_| Status::SetupFailed)?;
+        let done = self
+            .maintenance
+            .poll_stop()
+            .map_err(|_| Status::SetupFailed)?;
+        self.finish_stopped_update()?;
+        Ok(done)
+    }
+
+    fn finish_stopped_update(&mut self) -> Result<(), Status> {
         if self.pending.is_some() {
             // Successful stop quiesces both owners. The common mailbox drains
             // any unacknowledged forward slot before restoring its reverse.
@@ -173,7 +194,7 @@ impl NativeStation {
                 .map_err(|_| Status::SetupFailed)?;
             self.pending = None;
         }
-        hardware.map_err(|_| Status::SetupFailed)
+        Ok(())
     }
 }
 
@@ -226,7 +247,11 @@ pub(crate) unsafe extern "C" fn create(
             processing,
             mut radio,
             gains,
+            remote,
         } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+        if remote.is_some() && callbacks.metadata.is_none() {
+            return Err(Status::IncompatibleAbi);
+        }
         let file_configuration = configuration.clone();
         // SAFETY: providers and executable functions remain loaded through destroy.
         let (graph, radio_provider, audio, gpio) = unsafe {
@@ -249,6 +274,22 @@ pub(crate) unsafe extern "C" fn create(
                     .map_err(|_| Status::IncompatibleAbi)?,
             )
         };
+        // Admit selected dynamic providers before preflight can acquire hardware.
+        // Keep only the original-control pump here; actual rig contexts open on
+        // the existing physical service worker after its outputs are safe.
+        let (remote_setup, remote_dsp) = remote
+            .as_ref()
+            .map(|remote| {
+                RemoteSetup::prepare(
+                    remote.clone(),
+                    hardware.clone(),
+                    configuration.station.receive.cos_assignment,
+                    radio.qualification,
+                )
+            })
+            .transpose()
+            .map_err(|_| Status::SetupFailed)?
+            .unzip();
         let (preflight, selected) = HardwarePreflight::native(
             &hardware,
             configuration.station.hardware.eeprom_enabled,
@@ -261,7 +302,8 @@ pub(crate) unsafe extern "C" fn create(
             apply_native_radio_tuning(&configuration, &mut radio);
         }
         let plan =
-            StationPlan::native("native", configuration, hardware.clone(), radio, processing);
+            StationPlan::native("native", configuration, hardware.clone(), radio, processing)
+                .with_remote_configuration(remote.clone());
         let factory = NativeProcessingFactory::new_explicit(
             graph,
             denoise,
@@ -278,7 +320,7 @@ pub(crate) unsafe extern "C" fn create(
                 .map_err(|_| Status::SetupFailed)?;
         let (runtime, control) = StationRuntime::open_native_planned(media, plan, &selected, audio)
             .map_err(|_| Status::SetupFailed)?;
-        let maintenance = HardwareMaintenance::native(
+        let mut maintenance = HardwareMaintenance::native(
             &hardware,
             preflight,
             selected,
@@ -288,6 +330,11 @@ pub(crate) unsafe extern "C" fn create(
             gains,
         )
         .map_err(|_| Status::SetupFailed)?;
+        if let Some(setup) = remote_setup {
+            maintenance
+                .bind_remote(setup)
+                .map_err(|_| Status::SetupFailed)?;
+        }
         let station = Box::new(NativeStation {
             maintenance,
             runtime,
@@ -297,6 +344,8 @@ pub(crate) unsafe extern "C" fn create(
             file_configuration,
             gains,
             pending: None,
+            remote,
+            remote_dsp,
         });
         // SAFETY: output storage was validated and the caller receives sole ownership.
         unsafe {
@@ -315,12 +364,42 @@ pub(crate) unsafe extern "C" fn start(handle: *mut c_void) -> c_int {
     })
 }
 
+pub(crate) unsafe extern "C" fn service(handle: *mut c_void) -> c_int {
+    ffi_status(|| {
+        let station =
+            // SAFETY: the host serializes this live station's non-audio control calls.
+            unsafe { handle.cast::<NativeStation>().as_mut() }.ok_or(Status::InvalidArgument)?;
+        if let Some(control) = &mut station.remote_dsp {
+            control.pump(
+                &mut station.runtime,
+                &mut station.control,
+                &station.factory,
+                station.radio_provider,
+            );
+        }
+        Ok(())
+    })
+}
+
 pub(crate) unsafe extern "C" fn stop(handle: *mut c_void) -> c_int {
     ffi_status(|| {
         // SAFETY: caller supplies its uniquely owned native station handle.
         unsafe { handle.cast::<NativeStation>().as_mut() }
             .ok_or(Status::InvalidArgument)?
             .stop()
+    })
+}
+
+pub(crate) unsafe extern "C" fn quiesce(handle: *mut c_void) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the serialized caller retains this owner until retirement succeeds.
+        let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        if station.poll_stop()? {
+            Ok(())
+        } else {
+            Err(Status::ReloadPending)
+        }
     })
 }
 
@@ -522,7 +601,13 @@ pub(crate) unsafe extern "C" fn prepare_update(
             processing,
             mut radio,
             gains,
+            remote,
         } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+        if remote != station.remote {
+            // Changed remote definitions require their physical-owner generation
+            // handoff; an ordinary DSP update must not silently retain old policy.
+            return Err(Status::InvalidConfiguration);
+        }
         if configuration.station.hardware.eeprom_enabled
             != station
                 .control
@@ -546,7 +631,8 @@ pub(crate) unsafe extern "C" fn prepare_update(
         {
             apply_native_radio_tuning(&configuration, &mut radio);
         }
-        let plan = StationPlan::native("native", configuration, hardware, radio, processing);
+        let plan = StationPlan::native("native", configuration, hardware, radio, processing)
+            .with_remote_configuration(remote);
         let prepared = station
             .runtime
             .snapshot_update(&station.control, &station.factory, station.radio_provider)
@@ -672,6 +758,7 @@ struct ResolvedRequest {
     processing: ExplicitNativeProcessingPlan,
     radio: SessionConfig,
     gains: [Option<f64>; 3],
+    remote: Option<ResolvedRemoteConfiguration>,
 }
 
 unsafe fn resolve_request(
@@ -697,7 +784,7 @@ unsafe fn resolve_request(
         )?
     };
     // SAFETY: the synchronous request owns every advertised text span.
-    let (mut configuration, hardware, mut processing) = unsafe { resolve(config, &radio)? };
+    let (mut configuration, hardware, mut processing, remote) = unsafe { resolve(config, &radio)? };
     profiles.apply(&mut radio, &mut processing);
     apply_native_tuning_configuration(&radio, &mut configuration);
     let gain_values = [
@@ -714,6 +801,7 @@ unsafe fn resolve_request(
         processing,
         radio,
         gains,
+        remote,
     })
 }
 
@@ -743,6 +831,7 @@ unsafe fn resolve(
         ChannelConfiguration,
         HardwarePlan,
         ExplicitNativeProcessingPlan,
+        Option<ResolvedRemoteConfiguration>,
     ),
     Status,
 > {
@@ -866,7 +955,20 @@ unsafe fn resolve(
             ][index];
         }
     }
-    let hardware = native_hardware_plan(&channel, &physical);
+    let remote = ResolvedRemoteConfiguration::from_document(
+        &document,
+        "rpt_advanced.conf",
+        node,
+        &channel.station,
+    )
+    .map_err(|_| Status::InvalidConfiguration)?;
+    let mut hardware = native_hardware_plan(&channel, &physical);
+    if remote
+        .as_ref()
+        .is_some_and(|remote| remote.audio_source == usbradioplus_core::RemoteAudioSource::Alsa)
+    {
+        hardware.cm119 = None;
+    }
     let receive_ctcss_mask = match radio.receive.signaling {
         ReceiveSignaling::Ctcss(ctcss)
             if radio.qualification.subaudible_source == SubaudibleSource::Dsp =>
@@ -891,5 +993,6 @@ unsafe fn resolve(
             receive_ctcss_mask,
             transmit_dcs: matches!(radio.transmit.signaling, TransmitSignaling::Dcs(_)),
         },
+        remote,
     ))
 }

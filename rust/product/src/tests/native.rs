@@ -202,6 +202,236 @@ fn native_create_accepts_the_current_processing_configuration_abi() {
 }
 
 #[test]
+fn remote_native_requires_metadata_before_opening_any_device() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let mut config = request(&raw);
+    let source = b"[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\nmode=FM\n";
+    config.processing_configuration = source.as_ptr();
+    config.processing_configuration_length = source.len() as u32;
+    config.processing_node = b"524950".as_ptr();
+    config.processing_node_length = 6;
+    let providers = fixture::manifest();
+    let mut callbacks = direct_callbacks();
+    callbacks.metadata = None;
+    let args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &config,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 8,
+        maximum_frames: 960,
+    };
+    let mut handle = ptr::null_mut();
+    // SAFETY: complete borrowed records and byte spans live through this call.
+    let result = unsafe { product_descriptor().native_create.unwrap()(&args, &mut handle) };
+    assert_eq!(result, URP_AST_INCOMPATIBLE_ABI);
+    assert!(handle.is_null());
+    let invalid = std::str::from_utf8(source)
+        .unwrap()
+        .replace("RIG_MODEL_DUMMY", "RIG_MODEL_NOT_REAL");
+    let mut bad = config;
+    bad.processing_configuration = invalid.as_ptr();
+    bad.processing_configuration_length = invalid.len() as u32;
+    callbacks.metadata = Some(remote_metadata);
+    let mut next = args;
+    next.config = &bad;
+    assert_eq!(
+        // SAFETY: the malformed model name is UTF-8, and all complete spans stay borrowed.
+        unsafe { product_descriptor().native_create.unwrap()(&next, &mut handle) },
+        URP_AST_SETUP_FAILED
+    );
+    assert!(handle.is_null());
+}
+
+#[test]
+fn native_service_advances_only_the_existing_control_owner() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    // SAFETY: creation transfers this sole live handle; the null case retains no owner.
+    unsafe {
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_activation_status.unwrap()(handle), URP_AST_OK);
+        let operation = usbradioplus_core::remote_operation::RemoteOperation::new(
+            usbradioplus_core::remote_operation::RemoteOperationKind::Status,
+        );
+        let mut ticket = ptr::dangling_mut();
+        assert_eq!(
+            api.native_remote_submit.unwrap()(handle, &operation, 0, &mut ticket),
+            URP_AST_NOT_READY
+        );
+        assert!(ticket.is_null());
+        assert_eq!(api.native_quiesce.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_quiesce.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_quiesce.unwrap()(ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(
+            api.native_service.unwrap()(ptr::null_mut()),
+            URP_AST_INVALID_ARGUMENT
+        );
+        api.native_destroy.unwrap()(handle);
+    }
+}
+
+unsafe extern "C" fn remote_metadata(_: *mut c_void, _: u32, active: *mut u32) -> c_int {
+    // SAFETY: the callback lends one writable activity result through return.
+    unsafe { active.write(0) };
+    0
+}
+
+unsafe extern "C" fn remote_text(context: *mut c_void, data: *const u8, length: u32) {
+    // SAFETY: the test lends its String and the synchronous provider lends UTF-8.
+    let (out, bytes) = unsafe {
+        (
+            &mut *context.cast::<String>(),
+            std::slice::from_raw_parts(data, length as usize),
+        )
+    };
+    out.push_str(std::str::from_utf8(bytes).unwrap());
+}
+
+#[test]
+fn native_remote_activation_submission_and_generation_guards_share_the_owner() {
+    use std::time::{Duration, Instant};
+    use usbradioplus_core::remote_operation::{RemoteOperation as O, RemoteOperationKind as K};
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::periodic_audio(true);
+    let raw = radio();
+    let mut config = request(&raw);
+    let source = "[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nhamlib_option_ptt_type=RIG\nptt_source=usb\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\npower_w=5\nmode=FM\n";
+    config.processing_configuration = source.as_ptr();
+    config.processing_configuration_length = source.len() as u32;
+    config.processing_node = b"524950".as_ptr();
+    config.processing_node_length = 6;
+    let providers = fixture::manifest();
+    let mut callbacks = direct_callbacks();
+    callbacks.metadata = Some(remote_metadata);
+    let mut args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &config,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 8,
+        maximum_frames: 960,
+    };
+    let api = product_descriptor();
+    let mut handle = ptr::null_mut();
+    // SAFETY: all borrowed config spans and callbacks remain live until joined destruction.
+    unsafe {
+        assert_eq!(api.native_create.unwrap()(&args, &mut handle), URP_AST_OK);
+        assert_eq!(
+            api.native_activation_status.unwrap()(handle),
+            URP_AST_RELOAD_PENDING
+        );
+        let mut output = ptr::dangling_mut();
+        let mut operation = O::new(K::Status);
+        assert_eq!(
+            api.native_remote_submit.unwrap()(handle, &operation, 4, &mut output),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert!(output.is_null());
+        operation.operation = u32::MAX;
+        assert_eq!(
+            api.native_remote_submit.unwrap()(handle, &operation, 0, &mut output),
+            URP_AST_NOT_READY
+        );
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while api.native_activation_status.unwrap()(handle) == URP_AST_RELOAD_PENDING {
+            assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+            assert!(
+                Instant::now() < deadline,
+                "native remote activation must finish"
+            );
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert_eq!(api.native_activation_status.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_remote_submit.unwrap()(handle, &operation, 0, &mut output),
+            URP_AST_INVALID_ARGUMENT
+        );
+        // Hold one actual auxiliary command at its source-unkey gate. This
+        // bounds the queue deterministically without stalling a device thread.
+        let mut auxiliary = O::new(K::SetSetting);
+        auxiliary.selector = 100;
+        auxiliary.magnitude = 500_000;
+        auxiliary.decimal_places = 6;
+        assert_eq!(
+            api.native_remote_submit.unwrap()(handle, &auxiliary, 2, &mut output),
+            URP_AST_OK
+        );
+        let mut tickets = vec![output];
+        operation = O::new(K::Status);
+        loop {
+            let result = api.native_remote_submit.unwrap()(handle, &operation, 0, &mut output);
+            if result == URP_AST_CHANNEL_BUSY {
+                assert!(output.is_null());
+                break;
+            }
+            assert_eq!(result, URP_AST_OK);
+            tickets.push(output);
+            assert!(tickets.len() < 256, "remote queue must be bounded");
+        }
+        for ticket in tickets {
+            api.remote_destroy.unwrap()(ticket);
+        }
+        loop {
+            let result = api.native_remote_submit.unwrap()(handle, &operation, 1, &mut output);
+            if result != URP_AST_CHANNEL_BUSY {
+                assert_eq!(result, URP_AST_OK);
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        let mut json = String::new();
+        loop {
+            assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+            let result = api.remote_take.unwrap()(
+                output,
+                Some(remote_text),
+                ptr::from_mut(&mut json).cast(),
+            );
+            if result != URP_AST_RELOAD_PENDING {
+                assert_eq!(result, URP_AST_OK);
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(json.contains("status"));
+        api.remote_destroy.unwrap()(output);
+        let changed = source.replace("146520000", "146940000");
+        let mut next = config;
+        next.processing_configuration = changed.as_ptr();
+        next.processing_configuration_length = changed.len() as u32;
+        args.config = &next;
+        args.generation_id = 9;
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut output),
+            URP_AST_INVALID_CONFIGURATION
+        );
+        assert!(output.is_null());
+        while api.native_quiesce.unwrap()(handle) == URP_AST_RELOAD_PENDING {
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        api.native_destroy.unwrap()(handle);
+    }
+    fixture::periodic_audio(false);
+}
+
+#[test]
 fn native_configuration_visit_preserves_shared_gpio_identity_fallback_through_create() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     fixture::clear_failure();

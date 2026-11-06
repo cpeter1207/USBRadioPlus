@@ -22,7 +22,7 @@ static TEST_LOCK: Mutex<()> = Mutex::new(());
 static GPIO_INPUTS: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_INPUTS: AtomicU32 = AtomicU32::new(0);
 static PTT: AtomicU32 = AtomicU32::new(0);
-static FAILURE: AtomicU32 = AtomicU32::new(0);
+pub(super) static FAILURE: AtomicU32 = AtomicU32::new(0);
 static MIXER_PATHS_MODE: AtomicU32 = AtomicU32::new(0);
 static DEVICE_INTERFACE_MODE: AtomicU32 = AtomicU32::new(0);
 static EEPROM_FLAGS: AtomicU32 = AtomicU32::new(3);
@@ -33,6 +33,10 @@ static MIXER_LEVEL_WRITES: AtomicU32 = AtomicU32::new(0);
 static MIXER_SWITCH_WRITES: AtomicU32 = AtomicU32::new(0);
 static TUNING_IO_CALLS: AtomicU32 = AtomicU32::new(0);
 static GPIO_OPENS: AtomicU32 = AtomicU32::new(0);
+static GPIO_CLOSES: AtomicU32 = AtomicU32::new(0);
+static SHUTDOWN_PULSE_STAGE: AtomicU32 = AtomicU32::new(0);
+static SHUTDOWN_SERVICE_FAILURES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_APPLIED_MASK: AtomicU32 = AtomicU32::new(0);
 static GPIO_INITIAL_BYTE: AtomicU32 = AtomicU32::new(0);
 static GPIO_PUBLISHES: AtomicU32 = AtomicU32::new(0);
 static GPIO_ONLINE: AtomicU32 = AtomicU32::new(1);
@@ -41,6 +45,7 @@ static GPIO_FINAL_BYTE: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_FINAL_BYTE: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_CLOSE_BLOCKED: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_RAW_CLOSES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_REMOTE_RECEIVE: AtomicU32 = AtomicU32::new(0);
 
 const FAIL_AUDIO_START: u32 = 1;
 const FAIL_AUDIO_SELECT: u32 = 2;
@@ -56,7 +61,7 @@ const FAIL_PARALLEL_OPEN: u32 = 11;
 const FAIL_CM119_PUBLISH: u32 = 12;
 const FAIL_CM119_SERVICE: u32 = 13;
 const FAIL_CM119_INPUTS: u32 = 14;
-const FAIL_CM119_STATISTICS: u32 = 15;
+pub(super) const FAIL_CM119_STATISTICS: u32 = 15;
 const FAIL_EEPROM_READ: u32 = 16;
 const FAIL_EEPROM_WRITE: u32 = 17;
 const FAIL_CM119_PULSE: u32 = 18;
@@ -85,7 +90,7 @@ fn fail_once(code: u32) -> bool {
         .is_ok()
 }
 
-fn reset_test_state() {
+pub(super) fn reset_test_state() {
     GPIO_INPUTS.store(0, Ordering::Release);
     PARALLEL_INPUTS.store(0, Ordering::Release);
     PTT.store(0, Ordering::Release);
@@ -102,6 +107,10 @@ fn reset_test_state() {
     MIXER_SWITCH_WRITES.store(0, Ordering::Release);
     TUNING_IO_CALLS.store(0, Ordering::Release);
     GPIO_OPENS.store(0, Ordering::Release);
+    GPIO_CLOSES.store(0, Ordering::Release);
+    SHUTDOWN_PULSE_STAGE.store(0, Ordering::Release);
+    SHUTDOWN_SERVICE_FAILURES.store(0, Ordering::Release);
+    PARALLEL_APPLIED_MASK.store(0, Ordering::Release);
     GPIO_INITIAL_BYTE.store(0, Ordering::Release);
     GPIO_PUBLISHES.store(0, Ordering::Release);
     GPIO_ONLINE.store(1, Ordering::Release);
@@ -110,9 +119,10 @@ fn reset_test_state() {
     PARALLEL_FINAL_BYTE.store(0, Ordering::Release);
     PARALLEL_CLOSE_BLOCKED.store(0, Ordering::Release);
     PARALLEL_RAW_CLOSES.store(0, Ordering::Release);
+    PARALLEL_REMOTE_RECEIVE.store(0, Ordering::Release);
 }
 
-fn test_guard() -> std::sync::MutexGuard<'static, ()> {
+pub(super) fn test_guard() -> std::sync::MutexGuard<'static, ()> {
     TEST_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -157,9 +167,18 @@ fn hardware_errors_and_operations_are_complete_and_diagnostic() {
             HardwareOperation::ApplySidetone,
             "apply CM119 hardware local repeat",
         ),
+        (
+            HardwareOperation::ConfirmCm119Ptt,
+            "confirm serviced CM119 PTT",
+        ),
+        (
+            HardwareOperation::ConfirmParallelPtt,
+            "confirm serviced parallel PTT",
+        ),
+        (HardwareOperation::RemoteControl, "service remote radio"),
     ];
     assert_eq!(HardwareOperation::from_u8(0), None);
-    assert_eq!(HardwareOperation::from_u8(19), None);
+    assert_eq!(HardwareOperation::from_u8(22), None);
     for (index, (operation, description)) in operations.into_iter().enumerate() {
         assert_eq!(HardwareOperation::from_u8(index as u8 + 1), Some(operation));
         assert_eq!(operation.to_string(), description);
@@ -274,20 +293,25 @@ fn configured_hardware_gains_validate_before_adapter_access_and_skip_omitted_con
         assert!(matches!(
             HardwareMixers::apply_native_gains(
                 audio_provider(),
-                &selected.interface_path,
+                selected.interface_path.as_deref().unwrap(),
                 [Some(gain), None, None],
                 None
             ),
             Err(AudioError::InvalidArgument)
         ));
     }
-    HardwareMixers::apply_native_gains(audio_provider(), &selected.interface_path, [None; 3], None)
-        .unwrap();
+    HardwareMixers::apply_native_gains(
+        audio_provider(),
+        selected.interface_path.as_deref().unwrap(),
+        [None; 3],
+        None,
+    )
+    .unwrap();
     assert_eq!(FAILURE.swap(0, Ordering::AcqRel), FAIL_AUDIO_PATHS);
     assert_eq!(MIXER_LEVEL_WRITES.load(Ordering::Acquire), 0);
     HardwareMixers::apply_native_gains(
         audio_provider(),
-        &selected.interface_path,
+        selected.interface_path.as_deref().unwrap(),
         [Some(3.0), None, Some(-3.0)],
         None,
     )
@@ -329,10 +353,15 @@ fn hardware_local_repeat_is_app_rpt_only_and_tracks_receiver_state() {
     let provider = audio_provider();
     let selected = provider.select_device(&plan.audio_selector).unwrap();
     let paths = provider
-        .cm119_mixer_paths(&selected.interface_path)
+        .cm119_mixer_paths(selected.interface_path.as_deref().unwrap())
         .unwrap()
         .sidetone;
-    let mixers = open_paths(provider, &selected.interface_path, &paths).unwrap();
+    let mixers = open_paths(
+        provider,
+        selected.interface_path.as_deref().unwrap(),
+        &paths,
+    )
+    .unwrap();
     let mut sidetone = HardwareSidetone::new(paths, mixers, 750).unwrap().unwrap();
     assert_eq!(sidetone.mixers[0].normalized().unwrap(), 0);
     assert!(!sidetone.mixers[0].enabled().unwrap());
@@ -373,7 +402,7 @@ fn hardware_preflight_and_mixers_report_each_adapter_boundary_failure() {
     ));
 
     let mut mismatched = plan.clone();
-    mismatched.cm119.required_usb_port_path = Some("another-device".into());
+    mismatched.cm119.as_mut().unwrap().required_usb_port_path = Some("another-device".into());
     assert!(matches!(
         HardwareStation::preflight(&mismatched, false, audio_provider(), gpio_provider()),
         Err(HardwareStationError::Plan(
@@ -447,18 +476,28 @@ fn hardware_preflight_and_mixers_report_each_adapter_boundary_failure() {
     ));
     MIXER_PATHS_MODE.store(0, Ordering::Release);
     let paths = audio_provider()
-        .cm119_mixer_paths(&selected.interface_path)
+        .cm119_mixer_paths(selected.interface_path.as_deref().unwrap())
         .unwrap()
         .sidetone;
-    let sidetone_mixers = open_paths(audio_provider(), &selected.interface_path, &paths).unwrap();
+    let sidetone_mixers = open_paths(
+        audio_provider(),
+        selected.interface_path.as_deref().unwrap(),
+        &paths,
+    )
+    .unwrap();
     FAILURE.store(FAIL_MIXER_LEVEL, Ordering::Release);
     assert!(HardwareSidetone::new(paths, sidetone_mixers, 500).is_err());
 
     let paths = audio_provider()
-        .cm119_mixer_paths(&selected.interface_path)
+        .cm119_mixer_paths(selected.interface_path.as_deref().unwrap())
         .unwrap()
         .sidetone;
-    let sidetone_mixers = open_paths(audio_provider(), &selected.interface_path, &paths).unwrap();
+    let sidetone_mixers = open_paths(
+        audio_provider(),
+        selected.interface_path.as_deref().unwrap(),
+        &paths,
+    )
+    .unwrap();
     let mut sidetone = HardwareSidetone::new(paths, sidetone_mixers, 500)
         .unwrap()
         .unwrap();
@@ -866,6 +905,8 @@ struct AudioDescriptor {
         Option<unsafe extern "C" fn(*const AudioDeviceSelector, *mut AudioDeviceMatch) -> c_int>,
     stream_timing: Option<unsafe extern "C" fn(*const c_void, *mut AudioTiming) -> c_int>,
     mixer_paths: Option<unsafe extern "C" fn(*const c_char, *mut AudioMixerPaths) -> c_int>,
+    alsa_device_resolve:
+        Option<unsafe extern "C" fn(*const c_char, u32, u32, *mut AudioDeviceSelection) -> c_int>,
 }
 
 // SAFETY: the test descriptor and all referenced functions are immutable.
@@ -877,6 +918,8 @@ struct FakeStream {
     transmit: unsafe extern "C" fn(*mut c_void, *mut f32, u32) -> i32,
     transmit_context: *mut c_void,
 }
+static LAST_STREAM: std::sync::atomic::AtomicPtr<c_void> =
+    std::sync::atomic::AtomicPtr::new(ptr::null_mut());
 
 struct FakeMixer {
     normalized: u32,
@@ -900,6 +943,7 @@ unsafe extern "C" fn audio_stream_create(
         transmit_context: config.transmit_context,
     }))
     .cast();
+    LAST_STREAM.store(*output, Ordering::Release);
     OK
 }
 
@@ -1117,13 +1161,32 @@ unsafe extern "C" fn audio_device_select(
     if !matches!(NATIVE_IDENTITY_MODE.load(Ordering::Acquire), 5 | 6) {
         copy_c_string(&mut output.serial, b"ABC");
     }
-    output.selection = AudioDeviceSelection {
+    output.selection = audio_device_selection();
+    OK
+}
+
+fn audio_device_selection() -> AudioDeviceSelection {
+    AudioDeviceSelection {
         struct_size: size_of::<AudioDeviceSelection>() as u32,
         abi_version: AUDIO_ABI,
         alsa_card_index: 1,
         input_device_index: 2,
         output_device_index: 3,
-    };
+    }
+}
+
+unsafe extern "C" fn audio_alsa_device_resolve(
+    _name: *const c_char,
+    _input_channels: u32,
+    _output_channels: u32,
+    selected: *mut AudioDeviceSelection,
+) -> c_int {
+    if fail_once(FAIL_AUDIO_SELECT) {
+        return -1;
+    }
+    // SAFETY: the audio wrapper supplies writable storage for the complete
+    // selection. This endpoint reports ALSA indices, with no USB/HID identity.
+    unsafe { selected.write(audio_device_selection()) };
     OK
 }
 
@@ -1194,6 +1257,7 @@ static AUDIO_DESCRIPTOR: AudioDescriptor = AudioDescriptor {
     device_select: Some(audio_device_select),
     stream_timing: Some(audio_stream_timing),
     mixer_paths: Some(audio_mixer_paths),
+    alsa_device_resolve: Some(audio_alsa_device_resolve),
 };
 
 #[repr(C)]
@@ -1304,6 +1368,7 @@ type RawParallelInputs = unsafe extern "C" fn(*const c_void, *mut GpioParallelIn
 type ParallelStatistics = unsafe extern "C" fn(*const c_void, *mut GpioParallelStatistics) -> c_int;
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct GpioDescriptor {
     struct_size: u32,
     abi_version: u32,
@@ -1500,6 +1565,7 @@ unsafe extern "C" fn gpio_statistics(
 }
 
 unsafe extern "C" fn gpio_close(device: *mut c_void) {
+    GPIO_CLOSES.fetch_add(1, Ordering::AcqRel);
     // SAFETY: the handle is the unique allocation returned by open.
     drop(unsafe { Box::from_raw(device.cast::<u8>()) });
 }
@@ -1605,6 +1671,7 @@ unsafe extern "C" fn parallel_statistics(
             struct_size: size_of::<GpioParallelStatistics>() as u32,
             abi_version: GPIO_ABI,
             online: 1,
+            applied_output_mask: PARALLEL_APPLIED_MASK.load(Ordering::Acquire),
             ..GpioParallelStatistics::default()
         };
     }
@@ -1634,7 +1701,7 @@ unsafe extern "C" fn parallel_set_channel(_device: *mut c_void, _channel: u8) ->
 
 unsafe extern "C" fn parallel_program_rtx(
     _device: *mut c_void,
-    _receive_hz: u32,
+    receive_hz: u32,
     _transmit_hz: u32,
     _transmitting: u32,
     _high_power: u32,
@@ -1642,6 +1709,7 @@ unsafe extern "C" fn parallel_program_rtx(
     if fail_once(FAIL_PROGRAM_REMOTE) {
         return -1;
     }
+    PARALLEL_REMOTE_RECEIVE.store(receive_hz, Ordering::Release);
     OK
 }
 
@@ -1735,7 +1803,7 @@ fn audio_provider() -> AudioProvider {
     unsafe { AudioProvider::from_raw_descriptor(ptr::from_ref(&AUDIO_DESCRIPTOR).cast()) }.unwrap()
 }
 
-fn gpio_provider() -> GpioAdapter {
+pub(super) fn gpio_provider() -> GpioAdapter {
     // SAFETY: the descriptor and every referenced function have process lifetime.
     unsafe { GpioAdapter::from_raw(ptr::from_ref(&GPIO_DESCRIPTOR).cast()) }.unwrap()
 }
@@ -1897,7 +1965,7 @@ fn app_rpt_local_repeat_change_requires_hardware_handoff() {
     assert!(!station.supports_live_update(&changed));
 }
 
-fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan) {
+pub(super) fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan) {
     let channel = resolved_hardware_channel();
     let mut plan = hardware_plan(channel.config());
     if !with_parallel {
@@ -1908,6 +1976,502 @@ fn selected_hardware(with_parallel: bool) -> (HardwarePlan, SelectedHardwarePlan
         .unwrap();
     let selected = plan.select(&selected, 960).unwrap();
     (plan, selected)
+}
+
+#[test]
+fn remote_generation_uses_actual_caps_and_confirms_selected_unkey() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::CarrierSource;
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let (setup, _control) = RemoteSetup::prepare(
+        configuration(),
+        plan.clone(),
+        CarrierSource::Dsp,
+        usbradioplus_radio::QualificationConfig::default(),
+    )
+    .unwrap();
+    let state = SharedHardwareState::default();
+    let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    let mut generation = remote::RemoteGeneration::open(
+        setup,
+        Arc::new(RemoteQueue::new(4)),
+        &worker,
+        &mut devices,
+        &mut outputs,
+    )
+    .unwrap();
+    assert_eq!(generation.wiring().ptt, RemotePttSource::Rig);
+    generation
+        .unkey(&worker, &mut devices, &mut outputs)
+        .unwrap();
+    assert_eq!(state.remote_signals().physical_ptt, Some(false));
+    assert!(state.remote_signals().ptt_selected);
+    assert!(!state.remote_control().receive_permitted);
+    generation
+        .retire(&worker, &mut devices, &mut outputs)
+        .unwrap();
+    assert_eq!(
+        generation.retire(&worker, &mut devices, &mut outputs),
+        Ok(()),
+        "a consumed CAT handle must not leave retirement stuck"
+    );
+}
+
+#[test]
+fn remote_generation_keeps_audio_closed_when_dsp_owner_is_gone() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::CarrierSource;
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let (setup, control) = RemoteSetup::prepare(
+        configuration(),
+        plan.clone(),
+        CarrierSource::Dsp,
+        usbradioplus_radio::QualificationConfig::default(),
+    )
+    .unwrap();
+    drop(control);
+    let state = SharedHardwareState::default();
+    let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    let mut generation = remote::RemoteGeneration::open(
+        setup,
+        Arc::new(RemoteQueue::new(4)),
+        &worker,
+        &mut devices,
+        &mut outputs,
+    )
+    .unwrap();
+    assert_eq!(
+        generation.service(&worker, &mut devices, &mut outputs),
+        Err(usbradioplus_remote::CallError(-1102))
+    );
+    let policy = state.remote_control();
+    assert!(policy.enabled && !policy.receive_permitted && !policy.transmit_permitted);
+    assert_ne!(generation.snapshot().unwrap().failure_code, 0);
+    generation
+        .retire(&worker, &mut devices, &mut outputs)
+        .unwrap();
+}
+
+#[test]
+fn rejected_remote_generation_retries_physical_off_and_returns_its_original_cause() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{CarrierSource, RemoteBackend};
+    let _guard = test_guard();
+    for backend in [RemoteBackend::Hamlib, RemoteBackend::ParallelChannel] {
+        reset_test_state();
+        let (mut plan, selected) = selected_hardware(backend == RemoteBackend::ParallelChannel);
+        let mut configuration = configuration();
+        configuration.backend = backend;
+        configuration.ptt_source = Some("usb".into());
+        if backend == RemoteBackend::Hamlib {
+            // The rig opens, then explicit unavailable COR rejects admission.
+            configuration.cor_source = Some("parallel".into());
+        } else {
+            plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+            configuration.memories[0].state.channel = Some(7);
+            // Policy permits USB, but the selected channel hardware is FM-only.
+            configuration.memories[0].state.mode = 3;
+        }
+        let (setup, _control) = RemoteSetup::prepare(
+            configuration,
+            plan.clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        let state = SharedHardwareState::default();
+        let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        FAILURE.store(FAIL_CM119_STATISTICS, Ordering::Release);
+        let error = remote::RemoteGeneration::open(
+            setup,
+            Arc::new(RemoteQueue::new(4)),
+            &worker,
+            &mut devices,
+            &mut outputs,
+        )
+        .err();
+        assert_eq!(
+            error,
+            Some(usbradioplus_remote::CallError(
+                if backend == RemoteBackend::Hamlib {
+                    -6
+                } else {
+                    -2
+                }
+            ))
+        );
+        assert_eq!(FAILURE.load(Ordering::Acquire), 0);
+        assert_eq!(PTT.load(Ordering::Acquire), 0);
+        assert!(!state.remote_control().transmit_permitted);
+    }
+}
+
+#[test]
+fn remote_station_services_cat_and_adopts_both_callback_graphs() {
+    use crate::{RemoteReply, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{
+        CarrierSource,
+        remote_operation::{RemoteOperation, RemoteOperationKind},
+    };
+    let _guard = test_guard();
+    reset_test_state();
+    let mut station = open_hardware_station();
+    let factory = StationFactory::new(
+        station_providers(graph_provider(), sample_rate_adapter()),
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    let mut configuration = configuration();
+    // The dummy rig starts with RFPOWER zero, outside its declared TX range.
+    // Set an explicit memory power just as an actual configured radio requires.
+    configuration.memories[0].state.power_mw = Some(5000);
+    configuration.ptt_source = Some("usb".into());
+    let (setup, control) = RemoteSetup::prepare(
+        configuration,
+        station.control().plan().hardware().clone(),
+        CarrierSource::Dsp,
+        usbradioplus_radio::QualificationConfig::default(),
+    )
+    .unwrap();
+    station.bind_remote(setup, control).unwrap();
+    assert_eq!(station.maintenance.service.remote_ready(), Ok(false));
+    station.start().unwrap();
+    let state = station.maintenance.hardware_state();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while (!state.remote_control().receive_permitted
+        || station.maintenance.service.remote_ready() != Ok(true))
+        && Instant::now() < deadline
+    {
+        factory.service_remote(&mut station);
+        // SAFETY: the guarded fake stream and its callback contexts remain owned by station.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(station.maintenance.service.remote_error(), 0);
+    assert!(state.remote_control().receive_permitted);
+    assert_eq!(station.maintenance.service.remote_ready(), Ok(true));
+    let mut operation = RemoteOperation::new(RemoteOperationKind::Frequency);
+    operation.magnitude = 146_940_000;
+    operation.flags = 2;
+    let ticket = station
+        .maintenance
+        .service
+        .remote_submit(operation, true, false)
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let result = loop {
+        factory.service_remote(&mut station);
+        // SAFETY: same guarded fake stream; neither callback context has retired.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        if let Some(result) = ticket.take_completion() {
+            break result;
+        }
+        assert!(Instant::now() < deadline, "remote command did not complete");
+        thread::sleep(Duration::from_millis(2));
+    };
+    if let Err(error) = result {
+        panic!("operating change failed: {error:?}");
+    }
+    assert!(matches!(result, Ok(RemoteReply::Applied)));
+    assert_eq!(station.maintenance.service.remote_error(), 0);
+    // Lose physical confirmation after the engine has cached a serviced OFF.
+    // A subsequent RF change must wait, even if the logical PTT never changed.
+    GPIO_APPLIED_PTT.store(1, Ordering::Release);
+    state.publish_remote_signals(usbradioplus_station::RemoteHardwareSignals {
+        ptt_selected: true,
+        physical_ptt: None,
+        ..Default::default()
+    });
+    operation.magnitude = 146_530_000;
+    let waiting = station
+        .maintenance
+        .service
+        .remote_submit(operation, true, false)
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_millis(150);
+    let early = loop {
+        factory.service_remote(&mut station);
+        // SAFETY: both fake callback contexts remain owned by the running station.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        if let Some(completion) = waiting.take_completion() {
+            break Some(completion);
+        }
+        if Instant::now() >= deadline {
+            break None;
+        }
+        thread::sleep(Duration::from_millis(2));
+    };
+    GPIO_APPLIED_PTT.store(u32::MAX, Ordering::Release);
+    assert!(early.is_none(), "retuned with physical PTT unknown");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        factory.service_remote(&mut station);
+        // SAFETY: same live fake stream and callback contexts.
+        let result = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+        assert_eq!(result, OK);
+        if let Some(completion) = waiting.take_completion() {
+            assert!(matches!(completion, Ok(RemoteReply::Applied)));
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "did not recover after confirmed OFF"
+        );
+        thread::sleep(Duration::from_millis(2));
+    }
+    station.stop().unwrap();
+    // The deliberately failed physical-OFF confirmation remains the first cause.
+    assert_eq!(station.maintenance.service.remote_ready(), Err(-1101));
+}
+
+fn remote_station_command(
+    station: &mut HardwareStation,
+    factory: &StationFactory,
+    operation: usbradioplus_core::remote_operation::RemoteOperation,
+) -> Result<crate::RemoteReply, crate::RemoteRequestError> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while station.maintenance.service.remote_ready() == Ok(false) {
+        factory.service_remote(station);
+        assert_eq!(
+            // SAFETY: the fixture retains the fake stream and both callback contexts.
+            unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+            OK
+        );
+        assert!(
+            Instant::now() < deadline,
+            "remote activation did not finish"
+        );
+        thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(station.maintenance.service.remote_ready(), Ok(true));
+    let ticket = station
+        .maintenance
+        .service
+        .remote_submit(operation, true, false)
+        .unwrap();
+    loop {
+        factory.service_remote(station);
+        assert_eq!(
+            // SAFETY: the fixture retains the fake stream and both callback contexts.
+            unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+            OK
+        );
+        if let Some(result) = ticket.take_completion() {
+            return result;
+        }
+        let state = station.maintenance.hardware_state();
+        let activity = state.remote_activity();
+        assert!(
+            Instant::now() < deadline,
+            "operation {} stalled: fault={} local={} linked={} requested={} physical={:?}",
+            operation.operation,
+            station.maintenance.service.remote_error(),
+            activity.local_receiving,
+            activity.linked_receiving,
+            activity.transmit_requested,
+            state.remote_signals().physical_ptt,
+        );
+        thread::sleep(Duration::from_millis(2));
+    }
+}
+
+#[test]
+fn remote_station_observes_power_changes_modes_and_bounds_manual_tune_with_both_ptt_sources() {
+    use crate::{RemoteReply, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{
+        CarrierSource,
+        remote_operation::{RemoteOperation as O, RemoteOperationKind as K},
+    };
+    let _guard = test_guard();
+    crate::test_support::follow_radio_ptt_for_current_test();
+    for ptt_source in ["usb", "hamlib"] {
+        reset_test_state();
+        let mut station = open_hardware_station();
+        let factory = StationFactory::new(
+            station_providers(graph_provider(), sample_rate_adapter()),
+            "agc.so",
+            960,
+        )
+        .unwrap();
+        let mut configuration = configuration();
+        configuration.memories[0].state.power_mw = Some(5000);
+        configuration.ptt_source = Some(ptt_source.into());
+        configuration.tune_duration_ms = 50;
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            station.control().plan().hardware().clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        station.bind_remote(setup, control).unwrap();
+        station.start().unwrap();
+        for selector in [1, 11] {
+            let mut operation = O::new(K::GetSetting);
+            operation.selector = selector;
+            let result = remote_station_command(&mut station, &factory, operation)
+                .unwrap_or_else(|error| panic!("setting {selector}: {error:?}"));
+            assert!(matches!(result, RemoteReply::Value { .. }));
+        }
+        for (kind, selector) in [
+            (K::PowerPreset, 2),
+            (K::Mode, 3),
+            (K::Mode, 1),
+            (K::Tune, 0),
+        ] {
+            let mut operation = O::new(kind);
+            operation.selector = selector;
+            let result = remote_station_command(&mut station, &factory, operation)
+                .unwrap_or_else(|error| panic!("{kind:?}: {error:?}"));
+            assert!(matches!(result, RemoteReply::Applied));
+        }
+        station.stop().unwrap();
+        assert_eq!(
+            station
+                .maintenance
+                .hardware_state()
+                .remote_signals()
+                .physical_ptt,
+            Some(false)
+        );
+    }
+}
+
+#[test]
+fn remote_station_gates_rig_and_external_encode_independently_of_decode_programming() {
+    use crate::{RemoteReply, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{
+        CarrierSource, RemoteEncoderOutput, RemoteSignal, RemoteSignalSource as S,
+        remote_operation::{RemoteOperation as O, RemoteOperationKind as K},
+    };
+    let _guard = test_guard();
+    for case in 0..6 {
+        reset_test_state();
+        let source = ConfigDocument::new("[usb]\n[hardware]\nhardware_gpio_6_mode=out0\n");
+        let channel =
+            ResolvedChannelConfiguration::from_document(&source, "radio.conf", "usb").unwrap();
+        let mut station = open_configured_hardware_station(channel);
+        let factory = StationFactory::new(
+            station_providers(graph_provider(), sample_rate_adapter()),
+            "agc.so",
+            960,
+        )
+        .unwrap();
+        let mut configuration = configuration();
+        configuration.memories[0].state.power_mw = Some(5000);
+        configuration.poll_interval_ms = 1;
+        configuration.cor_source = Some(
+            if matches!(case, 0 | 4) {
+                "hamlib"
+            } else {
+                "open"
+            }
+            .into(),
+        );
+        configuration.memories[0].state.encode = RemoteSignal {
+            source: match case {
+                0 | 4 => S::Rig,
+                3 => S::Dsp,
+                _ => S::External,
+            },
+            enabled: case < 4,
+            tone_tenths_hz: 1148,
+            ..RemoteSignal::default()
+        };
+        if matches!(case, 1 | 2 | 5) {
+            configuration.external_encode_output =
+                Some(RemoteEncoderOutput::Usb(GpioPin::new(6).unwrap()));
+            configuration.external_encode_inverted = case == 2;
+        }
+        if case != 3 {
+            configuration.memories[0].state.decode = RemoteSignal {
+                source: S::External,
+                control_source: (case == 0).then_some(S::Rig),
+                enabled: true,
+                tone_tenths_hz: 1148,
+                ..RemoteSignal::default()
+            };
+        }
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            station.control().plan().hardware().clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig {
+                subaudible_source: if case == 3 {
+                    usbradioplus_radio::SubaudibleSource::Disabled
+                } else {
+                    usbradioplus_radio::SubaudibleSource::Usb
+                },
+                ..usbradioplus_radio::QualificationConfig::default()
+            },
+        )
+        .unwrap();
+        station.bind_remote(setup, control).unwrap();
+        station.start().unwrap();
+        for requested in [false, true, true, false] {
+            station.set_ctcss_inhibited(!requested);
+            let deadline = Instant::now() + Duration::from_secs(2);
+            loop {
+                let reply = remote_station_command(&mut station, &factory, O::new(K::Status))
+                    .unwrap_or_else(|error| panic!("tone case {case}: {error:?}"));
+                let RemoteReply::Status { snapshot, .. } = reply else {
+                    panic!("status response expected");
+                };
+                assert_eq!(snapshot.applied.encode.enabled, u32::from(case < 4));
+                let observed = match case {
+                    1 | 2 | 5 => {
+                        (GPIO_FINAL_BYTE.load(Ordering::Acquire) & 0x20 != 0)
+                            == ((requested && case < 4) != (case == 2))
+                    }
+                    _ => {
+                        station
+                            .maintenance
+                            .hardware_state()
+                            .remote_activity()
+                            .ctcss_requested
+                            == requested
+                    }
+                };
+                if observed {
+                    break;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "encode case {case} did not follow {requested}"
+                );
+            }
+        }
+        assert_eq!(
+            station
+                .maintenance
+                .hardware_state()
+                .remote_control()
+                .local_unqualified_open,
+            case == 3
+        );
+        station.stop().unwrap();
+        if matches!(case, 1 | 2 | 5) {
+            assert_eq!(
+                GPIO_FINAL_BYTE.load(Ordering::Acquire) & 0x20 != 0,
+                case == 2
+            );
+        }
+    }
 }
 
 #[test]
@@ -1934,33 +2498,153 @@ fn native_selection_preserves_physical_layout_profile_and_identity_without_tunin
                         (policy == SelectionPolicy::Exact).then(|| "ABC".to_owned());
                     plan.audio_selector.input_channels = input;
                     plan.audio_selector.output_channels = output;
-                    plan.cm119.profile = profile;
-                    plan.cm119.ptt_inverted = true;
-                    plan.cm119.output_enable_mask = 0x21;
-                    plan.cm119.output_initial_mask = 0x20;
-                    plan.cm119.clip_led_mask = 1;
+                    plan.cm119.as_mut().unwrap().profile = profile;
+                    plan.ptt_inverted = true;
+                    plan.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+                    plan.cm119.as_mut().unwrap().output_initial_mask = 0x20;
+                    plan.cm119.as_mut().unwrap().clip_led_mask = 1;
                     let (device, bound) =
                         select_native_hardware(&plan, audio_provider(), gpio_provider(), 480)
                             .unwrap();
-                    assert_eq!(device.interface_path, "3-1:1.0");
+                    assert_eq!(device.interface_path.as_deref(), Some("3-1:1.0"));
                     assert_eq!(device.serial.as_deref(), Some("ABC"));
                     assert_eq!(bound.stream.input_channels, input);
                     assert_eq!(bound.stream.output_channels, output);
                     assert_eq!(bound.stream.maximum_receive_frame_count, 480);
-                    assert_eq!(bound.cm119.usb_port_path, "3-1");
+                    assert_eq!(bound.cm119.as_ref().unwrap().usb_port_path, "3-1");
                     assert_eq!(
-                        (bound.cm119.vendor_id, bound.cm119.product_id),
+                        (
+                            bound.cm119.as_ref().unwrap().vendor_id,
+                            bound.cm119.as_ref().unwrap().product_id
+                        ),
                         (0x0d8c, 0x000c)
                     );
-                    assert_eq!(bound.cm119.profile, profile);
-                    assert!(bound.cm119.ptt_inverted);
-                    assert_eq!(bound.cm119.output_enable_mask, 0x21);
-                    assert_eq!(bound.cm119.output_initial_mask, 0x20);
+                    assert_eq!(bound.cm119.as_ref().unwrap().profile, profile);
+                    assert!(bound.cm119.as_ref().unwrap().ptt_inverted);
+                    assert_eq!(bound.cm119.as_ref().unwrap().output_enable_mask, 0x21);
+                    assert_eq!(bound.cm119.as_ref().unwrap().output_initial_mask, 0x20);
                 }
             }
         }
     }
     assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn remote_parallel_composition_rejects_unprogrammable_fields_and_preserves_io_failures() {
+    use crate::{RemoteQueue, RemoteSetup, remote_request::tests::configuration};
+    use usbradioplus_core::{CarrierSource, RemoteBackend};
+    use usbradioplus_remote::CallError;
+    let _guard = test_guard();
+    for case in 0..11 {
+        reset_test_state();
+        let (mut plan, selected) = selected_hardware(true);
+        plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+        let mut configuration = configuration();
+        configuration.backend = RemoteBackend::ParallelChannel;
+        configuration.ptt_source = Some("usb".into());
+        let memory = &mut configuration.memories[0].state;
+        memory.channel = Some(7);
+        match case {
+            1 => memory.bandwidth_hz = 2400,
+            2 => memory.receive_vfo = 1,
+            3 => memory.transmit_vfo = 1,
+            4 => memory.rit_hz = 10,
+            5 => memory.xit_hz = 10,
+            6 => memory.split = true,
+            7 => memory.rit_enabled = true,
+            8 => memory.xit_enabled = true,
+            9 => {
+                memory.transmit_hz = None;
+                memory.power_mw = Some(5000);
+            }
+            _ => {}
+        }
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            plan.clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        // A valid hardware write reaches the missing DSP owner; unsupported
+        // hardware fields and failed writes must stop before that exchange.
+        drop(control);
+        let state = SharedHardwareState::default();
+        let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        let mut generation = remote::RemoteGeneration::open(
+            setup,
+            Arc::new(RemoteQueue::new(4)),
+            &worker,
+            &mut devices,
+            &mut outputs,
+        )
+        .unwrap();
+        if case == 10 {
+            FAILURE.store(FAIL_SELECT_CHANNEL, Ordering::Release);
+        }
+        assert_eq!(
+            generation.service(&worker, &mut devices, &mut outputs),
+            Err(CallError(match case {
+                0 | 6 => -1102,
+                10 => -1101,
+                _ => -6,
+            })),
+            "channel case {case}"
+        );
+        assert!(!state.remote_control().transmit_permitted);
+        generation
+            .retire(&worker, &mut devices, &mut outputs)
+            .unwrap();
+    }
+    for case in 0..3 {
+        reset_test_state();
+        let (mut plan, selected) = selected_hardware(true);
+        plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+        plan.parallel.as_mut().unwrap().ptt_mask = 8;
+        let mut configuration = configuration();
+        configuration.backend = RemoteBackend::ParallelRtx;
+        configuration.ptt_source = Some("parallel".into());
+        if case == 1 {
+            configuration.memories[0].state.transmit_hz = None;
+        }
+        let (setup, control) = RemoteSetup::prepare(
+            configuration,
+            plan.clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        drop(control);
+        let state = SharedHardwareState::default();
+        let (worker, _sender, _events) = service_worker(&plan, &selected, state.clone());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        let mut generation = remote::RemoteGeneration::open(
+            setup,
+            Arc::new(RemoteQueue::new(4)),
+            &worker,
+            &mut devices,
+            &mut outputs,
+        )
+        .unwrap();
+        if case == 2 {
+            FAILURE.store(FAIL_PROGRAM_REMOTE, Ordering::Release);
+        }
+        assert_eq!(
+            generation.service(&worker, &mut devices, &mut outputs),
+            Err(CallError(if case == 2 { -1101 } else { -1102 })),
+            "RTX case {case}"
+        );
+        assert!(!state.remote_control().transmit_permitted);
+        generation
+            .retire(&worker, &mut devices, &mut outputs)
+            .unwrap();
+    }
 }
 
 #[test]
@@ -1986,6 +2670,52 @@ fn native_selection_rejects_absent_mismatched_and_failed_identity_probes() {
     exact.audio_selector.serial = Some("OTHER".to_owned());
     assert!(select_native_hardware(&exact, audio_provider(), gpio_provider(), 960).is_err());
     assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn remote_parallel_is_available_to_native_without_another_owner() {
+    use usbradioplus_core::radio_control::ParallelRadioRequest;
+
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, _) = selected_hardware(true);
+    let (preflight, selected) =
+        HardwarePreflight::native(&plan, false, audio_provider(), gpio_provider(), 960).unwrap();
+    let mut maintenance = HardwareMaintenance::native(
+        &plan,
+        preflight,
+        selected,
+        SharedHardwareState::default(),
+        audio_provider(),
+        gpio_provider(),
+        [None; 3],
+    )
+    .unwrap();
+    maintenance.start().unwrap();
+    let opens = GPIO_OPENS.load(Ordering::Acquire);
+    maintenance
+        .remote_radio_request(ParallelRadioRequest::SelectChannel(3))
+        .unwrap();
+    let settings = remote_radio(146_520_000);
+    maintenance
+        .remote_radio_request(ParallelRadioRequest::Configure(settings))
+        .unwrap();
+    let snapshot = maintenance.transient_state().unwrap();
+    assert_eq!(snapshot.parallel_output_mask() & 0xf0, 0xc0);
+    assert_eq!(snapshot.remote_radio(), Some(settings));
+    let deadline = Instant::now() + Duration::from_millis(100);
+    while PARALLEL_REMOTE_RECEIVE.load(Ordering::Acquire) != settings.receive_hz
+        && Instant::now() < deadline
+    {
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(
+        PARALLEL_REMOTE_RECEIVE.load(Ordering::Acquire),
+        settings.receive_hz
+    );
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+    maintenance.stop().unwrap();
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
 }
 
 #[test]
@@ -2015,6 +2745,61 @@ fn native_service_publishes_inputs_and_unkeys_without_mixer_or_eeprom_io() {
     service.stop().unwrap();
     assert_eq!(PTT.load(Ordering::Acquire), 0);
     assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn generic_audio_service_keeps_parallel_ptt_independent_of_absent_cm119() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, mut selected) = selected_hardware(true);
+    plan.cm119 = None;
+    plan.audio_selector.policy = usbradioplus_audio::SelectionPolicy::Exact;
+    plan.audio_selector.identifier = Some("hw:1,0".into());
+    plan.audio_selector.serial = None;
+    selected.cm119 = None;
+    selected.ptt_inverted = false;
+    let (_, bound) = select_native_hardware(&plan, audio_provider(), gpio_provider(), 960).unwrap();
+    assert!(bound.cm119.is_none());
+    let parallel = plan.parallel.as_mut().unwrap();
+    parallel.ptt_mask = 4;
+    parallel.config.output_enable_mask |= 4;
+    let state = SharedHardwareState::default();
+    let (worker, _, _) = service_worker(&plan, &selected, state.clone());
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    assert!(devices.cm119.is_none());
+    assert_eq!(
+        devices
+            .cm119(HardwareOperation::ReadEeprom)
+            .err()
+            .unwrap()
+            .1,
+        GpioError::Unsupported
+    );
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert!(
+        !state.inputs().physical_ptt,
+        "queued demand is not applied PTT"
+    );
+    PARALLEL_APPLIED_MASK.store(4, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert!(state.inputs().physical_ptt);
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert!(
+        state.inputs().physical_ptt,
+        "unkey intent cannot erase serviced feedback"
+    );
+    PARALLEL_APPLIED_MASK.store(0, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert!(!state.inputs().physical_ptt);
+    assert_eq!(worker.statistics.snapshot().cm119.input_read_count, 0);
+    assert_eq!(outputs.site[0].snapshot().output_mask, 0);
+    assert_eq!(GPIO_PUBLISHES.load(Ordering::Acquire), 0);
+    devices
+        .close_outputs(plan.parallel.as_ref(), &mut outputs)
+        .unwrap();
 }
 
 #[test]
@@ -2145,7 +2930,7 @@ fn native_maintenance_rejects_changed_identity_and_invalid_gains_before_acquisit
         match field {
             0 => changed.stream.input_device_index += 1,
             1 => changed.stream.output_device_index += 1,
-            _ => changed.cm119.usb_port_path = "another-device".to_owned(),
+            _ => changed.cm119.as_mut().unwrap().usb_port_path = "another-device".to_owned(),
         }
         assert!(matches!(
             HardwareMaintenance::native(
@@ -2426,14 +3211,71 @@ fn native_cycle_gates_ptt_on_polled_inputs_and_keeps_physical_feedback_and_clip_
 }
 
 #[test]
+fn remote_unkey_requires_serviced_outputs_and_preserves_site_baselines() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, mut selected) = selected_hardware(false);
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+    let (worker, _sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    worker.ptt_control.set(PhysicalPttControl::Remote {
+        selected: Some(RemotePttSource::Usb),
+        key: false,
+    });
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.cm119 = 0x20;
+    GPIO_APPLIED_PTT.store(1, Ordering::Release);
+    assert!(service_remote_ptt(&mut devices, &mut outputs, &worker).is_err());
+    assert_eq!(
+        PTT.load(Ordering::Acquire),
+        0,
+        "published off is not yet proof of service"
+    );
+    assert_eq!(GPIO_FINAL_BYTE.load(Ordering::Acquire), 0x20);
+    GPIO_APPLIED_PTT.store(0, Ordering::Release);
+    service_remote_ptt(&mut devices, &mut outputs, &worker).unwrap();
+    assert!(!outputs.native_outputs.unwrap().ptt_asserted);
+    assert_eq!(outputs.cm119, 0x20);
+    FAILURE.store(FAIL_CM119_SERVICE, Ordering::Release);
+    assert!(service_remote_ptt(&mut devices, &mut outputs, &worker).is_err());
+}
+
+#[test]
+fn remote_parallel_unkey_confirms_every_inverted_ptt_bit() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, mut selected) = selected_hardware(true);
+    plan.parallel.as_mut().unwrap().ptt_mask = 3;
+    plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+    selected.cm119 = None;
+    selected.ptt_inverted = true;
+    let (worker, _sender, _events) =
+        service_worker(&plan, &selected, SharedHardwareState::default());
+    worker.ptt_control.set(PhysicalPttControl::Remote {
+        selected: Some(RemotePttSource::Parallel),
+        key: false,
+    });
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.parallel = 0x10;
+    PARALLEL_APPLIED_MASK.store(1, Ordering::Release);
+    assert!(service_remote_ptt(&mut devices, &mut outputs, &worker).is_err());
+    PARALLEL_APPLIED_MASK.store(0x13, Ordering::Release);
+    service_remote_ptt(&mut devices, &mut outputs, &worker).unwrap();
+    assert_eq!(outputs.parallel, 0x10);
+}
+
+#[test]
 fn site_owner_spare_writes_share_native_handle_and_report_read_failure() {
     let _guard = test_guard();
     reset_test_state();
     let (mut plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x21;
-    selected.cm119.output_initial_mask = 1;
-    plan.cm119.input_mask = 0x02;
-    plan.cm119.clip_led_mask = 1;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+    selected.cm119.as_mut().unwrap().output_initial_mask = 1;
+    plan.cm119.as_mut().unwrap().input_mask = 0x02;
+    plan.cm119.as_mut().unwrap().clip_led_mask = 1;
     let (mut worker, sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     worker.native = true;
@@ -2596,14 +3438,21 @@ fn site_owner_parallel_native_acquisition_and_commands_preserve_reserved_pins() 
             146_520_000,
         )))
         .unwrap();
-    service_commands(
-        &worker.receiver,
-        &mut outputs,
-        &mut devices,
-        &selected,
-        plan.parallel.as_ref(),
-    )
-    .unwrap();
+    for operation in [
+        HardwareOperation::SelectChannel,
+        HardwareOperation::ProgramRemoteRadio,
+    ] {
+        assert!(matches!(
+            service_commands(
+                &worker.receiver,
+                &mut outputs,
+                &mut devices,
+                &selected,
+                plan.parallel.as_ref(),
+            ),
+            Err(ServiceFailure(actual, GpioError::Unsupported)) if actual == operation
+        ));
+    }
     assert_eq!(
         outputs.parallel, 0x10,
         "legacy channel commands cannot overwrite site pins"
@@ -2733,7 +3582,7 @@ fn site_owner_generation_exhaustion_rejects_binding_without_mutation() {
         return;
     }
     let (plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x20;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x20;
     let (worker, _sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     let devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
@@ -2857,7 +3706,7 @@ fn site_owner_binding_cancels_prior_pulses_before_claiming_output() {
     let _guard = test_guard();
     reset_test_state();
     let (plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x21;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
     let (worker, sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
@@ -2910,8 +3759,8 @@ fn site_owner_start_uses_safe_transfer_before_open_and_preserves_it_for_retry() 
     let _guard = test_guard();
     reset_test_state();
     let mut service = hardware_service(false, true);
-    service.selected.cm119.output_enable_mask = 0x21;
-    service.selected.cm119.output_initial_mask = 1;
+    service.selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+    service.selected.cm119.as_mut().unwrap().output_initial_mask = 1;
     let state = HardwareTransientState {
         cm119_output_mask: 0x21,
         parallel_output_mask: 0,
@@ -2939,7 +3788,7 @@ fn site_owner_failed_start_retires_safely_and_retains_failed_cleanup() {
         for blocked in [false, true] {
             reset_test_state();
             let mut service = hardware_service(false, true);
-            service.selected.cm119.ptt_inverted = true;
+            service.selected.cm119.as_mut().unwrap().ptt_inverted = true;
             let parallel = service.parallel.as_mut().unwrap();
             parallel.config.output_enable_mask = 0xff;
             parallel.ptt_mask = 1;
@@ -2979,9 +3828,9 @@ fn site_owner_stop_applies_safe_levels_and_rejects_queued_generation() {
     reset_test_state();
     for native in [false, true] {
         let (mut plan, mut selected) = selected_hardware(true);
-        selected.cm119.output_enable_mask = 0x21;
-        selected.cm119.output_initial_mask = 1;
-        plan.cm119.clip_led_mask = 1;
+        selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+        selected.cm119.as_mut().unwrap().output_initial_mask = 1;
+        plan.cm119.as_mut().unwrap().clip_led_mask = 1;
         let parallel = plan.parallel.as_mut().unwrap();
         parallel.config.output_enable_mask = 0xff;
         parallel.ptt_mask = 1;
@@ -3058,12 +3907,40 @@ fn site_owner_stop_failure_retains_port_until_safe_write_succeeds() {
 }
 
 #[test]
+fn hardware_stop_poll_retains_a_busy_physical_owner_without_waiting() {
+    let _guard = test_guard();
+    reset_test_state();
+    let mut service = hardware_service(false, true);
+    let (release, wait) = std::sync::mpsc::channel();
+    service.worker = Some(thread::spawn(move || {
+        wait.recv().unwrap();
+        ServiceExit {
+            sidetone: None,
+            retiring: None,
+            failure: None,
+        }
+    }));
+    let before = Instant::now();
+    assert!(!service.poll_stop().unwrap());
+    assert!(before.elapsed() < Duration::from_millis(100));
+    assert!(service.worker.is_some());
+    assert!(service.stop.load(Ordering::Acquire));
+    release.send(()).unwrap();
+    while !service.worker.as_ref().unwrap().is_finished() {
+        thread::yield_now();
+    }
+    assert!(service.poll_stop().unwrap());
+    assert!(service.worker.is_none());
+    assert!(service.poll_stop().unwrap());
+}
+
+#[test]
 fn site_owner_recovery_opens_at_safe_levels_without_replaying_departed_commands() {
     let _guard = test_guard();
     reset_test_state();
     let (plan, mut selected) = selected_hardware(false);
-    selected.cm119.output_enable_mask = 0x20;
-    selected.cm119.output_initial_mask = 0;
+    selected.cm119.as_mut().unwrap().output_enable_mask = 0x20;
+    selected.cm119.as_mut().unwrap().output_initial_mask = 0;
     let (worker, sender, _events) =
         service_worker(&plan, &selected, SharedHardwareState::default());
     let devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
@@ -3155,8 +4032,8 @@ fn site_owner_replacement_restores_safe_levels_not_retired_intent() {
     reset_test_state();
     for safe_high in [false, true] {
         let (mut plan, mut selected) = selected_hardware(true);
-        selected.cm119.output_enable_mask = 0x21;
-        selected.cm119.output_initial_mask = 1;
+        selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+        selected.cm119.as_mut().unwrap().output_initial_mask = 1;
         let parallel = plan.parallel.as_mut().unwrap();
         parallel.config.output_enable_mask = 0xff;
         parallel.config.output_initial_mask = 2;
@@ -3252,7 +4129,7 @@ fn site_owner_stop_clears_unclaimed_parallel_bits_and_deasserts_inverted_ptt() {
     reset_test_state();
     for inverted in [false, true] {
         let (mut plan, mut selected) = selected_hardware(true);
-        selected.cm119.ptt_inverted = inverted;
+        selected.cm119.as_mut().unwrap().ptt_inverted = inverted;
         let parallel = plan.parallel.as_mut().unwrap();
         parallel.config.output_enable_mask = 0xff;
         parallel.config.output_initial_mask = 0x20;
@@ -3273,7 +4150,124 @@ fn site_owner_stop_clears_unclaimed_parallel_bits_and_deasserts_inverted_ptt() {
     }
 }
 
-fn service_worker(
+#[test]
+fn external_encoder_pin_stays_reserved_after_device_recovery() {
+    let _guard = test_guard();
+    for bank in [SiteBank::Cm119, SiteBank::Parallel] {
+        reset_test_state();
+        let (mut plan, mut selected) = selected_hardware(true);
+        selected.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+        plan.cm119.as_mut().unwrap().output_enable_mask = 0x21;
+        plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+        plan.parallel.as_mut().unwrap().ptt_mask = 1;
+        let (worker, _sender, _events) =
+            service_worker(&plan, &selected, SharedHardwareState::default());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        outputs.prepare_site(&devices, &worker).unwrap();
+        outputs
+            .bind_encoder(
+                Some(crate::remote_hardware::ExternalEncoder {
+                    bank,
+                    mask: 0x20,
+                    inverted: false,
+                }),
+                &devices,
+            )
+            .unwrap();
+        assert_ne!(
+            outputs.site[bank.index()].snapshot().reserved_mask & 0x20,
+            0
+        );
+
+        // Follow the same safe close/reopen/site rebuild as ServiceWorker::run.
+        outputs.retire_site();
+        devices
+            .close_outputs(plan.parallel.as_ref(), &mut outputs)
+            .unwrap();
+        drop(devices);
+        let devices = ServiceDevices::open_at_outputs(
+            gpio_provider(),
+            &selected,
+            plan.parallel.as_ref(),
+            &outputs,
+        )
+        .unwrap();
+        outputs.prepare_site(&devices, &worker).unwrap();
+        let snapshot = outputs.site[bank.index()].snapshot();
+        outputs
+            .site_bind(
+                bank,
+                SiteDigitalBinding {
+                    generation: snapshot.generation,
+                    output_mask: 0x20,
+                    initial_high_mask: 0x20,
+                    safe_high_mask: 0,
+                },
+                &devices,
+            )
+            .unwrap();
+        let snapshot = outputs.site[bank.index()].snapshot();
+        assert_eq!(snapshot.claimed_mask & 0x20, 0);
+        assert_eq!(snapshot.last_command_error, Some(SiteError::Unavailable));
+        assert_ne!(snapshot.reserved_mask & 0x20, 0);
+    }
+}
+
+#[test]
+fn external_encoder_owns_its_pin_and_closes_inactive_for_both_polarities() {
+    let _guard = test_guard();
+    reset_test_state();
+    for bank in [SiteBank::Cm119, SiteBank::Parallel] {
+        for inverted in [false, true] {
+            let (mut plan, selected) = selected_hardware(true);
+            plan.parallel.as_mut().unwrap().config.output_enable_mask = 255;
+            plan.parallel.as_mut().unwrap().ptt_mask = 1;
+            let mut devices =
+                ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+            let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+            outputs.site[bank.index()] = SiteBankState::new(0, 255, 0, 0);
+            let encoder = crate::remote_hardware::ExternalEncoder {
+                bank,
+                mask: 2,
+                inverted,
+            };
+            outputs.bind_encoder(Some(encoder), &devices).unwrap();
+            outputs.set_encoder(true);
+            let bits = if bank == SiteBank::Cm119 {
+                outputs.cm119
+            } else {
+                outputs.parallel
+            };
+            assert_eq!(bits & 2 != 0, !inverted);
+            let command = if bank == SiteBank::Cm119 {
+                OutputCommand::Cm119(2, OutputRequest::Pulse(1))
+            } else {
+                OutputCommand::Parallel(2, OutputRequest::Pulse(1))
+            };
+            assert!(outputs.apply(command, &devices).is_err());
+            outputs.retire_site();
+            let bits = if bank == SiteBank::Cm119 {
+                outputs.cm119
+            } else {
+                outputs.parallel
+            };
+            assert_eq!(bits & 2 != 0, inverted);
+            devices
+                .close_outputs(plan.parallel.as_ref(), &mut outputs)
+                .unwrap();
+            if bank == SiteBank::Parallel {
+                assert_eq!(
+                    PARALLEL_FINAL_BYTE.load(Ordering::Acquire) & 2 != 0,
+                    inverted
+                );
+            }
+        }
+    }
+}
+
+pub(super) fn service_worker(
     plan: &HardwarePlan,
     selected: &SelectedHardwarePlan,
     state: SharedHardwareState,
@@ -3287,6 +4281,7 @@ fn service_worker(
     (
         ServiceWorker {
             native: false,
+            ptt_control: Cell::new(PhysicalPttControl::Ordinary),
             provider: gpio_provider(),
             selected: selected.clone(),
             parallel: plan.parallel.clone(),
@@ -3294,11 +4289,14 @@ fn service_worker(
             statistics: Arc::new(ServiceStatistics::new(plan.parallel.is_some())),
             stop: Arc::new(AtomicBool::new(false)),
             receiver: command_receiver,
-            cm119_input_mask: plan.cm119.input_mask,
-            clip_led_mask: plan.cm119.clip_led_mask,
+            cm119_input_mask: plan.cm119.as_ref().map_or(0, |cm119| cm119.input_mask),
+            clip_led_mask: plan.cm119.as_ref().map_or(0, |cm119| cm119.clip_led_mask),
             input_sender,
             clock: Instant::now(),
             site: std::array::from_fn(|_| Arc::new(SiteCache::default())),
+            remote: None,
+            remote_queue: None,
+            remote_error: Arc::new(AtomicI32::new(0)),
         },
         command_sender,
         input_receiver,
@@ -3321,7 +4319,10 @@ fn hardware_service(eeprom_enabled: bool, with_parallel: bool) -> HardwareServic
 }
 
 fn open_hardware_station() -> HardwareStation {
-    let mut channel = resolved_hardware_channel();
+    open_configured_hardware_station(resolved_hardware_channel())
+}
+
+fn open_configured_hardware_station(mut channel: ResolvedChannelConfiguration) -> HardwareStation {
     let preflight = HardwareStation::preflight(
         &hardware_plan(channel.config()),
         true,
@@ -3355,6 +4356,37 @@ fn remote_radio(receive_hz: u32) -> RemoteRadio {
         transmit_ctcss: None,
         high_power: false,
     }
+}
+
+#[test]
+fn reserved_parallel_radio_pins_report_failure_instead_of_acknowledging_no_write() {
+    let (plan, selected) = selected_hardware(true);
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    outputs.site[1] = SiteBankState::new(0, 255, 0, 0);
+    let generation = outputs.site[1].snapshot().generation;
+    let mut byte = 0;
+    outputs.site[1]
+        .bind(
+            SiteDigitalBinding {
+                generation,
+                output_mask: 16,
+                initial_high_mask: 0,
+                safe_high_mask: 0,
+            },
+            &mut byte,
+        )
+        .unwrap();
+    let mut devices = ServiceDevices {
+        cm119: None,
+        parallel: None,
+        ptt_inverted: false,
+    };
+    assert!(outputs.select_channel(1, &mut devices).is_err());
+    assert!(
+        outputs
+            .configure_remote_radio(remote_radio(146520000))
+            .is_err()
+    );
 }
 
 #[test]
@@ -3435,7 +4467,9 @@ fn service_devices_and_output_state_cover_all_hardware_operations() {
 
     let mut no_remote = OutputState::new(&selected, plan.parallel.as_ref(), None);
     no_remote.service_remote_radio(&mut devices, false).unwrap();
-    no_remote.configure_remote_radio(remote_radio(146_520_000));
+    no_remote
+        .configure_remote_radio(remote_radio(146_520_000))
+        .unwrap();
     no_remote.service_remote_radio(&mut devices, true).unwrap();
     no_remote.service_remote_radio(&mut devices, true).unwrap();
     no_remote.service_remote_radio(&mut devices, false).unwrap();
@@ -3446,7 +4480,7 @@ fn service_devices_and_output_state_cover_all_hardware_operations() {
         HardwareOperation::ProgramRemoteRadio
     );
 
-    no_remote.configure_remote_radio(remote_radio(0));
+    no_remote.configure_remote_radio(remote_radio(0)).unwrap();
     no_remote.remote_radio_ptt = None;
     no_remote.service_remote_radio(&mut devices, false).unwrap();
     no_remote.remote_radio_dirty = true;
@@ -3557,10 +4591,15 @@ fn one_service_cycle_identifies_each_adapter_failure() {
     .unwrap();
 
     let paths = audio_provider()
-        .cm119_mixer_paths(&selected.cm119.usb_port_path)
+        .cm119_mixer_paths(&selected.cm119.as_ref().unwrap().usb_port_path)
         .unwrap()
         .sidetone;
-    let mixers = open_paths(audio_provider(), &selected.cm119.usb_port_path, &paths).unwrap();
+    let mixers = open_paths(
+        audio_provider(),
+        &selected.cm119.as_ref().unwrap().usb_port_path,
+        &paths,
+    )
+    .unwrap();
     let mut sidetone = HardwareSidetone::new(paths, mixers, 500).unwrap().unwrap();
     sidetone.applied = None;
     FAILURE.store(FAIL_MIXER_SWITCH, Ordering::Release);
@@ -3596,7 +4635,9 @@ fn one_service_cycle_identifies_each_adapter_failure() {
         HardwareOperation::PulseCm119
     );
     outputs.clip_events_seen = 0;
-    outputs.configure_remote_radio(remote_radio(146_520_000));
+    outputs
+        .configure_remote_radio(remote_radio(146_520_000))
+        .unwrap();
     FAILURE.store(FAIL_PROGRAM_REMOTE, Ordering::Release);
     assert_eq!(
         failed_operation(service_once(
@@ -4062,7 +5103,7 @@ fn input_edges_and_statistics_cover_online_offline_and_overflow_states() {
         eeprom_read_count: 5,
         eeprom_write_count: 6,
     };
-    statistics.success(cm119);
+    statistics.success(Some(cm119));
     let parallel = usbradioplus_gpio::ParallelStatistics {
         input_read_count: 7,
         output_apply_count: 8,
@@ -4317,4 +5358,619 @@ fn hardware_station_preflights_runs_controls_and_stops_cleanly() {
         station.set_gpio(GpioPin::new(1).unwrap(), OutputRequest::Pulse(u32::MAX)),
         Err(HardwareStationError::PulseTooLong)
     ));
+}
+
+#[test]
+fn native_mixer_open_errors_and_generic_audio_keep_device_io_separate() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, mut selected) = selected_hardware(false);
+    let audio_selected = audio_provider()
+        .select_device(&plan.audio_selector)
+        .unwrap();
+    for failure in [FAIL_MIXER_OPEN, FAIL_OPEN_TX] {
+        FAILURE.store(failure, Ordering::Release);
+        assert!(HardwareMixers::native(audio_provider(), &audio_selected).is_err());
+        assert_eq!(FAILURE.load(Ordering::Acquire), 0);
+    }
+    selected.cm119 = None;
+    let opens = GPIO_OPENS.load(Ordering::Acquire);
+    let io = TUNING_IO_CALLS.load(Ordering::Acquire);
+    assert!(
+        read_startup_eeprom(&selected, true, gpio_provider())
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), io);
+    let mut generic = plan;
+    generic.cm119 = None;
+    let (worker, _, _) = service_worker(&generic, &selected, SharedHardwareState::default());
+    let mut outputs = OutputState::new(&selected, None, None);
+    let mut devices =
+        ServiceDevices::open_at_outputs(gpio_provider(), &selected, None, &outputs).unwrap();
+    service_once(
+        &mut devices,
+        &mut outputs,
+        &mut InputTracker::default(),
+        None,
+        &worker,
+    )
+    .unwrap();
+    assert_eq!(GPIO_OPENS.load(Ordering::Acquire), opens);
+    assert!(!worker.state.inputs().physical_ptt);
+}
+
+#[test]
+fn generic_alsa_station_omits_cm119_mixers_in_the_legacy_host() {
+    let _guard = test_guard();
+    reset_test_state();
+    let providers = station_providers(graph_provider(), sample_rate_adapter());
+    let processing =
+        NativeProcessingFactory::new(providers.graph, providers.denoise, "agc.so", 960).unwrap();
+    let mut remote = crate::remote_request::tests::configuration();
+    remote.audio_source = usbradioplus_core::RemoteAudioSource::Alsa;
+    let mut configuration = resolved_hardware_channel().into_config();
+    configuration.station.hardware.device_identifier = "hw:1,0".into();
+    configuration.station.hardware.serial.clear();
+    let plan = StationPlan::new(
+        "usb",
+        configuration,
+        ControllerTransport::RptAdvanced,
+        1,
+        960,
+    )
+    .unwrap()
+    .with_remote_configuration(Some(remote));
+    let selected = audio_provider()
+        .select_alsa_device(&plan.hardware().audio_selector)
+        .unwrap();
+    assert!(selected.interface_path.is_none());
+    let media = plan
+        .prepare(&processing)
+        .unwrap()
+        .bind_media(
+            providers.ring,
+            providers.radio,
+            usbradioplus_station::ControllerSetup::RptAdvanced { handoff_slots: 2 },
+        )
+        .unwrap();
+    let station = HardwareStation::open_preflighted(
+        media,
+        audio_provider(),
+        gpio_provider(),
+        960,
+        HardwarePreflight::new(selected, None),
+    )
+    .unwrap();
+    assert!(station.maintenance.mixers.borrow().is_none());
+    assert_eq!(TUNING_IO_CALLS.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn external_encoder_host_admission_blocks_only_its_own_bank_and_pin() {
+    use usbradioplus_core::{CarrierSource, RemoteEncoderOutput};
+    let _guard = test_guard();
+    reset_test_state();
+    for bank in [SiteBank::Cm119, SiteBank::Parallel] {
+        let (mut plan, mut selected) = selected_hardware(true);
+        plan.cm119.as_mut().unwrap().output_enable_mask = 0x25;
+        selected.cm119.as_mut().unwrap().output_enable_mask = 0x25;
+        plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+        plan.parallel.as_mut().unwrap().ptt_mask = 1;
+        let mut config = crate::remote_request::tests::configuration();
+        config.external_encode_output = Some(match bank {
+            SiteBank::Cm119 => RemoteEncoderOutput::Usb(GpioPin::new(6).unwrap()),
+            SiteBank::Parallel => RemoteEncoderOutput::Parallel(ParallelPin::new(7).unwrap()),
+        });
+        let (setup, _control) = crate::RemoteSetup::prepare(
+            config,
+            plan.clone(),
+            CarrierSource::Dsp,
+            usbradioplus_radio::QualificationConfig::default(),
+        )
+        .unwrap();
+        let encoder = crate::remote_hardware::ExternalEncoder::configured(setup.configuration());
+        let mut service = HardwareService::new(
+            gpio_provider(),
+            &plan,
+            selected.clone(),
+            SharedHardwareState::default(),
+            HardwareServiceSetup {
+                eeprom_enabled: false,
+                sidetone: None,
+                initial_remote_radio: None,
+            },
+        );
+        service.bind_remote(setup).unwrap();
+        let (worker, _, _) = service_worker(&plan, &selected, SharedHardwareState::default());
+        let mut devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        outputs.prepare_site(&devices, &worker).unwrap();
+        outputs.bind_encoder(encoder, &devices).unwrap();
+        for (command, reserved) in [
+            (
+                OutputCommand::Cm119(0x20, OutputRequest::Active),
+                bank == SiteBank::Cm119,
+            ),
+            (
+                OutputCommand::Parallel(0x20, OutputRequest::Active),
+                bank == SiteBank::Parallel,
+            ),
+            (OutputCommand::Cm119(4, OutputRequest::Active), false),
+            (OutputCommand::Parallel(4, OutputRequest::Active), false),
+        ] {
+            assert!(
+                matches!(
+                    service.queue(command),
+                    Err(HardwareStationError::UnavailableOutput)
+                ) == reserved
+            );
+            assert_eq!(outputs.apply(command, &devices).is_err(), reserved);
+        }
+        devices
+            .close_outputs(plan.parallel.as_ref(), &mut outputs)
+            .unwrap();
+    }
+}
+
+#[test]
+fn safe_close_reports_cm119_publish_failure_and_still_closes_parallel() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(true);
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    FAILURE.store(FAIL_CM119_PUBLISH, Ordering::Release);
+    assert_eq!(
+        failed_operation(devices.close_outputs(plan.parallel.as_ref(), &mut outputs)),
+        HardwareOperation::PublishCm119
+    );
+    assert!(devices.parallel.is_none());
+    assert_eq!(FAILURE.load(Ordering::Acquire), 0);
+    devices
+        .close_outputs(plan.parallel.as_ref(), &mut outputs)
+        .unwrap();
+}
+
+unsafe extern "C" fn gpio_statistics_offline(
+    device: *const c_void,
+    output: *mut GpioCm119Statistics,
+) -> c_int {
+    // SAFETY: forward the wrapper's live handle and writable ABI snapshot.
+    let result = unsafe { gpio_statistics(device, output) };
+    if result == OK {
+        // SAFETY: a successful original callback initialized the complete output.
+        unsafe {
+            (*output).online = 0;
+        }
+    }
+    result
+}
+unsafe extern "C" fn parallel_statistics_offline(
+    device: *const c_void,
+    output: *mut GpioParallelStatistics,
+) -> c_int {
+    // SAFETY: forward the wrapper's live handle and writable ABI snapshot.
+    let result = unsafe { parallel_statistics(device, output) };
+    if result == OK {
+        // SAFETY: a successful original callback initialized the complete output.
+        unsafe {
+            (*output).online = 0;
+        }
+    }
+    result
+}
+fn offline_statistics_provider() -> GpioAdapter {
+    let descriptor = GpioDescriptor {
+        statistics: Some(gpio_statistics_offline),
+        parallel_statistics: Some(parallel_statistics_offline),
+        ..GPIO_DESCRIPTOR
+    };
+    // SAFETY: from_raw copies the complete table; its C string and every function
+    // address remain process-owned. No pointer to this stack table is retained.
+    unsafe { GpioAdapter::from_raw(ptr::from_ref(&descriptor).cast()) }.unwrap()
+}
+
+#[test]
+fn physical_unkey_requires_online_input_and_independent_online_statistics() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let (worker, _, _) = service_worker(&plan, &selected, SharedHardwareState::default());
+    let mut outputs = OutputState::new(&selected, None, None);
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    GPIO_ONLINE.store(0, Ordering::Release);
+    assert_eq!(
+        failed_operation(service_remote_ptt(&mut devices, &mut outputs, &worker)),
+        HardwareOperation::ConfirmCm119Ptt
+    );
+    GPIO_ONLINE.store(1, Ordering::Release);
+    service_remote_ptt(&mut devices, &mut outputs, &worker).unwrap();
+    let mut offline = ServiceDevices::open(offline_statistics_provider(), &selected, None).unwrap();
+    assert_eq!(
+        failed_operation(service_remote_ptt(&mut offline, &mut outputs, &worker)),
+        HardwareOperation::ConfirmCm119Ptt
+    );
+    let (mut plan, mut selected) = selected_hardware(true);
+    selected.cm119 = None;
+    plan.cm119 = None;
+    plan.parallel.as_mut().unwrap().ptt_mask = 8;
+    let (worker, _, _) = service_worker(&plan, &selected, SharedHardwareState::default());
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    let mut devices = ServiceDevices::open(
+        offline_statistics_provider(),
+        &selected,
+        plan.parallel.as_ref(),
+    )
+    .unwrap();
+    assert_eq!(
+        failed_operation(service_remote_ptt(&mut devices, &mut outputs, &worker)),
+        HardwareOperation::ConfirmParallelPtt
+    );
+}
+
+#[test]
+fn parallel_only_input_reports_serviced_ptt_and_never_invents_offline_feedback() {
+    let _guard = test_guard();
+    reset_test_state();
+    for (mask, inverted, applied, expected) in [
+        (0, false, 0, false),
+        (8, false, 8, true),
+        (8, true, 0, true),
+        (8, false, 0, false),
+    ] {
+        let (mut plan, mut selected) = selected_hardware(true);
+        plan.cm119 = None;
+        selected.cm119 = None;
+        selected.ptt_inverted = inverted;
+        plan.parallel.as_mut().unwrap().ptt_mask = mask;
+        let (worker, _, _) = service_worker(&plan, &selected, SharedHardwareState::default());
+        let devices =
+            ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+        PARALLEL_APPLIED_MASK.store(applied, Ordering::Release);
+        assert_eq!(
+            collected_inputs(&devices, &worker, None, None)
+                .unwrap()
+                .physical_ptt,
+            expected
+        );
+        FAILURE.store(FAIL_PARALLEL_STATISTICS, Ordering::Release);
+        assert!(matches!(
+            collected_inputs(&devices, &worker, None, None),
+            Err(ServiceFailure(HardwareOperation::ReadParallelStatistics, _))
+        ));
+        let offline = ServiceDevices::open(
+            offline_statistics_provider(),
+            &selected,
+            plan.parallel.as_ref(),
+        )
+        .unwrap();
+        assert!(
+            !collected_inputs(&offline, &worker, None, None)
+                .unwrap()
+                .physical_ptt
+        );
+    }
+}
+
+#[test]
+fn remote_maintenance_parallel_requests_report_busy_and_retired_owners() {
+    use usbradioplus_core::{CarrierSource, RemoteBackend};
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, _) = selected_hardware(true);
+    plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+    let (audio_selected, selected) =
+        select_native_hardware(&plan, audio_provider(), gpio_provider(), 960).unwrap();
+    let mut maintenance = HardwareMaintenance::native(
+        &plan,
+        HardwarePreflight::new(audio_selected, None),
+        selected,
+        SharedHardwareState::default(),
+        audio_provider(),
+        gpio_provider(),
+        [None; 3],
+    )
+    .unwrap();
+    let mut config = crate::remote_request::tests::configuration();
+    config.backend = RemoteBackend::ParallelChannel;
+    config.ptt_source = Some("usb".into());
+    config.memories[0].state.channel = Some(7);
+    let (setup, control) = crate::RemoteSetup::prepare(
+        config.clone(),
+        plan.clone(),
+        CarrierSource::Dsp,
+        usbradioplus_radio::QualificationConfig::default(),
+    )
+    .unwrap();
+    let (replacement, _replacement_control) = crate::RemoteSetup::prepare(
+        config,
+        plan,
+        CarrierSource::Dsp,
+        usbradioplus_radio::QualificationConfig::default(),
+    )
+    .unwrap();
+    maintenance.bind_remote(setup).unwrap();
+    maintenance.start().unwrap();
+    assert!(matches!(
+        maintenance.bind_remote(replacement),
+        Err(HardwareStationError::ControlQueueFull)
+    ));
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !control.is_busy() && Instant::now() < deadline {
+        thread::yield_now();
+    }
+    assert!(
+        control.is_busy(),
+        "worker must be waiting for startup DSP adoption"
+    );
+    assert_eq!(maintenance.service.remote_error(), 0);
+    for _ in 0..CONTROL_QUEUE_CAPACITY {
+        maintenance
+            .remote_radio_request(ParallelRadioRequest::SelectChannel(7))
+            .unwrap();
+    }
+    assert!(matches!(
+        maintenance.remote_radio_request(ParallelRadioRequest::SelectChannel(7)),
+        Err(HardwareStationError::ControlQueueFull)
+    ));
+    maintenance.stop().unwrap();
+    assert!(matches!(
+        maintenance.remote_radio_request(ParallelRadioRequest::SelectChannel(7)),
+        Err(HardwareStationError::NotRunning)
+    ));
+    let station = open_hardware_station();
+    assert!(matches!(
+        station.remote_radio_request(ParallelRadioRequest::SelectChannel(7)),
+        Err(HardwareStationError::NotRunning)
+    ));
+}
+
+#[test]
+fn partial_safe_close_keeps_closed_parallel_bank_unkeyed_without_reviving_it() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, selected) = selected_hardware(true);
+    plan.parallel.as_mut().unwrap().config.output_enable_mask = 0xff;
+    plan.parallel.as_mut().unwrap().ptt_mask = 8;
+    let (worker, _, _) = service_worker(&plan, &selected, SharedHardwareState::default());
+    worker.ptt_control.set(PhysicalPttControl::Remote {
+        selected: Some(RemotePttSource::Parallel),
+        key: false,
+    });
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    FAILURE.store(FAIL_CM119_PUBLISH, Ordering::Release);
+    assert_eq!(
+        failed_operation(devices.close_outputs(plan.parallel.as_ref(), &mut outputs)),
+        HardwareOperation::PublishCm119
+    );
+    assert!(devices.cm119.is_some());
+    assert!(devices.parallel.is_none());
+    // This partial state is produced by the actual two-bank safe-close API:
+    // the parallel final OFF write succeeded while the CM119 write must retry.
+    service_remote_ptt(&mut devices, &mut outputs, &worker).unwrap();
+    assert!(
+        devices.parallel.is_none(),
+        "unkey must not reopen a safely closed bank"
+    );
+    worker.ptt_control.set(PhysicalPttControl::Remote {
+        selected: Some(RemotePttSource::Parallel),
+        key: true,
+    });
+    assert!(
+        service_remote_ptt(&mut devices, &mut outputs, &worker).is_err(),
+        "an absent selected output must never acknowledge a key request"
+    );
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
+    devices
+        .close_outputs(plan.parallel.as_ref(), &mut outputs)
+        .unwrap();
+}
+
+fn await_hardware_condition(condition: impl Fn() -> bool) -> bool {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while !condition() && Instant::now() < deadline {
+        thread::yield_now();
+    }
+    condition()
+}
+
+fn worker_remote_setup(
+    plan: &HardwarePlan,
+) -> (crate::RemoteSetup, usbradioplus_station::RemoteDspControl) {
+    let mut config = crate::remote_request::tests::configuration();
+    config.memories[0].state.power_mw = Some(5000);
+    config.ptt_source = Some("usb".into());
+    crate::RemoteSetup::prepare(
+        config,
+        plan.clone(),
+        usbradioplus_core::CarrierSource::Dsp,
+        usbradioplus_radio::QualificationConfig::default(),
+    )
+    .unwrap()
+}
+
+struct ReleaseWorkerFaults;
+impl Drop for ReleaseWorkerFaults {
+    fn drop(&mut self) {
+        GPIO_APPLIED_PTT.store(u32::MAX, Ordering::Release);
+        SHUTDOWN_PULSE_STAGE.store(0, Ordering::Release);
+        SHUTDOWN_SERVICE_FAILURES.store(0, Ordering::Release);
+        FAILURE.store(0, Ordering::Release);
+    }
+}
+
+#[test]
+fn remote_worker_retries_initial_and_final_physical_off_confirmation() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (plan, selected) = selected_hardware(false);
+    let mut service = HardwareService::native(
+        &plan,
+        selected,
+        SharedHardwareState::default(),
+        gpio_provider(),
+    );
+    // This guard clears persistent injected feedback before HardwareService::drop
+    // requests/join safe shutdown, including an assertion failure in this test.
+    let _release = ReleaseWorkerFaults;
+    let (setup, _control) = worker_remote_setup(&plan);
+    service.bind_remote(setup).unwrap();
+    GPIO_APPLIED_PTT.store(1, Ordering::Release);
+    service.start().unwrap();
+    let initial_failure = await_hardware_condition(|| service.remote_error() == -1101);
+    let worker = service.worker.as_ref().unwrap().thread().clone();
+    let queue = Arc::clone(service.remote_queue.as_ref().unwrap());
+    service.stop.store(true, Ordering::Release);
+    worker.unpark();
+    let retired = await_hardware_condition(|| {
+        matches!(
+            queue.submit(
+                RemoteOperation::new(
+                    usbradioplus_core::remote_operation::RemoteOperationKind::Status
+                ),
+                true,
+                false
+            ),
+            Err(RemoteRequestError::Stopped)
+        )
+    });
+    let failures = service.statistics().service_failures;
+    worker.unpark();
+    let retirement_failure =
+        await_hardware_condition(|| service.statistics().service_failures > failures);
+    GPIO_APPLIED_PTT.store(0, Ordering::Release);
+    worker.unpark();
+    service.stop().unwrap();
+    assert!(initial_failure && retired && retirement_failure);
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
+}
+
+unsafe extern "C" fn shutdown_publish_fault_on_second_pulse(
+    device: *mut c_void,
+    pulse: *const GpioCm119Pulse,
+) -> c_int {
+    if SHUTDOWN_PULSE_STAGE.load(Ordering::Acquire) != 0
+        && SHUTDOWN_PULSE_STAGE.fetch_add(1, Ordering::AcqRel) == 2
+    {
+        // The first pulse belongs to confirmed remote unkey. The next belongs
+        // to final safe close, where the existing one-shot publish fault applies.
+        FAILURE.store(FAIL_CM119_PUBLISH, Ordering::Release);
+    }
+    // SAFETY: preserve the live handle and complete borrowed pulse contract.
+    unsafe { gpio_pulse(device, pulse) }
+}
+
+unsafe extern "C" fn shutdown_service_fault(device: *mut c_void) -> c_int {
+    if SHUTDOWN_SERVICE_FAILURES
+        .fetch_update(Ordering::AcqRel, Ordering::Acquire, |remaining| {
+            remaining.checked_sub(1)
+        })
+        .is_ok()
+    {
+        return -1;
+    }
+    // SAFETY: forward the retained device handle without changing its ownership.
+    unsafe { gpio_service(device) }
+}
+
+fn shutdown_fault_provider() -> GpioAdapter {
+    let descriptor = GpioDescriptor {
+        gpio_pulse: Some(shutdown_publish_fault_on_second_pulse),
+        service: Some(shutdown_service_fault),
+        ..GPIO_DESCRIPTOR
+    };
+    // SAFETY: the wrapper copies the table; all callback and string addresses
+    // are immutable test-binary objects and remain loaded for every owner.
+    unsafe { GpioAdapter::from_raw(ptr::from_ref(&descriptor).cast()) }.unwrap()
+}
+
+#[test]
+fn legacy_remote_worker_reopens_only_to_finish_safe_shutdown_and_retries_close() {
+    let _guard = test_guard();
+    for physical_off_stuck in [false, true] {
+        reset_test_state();
+        let (plan, selected) = selected_hardware(false);
+        let mut service = HardwareService::new(
+            shutdown_fault_provider(),
+            &plan,
+            selected,
+            SharedHardwareState::default(),
+            HardwareServiceSetup {
+                eeprom_enabled: false,
+                sidetone: None,
+                initial_remote_radio: None,
+            },
+        );
+        let _release = ReleaseWorkerFaults;
+        let (setup, control) = worker_remote_setup(&plan);
+        service.bind_remote(setup).unwrap();
+        service.start().unwrap();
+        let startup_waiting = await_hardware_condition(|| control.is_busy());
+        drop(control);
+        let servicing = await_hardware_condition(|| {
+            service.remote_error() == -1102 && service.statistics().service_cycles >= 2
+        });
+        let worker = service.worker.as_ref().unwrap().thread().clone();
+        let before_fault = service.statistics().service_failures;
+        GPIO_APPLIED_PTT.store(u32::from(physical_off_stuck), Ordering::Release);
+        // A stopped DSP owner may attempt safe unkey before the regular device
+        // poll. Fail both consecutive services so the normal poll also fails and
+        // enters legacy retirement. Physical OFF either succeeds immediately or
+        // remains unavailable until this test restores the device feedback.
+        SHUTDOWN_SERVICE_FAILURES.store(2, Ordering::Release);
+        worker.unpark();
+        let retirement_started = await_hardware_condition(|| {
+            SHUTDOWN_SERVICE_FAILURES.load(Ordering::Acquire) == 0
+                && service.statistics().service_failures
+                    >= before_fault + 3 + 2 * u64::from(physical_off_stuck)
+        });
+        GPIO_APPLIED_PTT.store(0, Ordering::Release);
+        worker.unpark();
+        let closed = await_hardware_condition(|| GPIO_CLOSES.load(Ordering::Acquire) >= 1);
+        let before_reopen = service.statistics().service_failures;
+        service.stop.store(true, Ordering::Release);
+        FAILURE.store(FAIL_CM119_OPEN, Ordering::Release);
+        worker.unpark();
+        let reopen_failed = await_hardware_condition(|| {
+            FAILURE.load(Ordering::Acquire) == 0
+                && service.statistics().service_failures > before_reopen
+        });
+        // No regular service occurs after stop. Reopen's remote unkey is pulse1;
+        // final close's pulse2 injects a failed safe write, followed by a retry.
+        let before_close = service.statistics().service_failures;
+        SHUTDOWN_PULSE_STAGE.store(1, Ordering::Release);
+        worker.unpark();
+        let close_failed = await_hardware_condition(|| {
+            SHUTDOWN_PULSE_STAGE.load(Ordering::Acquire) >= 3
+                && service.statistics().service_failures > before_close
+        });
+        worker.unpark();
+        service.stop().unwrap();
+        assert!(startup_waiting, "startup must request DSP adoption");
+        assert!(
+            servicing,
+            "stopped DSP must leave the GPIO worker servicing"
+        );
+        assert!(
+            retirement_started,
+            "service outage must reach safe retirement"
+        );
+        assert!(closed, "recovery must close the retired device");
+        assert!(
+            reopen_failed,
+            "shutdown must retry its failed device reopen"
+        );
+        assert!(
+            close_failed,
+            "final safe write must fail and retain ownership"
+        );
+        assert!(SHUTDOWN_PULSE_STAGE.load(Ordering::Acquire) >= 4);
+        assert_eq!(PTT.load(Ordering::Acquire), 0);
+    }
 }

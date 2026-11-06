@@ -58,6 +58,8 @@ fn all_carrier_and_external_subaudible_sources_translate_exactly() {
         (ConfigCarrierSource::Disabled, CarrierSource::Disabled),
         (ConfigCarrierSource::Dsp, CarrierSource::DspNoise),
         (ConfigCarrierSource::Vox, CarrierSource::Vox),
+        (ConfigCarrierSource::External, CarrierSource::External),
+        (ConfigCarrierSource::Open, CarrierSource::Open),
         (ConfigCarrierSource::Usb, CarrierSource::Usb),
         (ConfigCarrierSource::UsbInverted, CarrierSource::UsbInverted),
         (ConfigCarrierSource::Parallel, CarrierSource::Parallel),

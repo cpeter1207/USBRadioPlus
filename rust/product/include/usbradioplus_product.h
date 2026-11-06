@@ -542,6 +542,9 @@ typedef struct UrpAstChannelReserveArgs {
 	void *channel_context;
 } UrpAstChannelReserveArgs;
 
+/** Exact native PCM/metadata callback contract shared by every host adapter. */
+#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION UINT32_C(5)
+
 /** Borrowed exact-frame native callbacks, independent of Asterisk frame queues. */
 typedef struct UrpAstDirectCallbacks {
 	/**
@@ -549,7 +552,7 @@ typedef struct UrpAstDirectCallbacks {
 	 */
 	uint32_t struct_size;
 	/**
-	 * Exact direct-callback contract version, currently three.
+	 * Exact direct-callback contract version, currently five.
 	 */
 	uint32_t abi_version;
 	/**
@@ -572,6 +575,11 @@ typedef struct UrpAstDirectCallbacks {
 	 * Host writes the accepted version only after successful synchronous retention.
 	 */
 	uint32_t accepted_abi_version;
+	/** TX-owner metadata exchange. Controls: remote enabled1, RX permitted2,
+	 * TX permitted4, non-FM8, unqualified local open16. Output is zero/one linked-source
+	 * activity before controller muting. Required only for a configured remote-base
+	 * composition. */
+	int (*metadata)(void *, uint32_t, uint32_t *);
 } UrpAstDirectCallbacks;
 
 /**
@@ -1063,6 +1071,65 @@ typedef struct UrpNativePhysicalStatus {
 typedef int (*UrpNativeConfigurationSink)(void *context,
 					  const struct UrpNativeStationConfig *config);
 
+/** Copied remote operation. Identifiers and units match the declared operating
+ * catalog; no caller-owned pointer is retained. */
+typedef struct UrpRemoteOperation {
+	uint32_t struct_size;	 /**< Exact complete record size, 40 bytes. */
+	uint32_t abi_version;	 /**< One. */
+	uint32_t operation;	 /**< Shared remote operation identifier, 1 through 27. */
+	uint32_t selector;	 /**< Setting, memory, scan, preset or catalog selector. */
+	int64_t signed_value;	 /**< Signed step in Hz. */
+	uint64_t magnitude;	 /**< Unsigned operand in the operation's declared units. */
+	uint32_t decimal_places; /**< Exact input precision, zero through six. */
+	uint32_t flags;		 /**< Operation-specific direction/enable/sign flags. */
+} UrpRemoteOperation;
+
+/** Owned nonblocking remote ticket; callback functions remain live through destroy. */
+typedef struct UrpRemoteTicket {
+	uint32_t struct_size; /**< Exact complete record size. */
+	uint32_t abi_version; /**< One. */
+	void *context;	      /**< Unique SDK ticket, never the channel or peer. */
+	int (*source)(void *ticket, uint32_t flags); /**< Active1/valid2, terminal revocation. */
+	int (*take)(void *ticket, UrpNativeProcessingDiagnostic sink,
+		    void *context);    /**< Copy JSON. */
+	void (*destroy)(void *ticket); /**< Cancel and release without waiting. */
+} UrpRemoteTicket;
+
+/** Serialized control-only Asterisk option, using block zero. */
+#define URP_AST_OPTION_REMOTE_CONTROL 0x52505243
+/** Exact remote-control envelope version. */
+#define URP_AST_REMOTE_OPTION_ABI_VERSION 1u
+/** Pump the existing DSP-control mailbox. */
+#define URP_AST_REMOTE_SERVICE 1u
+/** Poll safe retirement; one means pending and retains channel/context ownership. */
+#define URP_AST_REMOTE_QUIESCE 2u
+/** Submit a copied operation and return an independently owned ticket. */
+#define URP_AST_REMOTE_SUBMIT 3u
+/** Observe activation: zero ready, one opening, negative original cause. */
+#define URP_AST_REMOTE_READY 4u
+/** Synchronous taskprocessor envelope; contains no retained caller buffer.
+ * accepted_abi_version acknowledges recognized dispatch even when pending/error.
+ */
+typedef struct UrpAstRemoteControl {
+	uint32_t struct_size;	       /**< Exact complete envelope size. */
+	uint32_t abi_version;	       /**< One. */
+	uint32_t accepted_abi_version; /**< Zero on input, one after recognized dispatch. */
+	uint32_t operation;	       /**< SERVICE, QUIESCE, SUBMIT, or READY. */
+	uint32_t source_flags;	       /**< SUBMIT: local1, active2. */
+	UrpRemoteOperation request;    /**< Borrowed operation copied during SUBMIT. */
+	UrpRemoteTicket ticket;	       /**< Output only; success transfers unique ownership. */
+} UrpAstRemoteControl;
+
+/** Command policy from the shared source resolver, with no physical I/O. */
+typedef struct UrpRemoteCommandOptions {
+	uint32_t struct_size;	/**< Exact complete record size. Initialize before inspection. */
+	uint32_t abi_version;	/**< One. */
+	uint32_t enabled;	/**< One only for a configured remote composition. */
+	uint32_t access;	/**< Zero disabled, one open, two source-specific unlock. */
+	uint32_t prefix_length; /**< ASCII digit count, excluding the leading star. */
+	uint8_t prefix[64];	/**< At most 63 digits; unused bytes are zero. */
+} UrpRemoteCommandOptions;
+
 /** Versioned product operations. Check struct_size before accessing an appended tail. */
 typedef struct UrpAstDescriptor {
 	/**
@@ -1295,6 +1362,42 @@ typedef struct UrpAstDescriptor {
 	int (*link_observer_read)(const void *observer, struct UrpAstLinkObservation *output);
 	/** Destroy one independent observer after its reads return; null is harmless. */
 	void (*link_observer_destroy)(void *observer);
+	/** Advance remote DSP adoption on the original serialized control owner.
+	 * This never waits for CAT I/O, graph preparation or callback acknowledgments. */
+	int (*native_service)(void *native);
+	/** Submit without physical I/O. Source flags: local1, active2. Success
+	 * transfers a ticket retained independently of the originating host object. */
+	int (*native_remote_submit)(void *native, const UrpRemoteOperation *operation,
+				    uint32_t source_flags, void **ticket);
+	/** Same nonblocking submission on an ASL channel's taskprocessor. */
+	int (*channel_remote_submit)(void *channel, const UrpRemoteOperation *operation,
+				     uint32_t source_flags, void **ticket);
+	/** Publish active1/valid2; revocation is terminal for this ticket. */
+	int (*remote_source)(void *ticket, uint32_t flags);
+	/** Copy a version1 JSON completion through the synchronous UTF-8 sink.
+	 * Zero means copied; URP_AST_RELOAD_PENDING means no result. The document's
+	 * kind identifies applied, error, value, status, memories, scans, scan or
+	 * capabilities. It contains machine values, never rendered telemetry.
+	 * Status flags distinguish requested/applied/observed presence; observed_fields
+	 * alone identifies which observed state fields are physical readings. */
+	int (*remote_take)(void *ticket, UrpNativeProcessingDiagnostic sink, void *context);
+	/** Revoke and release after source/take calls stop; never waits for CAT. */
+	void (*remote_destroy)(void *ticket);
+	/** Poll safe physical retirement after stopping callbacks. Zero permits
+	 * native_destroy; ReloadPending or any error retains handle and contexts. */
+	int (*native_quiesce)(void *native);
+	/** Same retirement on the channel's serialized taskprocessor. */
+	int (*channel_quiesce)(void *channel);
+	/** Inspect controller command policy on an existing native_configuration_resolve owner.
+	 * Output is an initialized complete ABI-one record; no device or rig is opened. */
+	int (*native_configuration_remote_options)(void *configuration,
+						   UrpRemoteCommandOptions *output);
+	/** Copy activation readiness without I/O: zero after initial RF/DSP admission,
+	 * one while opening, or the original negative failure. Pump native_service
+	 * separately; thread creation alone is not readiness. */
+	int (*native_activation_status)(void *native);
+	/** Same readiness observation on the existing channel control owner. */
+	int (*channel_activation_status)(void *channel);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

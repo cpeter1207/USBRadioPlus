@@ -26,6 +26,7 @@ pub(super) enum ControlOperation {
     Echo(bool),
     Direct(super::super::UrpAstDirectCallbacks),
     Site(super::super::UrpAstSiteControl),
+    Remote(super::super::UrpAstRemoteControl),
     Jitter,
     Command(UrpAstChannelCommand),
     Status,
@@ -40,6 +41,7 @@ pub(super) enum ControlResult {
     Command(i32, UrpAstChannelCommand),
     ChannelStatus(i32, UrpAstChannelStatus),
     Site(i32, super::super::UrpAstSiteControl),
+    Remote(i32, super::super::UrpAstRemoteControl),
 }
 
 impl ControlResult {
@@ -50,7 +52,8 @@ impl ControlResult {
             | Self::Jitter(status, _)
             | Self::Command(status, _)
             | Self::ChannelStatus(status, _)
-            | Self::Site(status, _) => *status,
+            | Self::Site(status, _)
+            | Self::Remote(status, _) => *status,
         }
     }
 }
@@ -189,6 +192,64 @@ unsafe fn execute(
             }
             ControlOperation::Service => {
                 ControlResult::Status(status(descriptor.channel_service.map(|call| call(channel))))
+            }
+            ControlOperation::Remote(mut request) => {
+                use super::super::{
+                    URP_AST_REMOTE_QUIESCE, URP_AST_REMOTE_READY, URP_AST_REMOTE_SERVICE,
+                    URP_AST_REMOTE_SUBMIT,
+                };
+                let result = match request.operation {
+                    URP_AST_REMOTE_SERVICE => {
+                        status(descriptor.channel_service.map(|call| call(channel)))
+                    }
+                    URP_AST_REMOTE_QUIESCE => {
+                        status(descriptor.channel_quiesce.map(|call| call(channel)))
+                    }
+                    URP_AST_REMOTE_READY => status(
+                        descriptor
+                            .channel_activation_status
+                            .map(|call| call(channel)),
+                    ),
+                    URP_AST_REMOTE_SUBMIT => match (
+                        descriptor.channel_remote_submit,
+                        descriptor.remote_source,
+                        descriptor.remote_take,
+                        descriptor.remote_destroy,
+                    ) {
+                        (Some(submit), Some(source), Some(take), Some(destroy)) => {
+                            let mut ticket = std::ptr::null_mut();
+                            let code = submit(
+                                channel,
+                                &request.request,
+                                request.source_flags,
+                                &mut ticket,
+                            );
+                            if code == 0 && !ticket.is_null() {
+                                request.ticket = super::super::UrpRemoteTicket {
+                                    struct_size: size_of::<super::super::UrpRemoteTicket>() as u32,
+                                    abi_version: 1,
+                                    context: ticket,
+                                    source: Some(source),
+                                    take: Some(take),
+                                    destroy: Some(destroy),
+                                };
+                                0
+                            } else {
+                                if !ticket.is_null() {
+                                    destroy(ticket);
+                                }
+                                if code == 0 {
+                                    URP_AST_ASTERISK_FAILURE
+                                } else {
+                                    code
+                                }
+                            }
+                        }
+                        _ => URP_AST_ASTERISK_FAILURE,
+                    },
+                    _ => URP_AST_ASTERISK_FAILURE,
+                };
+                ControlResult::Remote(result, request)
             }
             ControlOperation::Destroy => {
                 if let Some(call) = descriptor.channel_destroy {

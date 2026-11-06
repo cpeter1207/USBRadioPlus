@@ -8,6 +8,7 @@ description = "USBRadioPlus station composition"
 publish = false
 
 [dependencies]
+crossbeam-queue = "0.3"
 usbradioplus-core = { path = "../core" }
 usbradioplus-asl3 = { path = "../asl3" }
 usbradioplus-audio = { path = "../audio" }

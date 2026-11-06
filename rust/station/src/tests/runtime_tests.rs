@@ -1,5 +1,282 @@
 use super::*;
 
+fn remote_dsp_target() -> usbradioplus_core::RemoteOperatingState {
+    use usbradioplus_core::{RemoteSignal, RemoteSignalSource};
+    usbradioplus_core::RemoteOperatingState {
+        mode: 1,
+        decode: RemoteSignal {
+            source: RemoteSignalSource::Dsp,
+            enabled: true,
+            tone_tenths_hz: 1000,
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
+pub(crate) fn remote_dsp_render(runtime: &mut StationRuntime, transmit: bool) {
+    let input = [0.0; 1920];
+    assert_eq!(
+        // SAFETY: the fixture has no background audio worker; this test is its sole RX owner.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 960) },
+        0
+    );
+    if transmit {
+        let mut output = [0.0; 1920];
+        assert_eq!(
+            // SAFETY: this test exclusively owns the fixture's TX callback and full output span.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            0
+        );
+    }
+}
+
+#[test]
+fn remote_dsp_prepares_off_owner_and_commits_after_both_callback_acknowledgments() {
+    let (mut runtime, mut control) = runtime(40);
+    runtime.start().unwrap();
+    let before = control.plan().clone();
+    let mut dsp = crate::RemoteDspControl::new();
+    let port = dsp.port();
+    let worker = std::thread::spawn(move || {
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
+            std::time::Duration::from_secs(2),
+            || false,
+        )
+    });
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !worker.is_finished() {
+        assert!(std::time::Instant::now() < deadline);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+        remote_dsp_render(&mut runtime, true);
+        std::thread::yield_now();
+    }
+    assert!(worker.join().unwrap().is_ok());
+    assert_ne!(
+        control.plan().radio().receive.signaling,
+        before.radio().receive.signaling
+    );
+    assert_eq!(control.plan().hardware(), before.hardware());
+    assert_eq!(
+        control
+            .plan()
+            .configuration()
+            .station
+            .receive
+            .cos_assignment,
+        usbradioplus_core::CarrierSource::External
+    );
+    assert_eq!(
+        control.plan().radio().qualification.carrier_source,
+        usbradioplus_radio::CarrierSource::External
+    );
+    assert!(!dsp.is_busy());
+}
+
+#[test]
+fn remote_dsp_cancelled_half_update_retains_storage_until_reverse_acknowledgments() {
+    let (mut runtime, mut control) = runtime(40);
+    runtime.start().unwrap();
+    let before = control.plan().clone();
+    let mut dsp = crate::RemoteDspControl::new();
+    let port = dsp.port();
+    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let cancelled = cancel.clone();
+    let worker = std::thread::spawn(move || {
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
+            std::time::Duration::from_secs(2),
+            || cancelled.load(std::sync::atomic::Ordering::Acquire),
+        )
+    });
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !dsp.awaiting_callbacks() {
+        assert!(std::time::Instant::now() < deadline);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+        std::thread::yield_now();
+    }
+    remote_dsp_render(&mut runtime, false);
+    cancel.store(true, std::sync::atomic::Ordering::Release);
+    assert!(matches!(
+        worker.join().unwrap(),
+        Err(crate::RemoteDspError::Cancelled)
+    ));
+    dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+    assert!(dsp.is_busy(), "a half-adopted update cannot be reclaimed");
+    while dsp.is_busy() {
+        assert!(std::time::Instant::now() < deadline);
+        remote_dsp_render(&mut runtime, true);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+    }
+    assert_eq!(control.plan(), &before);
+}
+
+#[test]
+fn remote_dsp_timeout_keeps_admission_bounded_and_control_retirement_terminal() {
+    let control = crate::RemoteDspControl::new();
+    let port = control.port();
+    assert!(matches!(
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
+            std::time::Duration::ZERO,
+            || false
+        ),
+        Err(crate::RemoteDspError::Timeout)
+    ));
+    assert!(matches!(
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
+            std::time::Duration::ZERO,
+            || false
+        ),
+        Err(crate::RemoteDspError::Busy)
+    ));
+    drop(control);
+    assert!(matches!(
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
+            std::time::Duration::ZERO,
+            || false
+        ),
+        Err(crate::RemoteDspError::Stopped)
+    ));
+}
+
+#[test]
+fn remote_dsp_recaptures_a_revised_generation_without_overwriting_tuner_settings() {
+    let (mut runtime, mut control) = runtime(40);
+    runtime.start().unwrap();
+    let mut dsp = crate::RemoteDspControl::new();
+    let port = dsp.port();
+    let (waiting, wait) = std::sync::mpsc::sync_channel(1);
+    let (release, released) = std::sync::mpsc::sync_channel(1);
+    let worker = std::thread::spawn(move || {
+        let mut first = Some((waiting, released));
+        port.apply(
+            remote_dsp_target(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
+            std::time::Duration::from_secs(2),
+            || {
+                if let Some((waiting, released)) = first.take() {
+                    waiting.send(()).unwrap();
+                    released.recv().unwrap();
+                }
+                false
+            },
+        )
+    });
+    wait.recv_timeout(std::time::Duration::from_secs(1))
+        .unwrap();
+    dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+    let mut changed = control.plan().configuration().clone();
+    changed.voice_telemetry.output_gain_db = -3.0;
+    let candidate = StationPlan::new("usb", changed, control.plan().transport(), 41, 960).unwrap();
+    let update = runtime
+        .prepare_update(&control, candidate, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    remote_dsp_render(&mut runtime, true);
+    runtime.finish_update(&mut control, true).unwrap();
+    release.send(()).unwrap();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !worker.is_finished() {
+        assert!(std::time::Instant::now() < deadline);
+        dsp.pump(&mut runtime, &mut control, &factory(), radio_provider());
+        remote_dsp_render(&mut runtime, true);
+        std::thread::yield_now();
+    }
+    assert!(worker.join().unwrap().is_ok());
+    assert_eq!(
+        control
+            .plan()
+            .configuration()
+            .voice_telemetry
+            .output_gain_db,
+        -3.0
+    );
+}
+
+#[test]
+fn remote_hardware_signals_preserve_gpio_and_require_selected_ptt_confirmation() {
+    let state = SharedHardwareState::default();
+    let gpio = HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        physical_ptt: true,
+        ..HardwareInputs::default()
+    };
+    state.publish_inputs(gpio);
+    assert!(state.transmit_controls().physical_ptt_applied);
+    assert_eq!(state.receive_controls().external_carrier, None);
+    for observed in [None, Some(false), Some(true)] {
+        let signals = RemoteHardwareSignals {
+            carrier: observed,
+            ptt_selected: true,
+            physical_ptt: observed,
+        };
+        state.publish_remote_signals(signals);
+        assert_eq!(state.remote_signals(), signals);
+        assert_eq!(state.inputs(), gpio);
+        assert_eq!(state.receive_controls().external_carrier, observed);
+        assert!(state.receive_controls().hardware_subaudible);
+        assert!(!state.receive_controls().subaudible_override);
+        assert_eq!(
+            state.transmit_controls().physical_ptt_applied,
+            observed == Some(true)
+        );
+    }
+    state.publish_remote_signals(RemoteHardwareSignals::default());
+    assert!(state.transmit_controls().physical_ptt_applied);
+}
+
+#[test]
+fn remote_radio_plan_update_preserves_physical_and_processing_ownership() {
+    for transport in [
+        crate::ControllerTransport::AppRpt,
+        crate::ControllerTransport::RptAdvanced,
+    ] {
+        let (plan, _) = prepared(transport, 24).into_parts();
+        let mut exact = plan.processing().clone();
+        exact.local = None;
+        exact.receive_graph = "highpass=f=60".to_owned();
+        exact.transmit_graph = "volume=-2dB".to_owned();
+        let original = plan.with_explicit_processing(exact);
+        let mut configuration = original.configuration().clone();
+        configuration.station.ctcss.receive_frequencies.clear();
+        let mut radio = *original.radio();
+        radio.generation_id += 1;
+        radio.receive.signaling = usbradioplus_radio::ReceiveSignaling::Disabled;
+        let next = original
+            .clone()
+            .with_radio_configuration(configuration.clone(), radio);
+        assert_eq!(next.configuration(), &configuration);
+        assert_eq!(next.radio(), &radio);
+        assert_eq!(next.channel(), original.channel());
+        assert_eq!(next.transport(), original.transport());
+        assert_eq!(next.hardware(), original.hardware());
+        assert_eq!(next.program_ring(), original.program_ring());
+        assert_eq!(next.processing(), original.processing());
+    }
+}
+
 use std::cell::Cell;
 use std::ffi::{c_char, c_int, c_void};
 use std::mem::size_of;
@@ -51,11 +328,12 @@ fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
     }
     let callbacks = crate::DirectCallbacks {
         struct_size: size_of::<crate::DirectCallbacks>() as u32,
-        abi_version: 3,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
         receive_context: ptr::from_mut(&mut received).cast(),
         receive: Some(receive),
         transmit_context: ptr::from_mut(&mut transmitted).cast(),
         transmit: Some(transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: callback storage outlives the synchronous runtime below.
@@ -83,6 +361,7 @@ fn native_media_rejects_an_incompatible_direct_callback_descriptor() {
         receive: Some(direct_receive),
         transmit_context: ptr::null_mut(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     assert!(matches!(
@@ -113,6 +392,7 @@ fn native_planned_media_rejects_mismatched_radio_before_audio_open() {
         receive: Some(direct_receive),
         transmit_context: ptr::null_mut(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: rejection occurs before either direct callback can be invoked.
@@ -149,11 +429,12 @@ fn native_failed_render_and_oversized_callback_clear_key_and_output() {
         };
         let callbacks = crate::DirectCallbacks {
             struct_size: size_of::<crate::DirectCallbacks>() as u32,
-            abi_version: 3,
+            abi_version: crate::DirectCallbacks::ABI_VERSION,
             receive_context: ptr::from_mut(&mut capture).cast(),
             receive: Some(direct_receive),
             transmit_context: ptr::from_mut(&mut capture).cast(),
             transmit: Some(direct_transmit),
+            metadata: None,
             accepted_abi_version: 0,
         };
         // SAFETY: this serial fixture retains callback storage through runtime teardown.
@@ -214,6 +495,7 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: capture remains live through the stopped runtime's synchronous callback.
@@ -223,6 +505,7 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
     .unwrap();
     let (runtime, _control) =
         StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    runtime.hardware.publish_transmit_intent(true, false, false);
     let mut output = [1.0; 8];
     assert_eq!(
         // SAFETY: the stopped runtime owns the live context and exact stereo span.
@@ -239,6 +522,7 @@ fn native_direct_transmit_failure_immediately_silences_and_unkeys() {
     assert_eq!(output, [0.0; 8]);
     assert!(!runtime.hardware.outputs().logical_ptt);
     assert_eq!(runtime.hardware.callback_statistics().transmit_failures, 1);
+    assert!(!runtime.hardware.remote_activity().transmit_requested);
 }
 
 #[test]
@@ -254,6 +538,7 @@ fn native_manual_key_and_ctcss_intent_survive_direct_controller_results() {
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: capture stays live until the stopped runtime is destroyed.
@@ -357,6 +642,7 @@ fn native_planned_updates_share_acknowledgments_rollback_and_stream_ownership() 
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     // SAFETY: callback capture outlives synchronous stream shutdown.
@@ -450,7 +736,7 @@ fn stopped_pending_update_drains_both_owners_before_rollback_and_restart() {
 
 impl StationRuntime {
     // Tests have no delivery task; join the production snapshot/preparation steps.
-    fn prepare_update(
+    pub(crate) fn prepare_update(
         &self,
         control: &StationControlHost,
         plan: StationPlan,
@@ -751,7 +1037,7 @@ fn selected(prepared: &crate::PreparedStation, maximum: u32) -> SelectedHardware
         .hardware()
         .select(
             &SelectedDevice {
-                interface_path: "3-1:1.0".to_owned(),
+                interface_path: Some("3-1:1.0".to_owned()),
                 serial: None,
                 alsa_card_index: 1,
                 input_device_index: 2,
@@ -764,7 +1050,7 @@ fn selected(prepared: &crate::PreparedStation, maximum: u32) -> SelectedHardware
         .unwrap()
 }
 
-fn runtime(generation: u64) -> (StationRuntime, StationControlHost) {
+pub(crate) fn runtime(generation: u64) -> (StationRuntime, StationControlHost) {
     let prepared = prepared(crate::ControllerTransport::RptAdvanced, generation);
     let selected = selected(&prepared, ADVANCED_FRAME_SAMPLES as u32);
     let media = prepared
@@ -1175,6 +1461,22 @@ fn failed_update_preparation_and_incompatible_stream_leave_active_plan_untouched
         runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
         Err(crate::StationUpdateError::Incompatible)
     ));
+    let document = usbradioplus_core::ConfigDocument::new(
+        "[remote_base usb]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\n[remote_memory usb local]\nselector=1\nrx_frequency_hz=146520000\nmode=FM\n",
+    );
+    let definition = usbradioplus_core::ResolvedRemoteConfiguration::from_document(
+        &document,
+        "test",
+        "usb",
+        &original.configuration().station,
+    )
+    .unwrap()
+    .unwrap();
+    let incompatible = original.clone().with_remote_configuration(Some(definition));
+    assert!(matches!(
+        runtime.prepare_update(&control, incompatible, &factory(), radio_provider()),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
     assert_eq!(control.plan(), &original);
 }
 
@@ -1271,6 +1573,186 @@ fn shared_hardware_state_round_trips_complete_atomic_snapshots() {
 }
 
 #[test]
+fn remote_radio_admission_keeps_requested_edges_separate_from_rendered_tails() {
+    let state = SharedHardwareState::default();
+    assert!(!state.remote_control().enabled);
+    assert_eq!(state.remote_activity().transmit_epoch, 0);
+    for (requested, epoch) in [(true, 1), (true, 1), (false, 1), (true, 2)] {
+        state.publish_transmit_intent(requested, false, false);
+        let activity = state.remote_activity();
+        assert_eq!(activity.transmit_requested, requested);
+        assert_eq!(activity.transmit_epoch, epoch);
+    }
+    state.publish_transmit_result(transmit_result(false, 0));
+    assert!(state.remote_activity().transmit_requested);
+    let control = RemoteRadioControl {
+        enabled: true,
+        receive_permitted: false,
+        transmit_permitted: false,
+        non_fm: true,
+        local_unqualified_open: true,
+    };
+    state.publish_remote_control(control);
+    assert_eq!(state.remote_control(), control);
+    state.publish_receiver_keyed(true);
+    assert!(state.remote_activity().local_receiving);
+}
+
+#[test]
+fn remote_tune_intent_does_not_overwrite_controller_or_tuner_requests() {
+    let state = SharedHardwareState::default();
+    state.publish_remote_tune(true);
+    assert!(state.transmit_controls().external_ptt_request);
+    assert!(state.transmit_controls().calibrated_test_tone);
+    assert!(state.transmit_controls().render_admitted);
+    assert_eq!(state.requests(), ControllerRequests::default());
+    let requests = ControllerRequests {
+        transmit: true,
+        ctcss_inhibit: true,
+        calibrated_test_tone: true,
+        ..ControllerRequests::default()
+    };
+    state.publish_requests(requests);
+    state.publish_remote_tune(false);
+    assert_eq!(state.requests(), requests);
+    assert!(state.transmit_controls().external_ptt_request);
+    assert!(state.transmit_controls().calibrated_test_tone);
+    assert!(state.transmit_controls().ctcss_inhibit);
+    state.publish_requests(ControllerRequests::default());
+    assert!(!state.transmit_controls().external_ptt_request);
+    assert!(!state.transmit_controls().calibrated_test_tone);
+}
+
+#[test]
+fn remote_radio_callback_inhibition_mutes_routes_without_hiding_raw_activity() {
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut capture = DirectCapture {
+        tx_keyed: 1,
+        ctcss_enabled: 1,
+        metadata_source: 1,
+        ..DirectCapture::default()
+    };
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        metadata: Some(direct_metadata),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: capture outlives these serial callbacks and synchronous teardown.
+    let media = unsafe {
+        crate::NativeStationMedia::prepare(*plan.radio(), processing, radio_provider(), callbacks)
+    }
+    .unwrap();
+    let (runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    runtime.hardware.publish_remote_control(RemoteRadioControl {
+        enabled: true,
+        receive_permitted: false,
+        transmit_permitted: false,
+        non_fm: true,
+        local_unqualified_open: false,
+    });
+    runtime.hardware.publish_inputs(HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        ..HardwareInputs::default()
+    });
+    let input = [0.5_f32; 8];
+    assert_eq!(
+        // SAFETY: the stopped runtime owns the context and exact stereo input span.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 4) },
+        CALLBACK_OK
+    );
+    assert_eq!(capture.keyed, 0);
+    assert_eq!(capture.samples, [0.0; 4]);
+    assert!(runtime.hardware.remote_activity().local_receiving);
+    let mut output = [0.5_f32; 8];
+    assert_eq!(
+        // SAFETY: the stopped runtime owns the context and exact stereo output span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_OK
+    );
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.outputs().logical_ptt);
+    assert!(runtime.hardware.remote_activity().transmit_requested);
+    assert_eq!(runtime.hardware.remote_activity().transmit_epoch, 1);
+    assert_eq!(capture.metadata_flags, 9);
+    assert!(runtime.hardware.remote_activity().linked_receiving);
+    assert!(runtime.hardware.remote_activity().ctcss_requested);
+    runtime.hardware.publish_remote_control(RemoteRadioControl {
+        enabled: true,
+        receive_permitted: true,
+        transmit_permitted: true,
+        ..Default::default()
+    });
+    assert_eq!(
+        // SAFETY: the stopped runtime owns this RX context and complete input span.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), input.as_ptr(), 4) },
+        CALLBACK_OK
+    );
+    assert_eq!(capture.keyed, 1);
+    assert_eq!(capture.samples, [0.5; 4]);
+    capture.tx_keyed = 0;
+    assert_eq!(
+        // SAFETY: the stopped runtime owns this TX context and complete output span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_OK
+    );
+    assert_eq!(output, [0.0; 8], "a new permitted key must admit the burst");
+    assert!(!runtime.hardware.outputs().logical_ptt);
+    capture.tx_keyed = 1;
+    // SAFETY: the same stopped runtime owns this callback and complete output span.
+    let permitted = unsafe {
+        transmit_callback(
+            runtime._transmit_context.get().cast(),
+            output.as_mut_ptr(),
+            4,
+        )
+    };
+    assert_eq!(permitted, CALLBACK_OK);
+    assert_eq!(output, [-0.375; 8]);
+    let calls = capture.transmit_calls;
+    capture.metadata_source = 2;
+    output.fill(1.0);
+    assert_eq!(
+        // SAFETY: the stopped runtime retains this TX context and writable stereo span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                4,
+            )
+        },
+        CALLBACK_FAILED,
+    );
+    assert_eq!(
+        capture.transmit_calls, calls,
+        "invalid metadata never enters audio rendering"
+    );
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.remote_activity().ctcss_requested);
+    assert!(!runtime.hardware.remote_activity().linked_receiving);
+}
+
+#[test]
 fn receive_observation_waits_for_an_in_progress_publication() {
     use std::thread;
     use std::time::Duration;
@@ -1306,6 +1788,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
     STOPS.set(0);
     DESTROYS.set(0);
     let (mut runtime, mut control) = runtime(20);
+    assert!(!runtime.running());
     let hardware = runtime.hardware_state();
     assert_eq!(control.hardware_state().inputs(), HardwareInputs::default());
     hardware.publish_inputs(HardwareInputs {
@@ -1322,6 +1805,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
 
     runtime.start().unwrap();
     runtime.start().unwrap();
+    assert!(runtime.running());
     assert_eq!(STARTS.get(), 1);
     assert_eq!(f32::from_bits(OUTPUT_SAMPLE.get()), 0.25);
     assert_eq!(hardware.receive_observation().input_peak, 0.5);
@@ -1360,6 +1844,7 @@ fn runtime_runs_separate_callbacks_and_exposes_lifecycle_and_observation() {
     assert_eq!(runtime.timing().unwrap().output_latency_seconds, 0.02);
     runtime.stop().unwrap();
     runtime.stop().unwrap();
+    assert!(!runtime.running());
     assert_eq!(STOPS.get(), 1);
     runtime.suspend().unwrap();
     runtime.suspend().unwrap();
@@ -1393,6 +1878,25 @@ struct DirectCapture {
     tx_status: c_int,
     receive_calls: u32,
     transmit_calls: u32,
+    metadata_flags: u32,
+    metadata_source: u32,
+    metadata_calls: u32,
+    fail_metadata_after: u32,
+}
+
+unsafe extern "C" fn direct_metadata(context: *mut c_void, flags: u32, source: *mut u32) -> c_int {
+    // SAFETY: the test retains this exclusive TX context and writable output.
+    unsafe {
+        let capture = &mut *context.cast::<DirectCapture>();
+        capture.metadata_flags = flags;
+        capture.metadata_calls += 1;
+        *source = capture.metadata_source;
+        if capture.fail_metadata_after != 0 && capture.metadata_calls > capture.fail_metadata_after
+        {
+            return -1;
+        }
+    }
+    0
 }
 
 unsafe extern "C" fn direct_receive(
@@ -1451,6 +1955,7 @@ fn direct_transmit_failure_or_invalid_key_immediately_silences_and_unkeys() {
             receive: Some(direct_receive),
             transmit_context: ptr::from_mut(&mut capture).cast(),
             transmit: Some(direct_transmit),
+            metadata: None,
             accepted_abi_version: 0,
         };
         // SAFETY: the context outlives the runtime and calls below are serial.
@@ -1517,6 +2022,7 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
         receive: Some(direct_receive),
         transmit_context: ptr::from_mut(&mut capture).cast(),
         transmit: Some(direct_transmit),
+        metadata: None,
         accepted_abi_version: 0,
     };
     let mut legacy = prepared(crate::ControllerTransport::AppRpt, 25)
@@ -1955,4 +2461,43 @@ fn metadata_omits_voter_status_when_it_is_not_reportable() {
         );
         assert_eq!(metadata.statuses, [None, None]);
     }
+}
+
+#[test]
+fn direct_remote_metadata_failure_after_render_silences_the_current_frame() {
+    let (mut media, selected) =
+        media_with_maximum(crate::ControllerTransport::RptAdvanced, 24, 960);
+    let mut capture = DirectCapture {
+        tx_keyed: 1,
+        ctcss_enabled: 1,
+        fail_metadata_after: 1,
+        ..Default::default()
+    };
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        metadata: Some(direct_metadata),
+        accepted_abi_version: 0,
+    };
+    // SAFETY: this stopped fixture retains the exclusive callback state until teardown.
+    unsafe { media.set_direct_callbacks(callbacks) }.unwrap();
+    let (runtime, _control) = StationRuntime::open(media, &selected, audio_provider()).unwrap();
+    let mut output = [1.0; 8];
+    // SAFETY: this test is the sole callback owner and lends a complete stereo span.
+    let result = unsafe {
+        transmit_callback(
+            runtime._transmit_context.get().cast(),
+            output.as_mut_ptr(),
+            4,
+        )
+    };
+    assert_eq!(result, CALLBACK_FAILED);
+    assert_eq!(capture.transmit_calls, 1);
+    assert_eq!(capture.metadata_calls, 2);
+    assert_eq!(output, [0.0; 8]);
+    assert!(!runtime.hardware.outputs().logical_ptt);
 }
