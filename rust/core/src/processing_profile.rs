@@ -138,7 +138,7 @@ impl Default for Agc {
             target_lufs: -23.0,
             max_gain_db: 6.0,
             max_attenuation_db: 6.0,
-            loudness_window_ms: 400.0,
+            loudness_window_ms: 3_000.0,
             gain_increase_db_per_second: 2.0,
             gain_decrease_db_per_second: 6.0,
             activity_threshold_dbfs: -50.0,

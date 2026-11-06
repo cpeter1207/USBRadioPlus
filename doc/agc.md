@@ -10,12 +10,13 @@ or low-pass filters, and hardware gain settings are unchanged.
 ## Settings and timing
 
 `agc_loudness_window_ms` selects a 400-3000 ms measurement window; its default
-is 400 ms. A fresh complete window is required on activation or renewed
-activity before gain can change. Increasing gain then requires continuously
-active audio below target minus the deadband for `agc_hold_ms`, default
+is 3000 ms. The rolling analysis advances with each delivered sample, using
+zero during inactivity. Renewed activity preserves the measurement history.
+A complete initial window is required after activation, a new instance, or
+a window change before gain can change. Increasing gain then requires
+continuously active audio below target minus the deadband for `agc_hold_ms`, default
 500 ms. Inactivity, a reduction request, or return to the deadband restarts
-that qualification. Reductions require a fresh measurement but do not wait
-for the gain-increase hold.
+that qualification. Reductions do not wait for the gain-increase hold.
 
 The default rates are 2 dB/s for increases and 6 dB/s for reductions, with
 6 dB maximum boost, 6 dB maximum attenuation, and a 1 dB deadband. The gain
@@ -40,20 +41,58 @@ hold, rate, and deadband settings also affect convergence. Compare
 representative speech and pauses at matched loudness, and measure the full
 output independently.
 
-AGC is not a true-peak limiter and does not itself guarantee a -1 dBTP
-ceiling. Compressor and limiter stages remain separate; verify the required
-peak protection independently. Automated checks cover the LADSPA host
+Average-level control and final peak protection are separate stages.
+Automated checks cover the LADSPA host
 contract, K-weighted gain response against independent FFmpeg measurements,
 gain bounds and rates, silence, reacquisition, malformed controls, in-place
 processing, block boundaries, and callback allocations. Listening, hardware
 checks, and final RF-path measurements remain necessary.
+
+## Integrated output meter and final limiter
+
+The `[voice_telemetry]` profile controls the full mixed transmitter program.
+These options add an independent output meter and oversampling around its
+existing final limiter:
+
+```ini
+[voice_telemetry]
+loudness_meter_enabled = yes
+lookahead_limiter_enabled = yes
+lookahead_limiter_oversample = 4
+lookahead_limiter_ceiling_dbfs = -2
+```
+
+The meter observes final graph output, including the audible handoff mix,
+before calibration/test signals, CTCSS/DCS, and hardware mixer scaling. It
+reports gated integrated loudness and maximum true peak without controlling
+the AGC or changing audio. Silence advances the measurement; pauses retain
+its history. Read `transmit_integrated_lufs`, `transmit_true_peak_dbtp`,
+`transmit_loudness_epoch`, `transmit_loudness_sample_count`, and
+`transmit_loudness_valid` in processing statistics. Values remain unmeasured
+until at least 400 ms of output have been observed. An unchanged transmitter
+graph retains its epoch on reload; changing that graph or toggling the meter
+starts a new epoch. Setup warmup is excluded.
+
+The optional bandpass follows the main dynamics stages and precedes final
+lookahead limiting. All graph gain and preemphasis also precede that limiter.
+Oversampling accepts 1, 2, or 4; the default 4 processes the native 48 kHz
+program at 192 kHz and returns it to 48 kHz. The ceiling remains an internal
+sample ceiling in dBFS, with a general default of -3 dBFS. The example's
+-2 dBFS setting leaves headroom for reconstruction after downsampling.
+Independent final-output tests cover intersample peaks, square waves, and
+noise against the -1 dBTP reference. Measure the actual output when changing
+the ceiling or oversampling; 1 disables oversampling.
+
+The integrated meter uses BS.1770's gated measurement, including its 400 ms
+gating blocks. This is independent of the AGC's three-second rolling window.
+The meter and limiter reference the digital program, not the final RF waveform.
 
 ## Migration
 
 Replace `agc_target_dbfs` with `agc_target_lufs` and
 `agc_rms_averaging_ms` with `agc_loudness_window_ms`; these are different
 measurements, not aliases with renamed units. Start from the new -23 LUFS
-and 400 ms defaults, then verify the result. Remove
+and 3000 ms defaults, then verify the result. Remove
 `agc_sidechain_highpass_hz` and `agc_sidechain_lowpass_hz`. The old keys have
 no compatibility aliases.
 

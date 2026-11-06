@@ -200,20 +200,23 @@ fn disconnected_ports_defaults_and_reset() {
 }
 
 #[test]
-fn gain_law_caps_freezing_and_fresh_window_reduction() {
+fn gain_law_caps_freezing_and_continuous_window_reduction() {
     for rate in [8000, 16000, 48000] {
         let mut f = Fixture::new(rate);
         let r = rate as usize;
-        assert!((f.drive(r / 4, 0.01, 0.1) - 1.0).abs() < 1e-6);
-        // A complete 400 ms window precedes the continuous 500 ms boost hold.
-        let db = 20.0 * f.drive(r, 0.01, 0.1).log10();
-        assert!((0.6..0.8).contains(&db), "{rate} Hz: {db} dB");
+        assert!((f.drive(3 * r, 0.01, 0.1) - 1.0).abs() < 1e-6);
+        assert!((f.drive(2 * r / 5, 0.01, 0.1) - 1.0).abs() < 1e-6);
+        // The initial three-second window precedes the 500 ms active boost hold;
+        // 400 ms of subsequent gain increase at 2 dB/s yields approximately 0.8 dB.
+        let db = 20.0 * f.drive(r / 2, 0.01, 0.1).log10();
+        assert!((0.79..0.82).contains(&db), "{rate} Hz: {db} dB");
         assert!((20.0 * f.drive(4 * r, 0.01, 0.1).log10() - 6.0).abs() < 0.001);
         let frozen = f.drive(r, 0.0001, 0.1);
         assert_eq!(f.drive(2 * r, 0.0001, 0.1), frozen);
-        // Reopening waits 400 ms, then reduces by 6 dB/s for the remaining 100 ms.
+        // The continuous window sees the louder rekey within one 100 ms query;
+        // the remaining 400 ms reduces gain by approximately 2.4 dB at 6 dB/s.
         let db = 20.0 * f.drive(r / 2, 0.5, 0.1).log10();
-        assert!((5.3..5.5).contains(&db), "{rate} Hz: {db} dB");
+        assert!((3.5..3.7).contains(&db), "{rate} Hz: {db} dB");
         assert!((20.0 * f.drive(3 * r, 0.5, 0.1).log10() + 6.0).abs() < 0.001);
         f.controls[5] = 0.0;
         assert_eq!(f.drive(1, 0.5, 2.0), 1.0);
@@ -222,16 +225,15 @@ fn gain_law_caps_freezing_and_fresh_window_reduction() {
 }
 
 #[test]
-fn detector_independence_hysteresis_reacquisition_and_deadband() {
+fn detector_independence_hysteresis_and_deadband() {
     let mut f = Fixture::new(48000);
     f.controls[8] = 0.0;
     f.controls[4] = 30.0;
-    assert_eq!(f.drive(48000, 0.001, 4.0), 1.0);
+    assert_eq!(f.drive(3 * 48000, 0.001, 4.0), 1.0);
     let before = f.drive(24000, 0.006, 0.1);
     assert!(f.drive(24000, 0.004, 0.1) > before);
     let frozen = f.drive(48000, 0.001, 0.1);
     assert_eq!(f.drive(48000, 0.001, 0.1), frozen);
-    assert_eq!(f.drive(4800, 0.5, 0.1), frozen);
     assert!(f.drive(24000, 0.5, 0.1) < frozen);
     // SAFETY: Fixture owns its handle and has no concurrent run.
     unsafe {
@@ -243,6 +245,7 @@ fn detector_independence_hysteresis_reacquisition_and_deadband() {
 #[test]
 fn pauses_and_reductions_reset_continuous_hold() {
     let mut f = Fixture::new(8000);
+    assert!((f.drive(24000, 0.1, 0.1) - 1.0).abs() < 1e-6);
     for _ in 0..4 {
         assert!((f.drive(2000, 0.01, 0.1) - 1.0).abs() < 1e-6);
         assert!((f.drive(4000, 0.0001, 0.1) - 1.0).abs() < 1e-6);
@@ -264,7 +267,7 @@ fn malformed_controls_audio_and_overflow_recover() {
     assert_eq!(&f.output[..2], &[0.0, 0.0]);
     let mut f = Fixture::new(8000);
     f.controls[8] = 0.0;
-    assert!(f.drive(16000, 0.01, 0.1) > 1.0);
+    assert!(f.drive(32000, 0.01, 0.1) > 1.0);
     assert_eq!(f.drive(1, 0.01, f32::MAX), 0.0);
     assert!(f.drive(8000, f32::MAX, 0.1).is_finite());
     f.controls[4] = 0.0;
@@ -323,12 +326,43 @@ fn detector_output_aliasing_preserves_both_inputs() {
     }
 }
 #[test]
+fn three_second_window_ages_silence_without_rekey_acquisition() {
+    let mut f = Fixture::new(48000);
+    f.controls[1] = 3000.0;
+    f.controls[2] = 2.0;
+    f.controls[3] = 6.0;
+    f.controls[8] = 0.0;
+    let initial = f.drive(4 * 48000, 0.1, 0.1);
+    assert!((initial - 1.0).abs() < 1e-6);
+    let held = f.drive(48000, 0.0, 0.1);
+    assert_eq!(f.drive(48000, 0.0, 0.1), held);
+    assert_eq!(held, initial);
+    // The independent program probe reveals the applied gain while detector
+    // silence ages the same rolling window; it is not a new speech acquisition.
+    let rekeyed = f.drive(14400, 0.1, 0.1);
+    assert!(rekeyed > held * 1.005, "held={held}, rekeyed={rekeyed}");
+    assert!(20.0 * (rekeyed / held).log10() <= 0.601);
+}
+
+#[test]
+fn initial_three_second_acquisition_includes_inactive_samples() {
+    let mut f = Fixture::new(48000);
+    f.controls[1] = 3000.0;
+    f.controls[8] = 0.0;
+    assert_eq!(f.drive(48000, 0.01, 0.1), 1.0);
+    assert_eq!(f.drive(3 * 48000, 0.0, 0.1), 1.0);
+    let rekeyed = f.drive(9600, 0.01, 0.1);
+    assert!(rekeyed > 1.005, "rekeyed={rekeyed}");
+}
+
+#[test]
 fn lufs_requires_a_complete_fresh_window() {
+    assert_eq!(SPECS[1].2, 3000.0);
     let sample_rate = SampleRate::new(48000u32).unwrap();
     let settings = Settings::from_ports([None; CONTROL_COUNT]);
     let mut gain_rider = GainRider::new(sample_rate);
     gain_rider.configure(settings);
-    for index in 0..19152 {
+    for index in 0..143999 {
         let detector = 0.5 * f32::sin(std::f32::consts::TAU * 1000.0 * index as f32 / 48000.0);
         let output = gain_rider.process(0.25, detector);
         assert_eq!(output, 0.25);
@@ -336,10 +370,11 @@ fn lufs_requires_a_complete_fresh_window() {
 }
 
 #[test]
-fn lufs_controls_and_long_window_reacquisition() {
+fn lufs_controls_and_window_change_reacquisition() {
     assert_eq!(SPECS[0].2, -23.0);
-    assert_eq!(SPECS[1], (400.0, 3000.0, 400.0));
+    assert_eq!(SPECS[1], (400.0, 3000.0, 3000.0));
     let mut f = Fixture::new(48000);
+    f.controls[1] = 400.0;
     f.controls[8] = 0.0;
     let before = f.drive(48000, 0.01, 0.1);
     assert!(before > 1.0);

@@ -867,21 +867,21 @@ fn transmit_meter_epoch_follows_transmit_graph_and_enable_state() {
     let first = original.transmit_loudness().unwrap();
     let mut receive_plan = original_plan.clone();
     receive_plan.local.input_gain_db += 1.0;
-    // SAFETY: replacements stay with this test's original serial owners.
     let receive =
+        // SAFETY: replacements stay with this test's original serial owners.
         unsafe { factory().prepare_replacement(&receive_plan, &original_plan, &original) }.unwrap();
     assert_eq!(receive.transmit_loudness().unwrap().epoch, first.epoch);
     assert_eq!(receive.transmit_loudness().unwrap().sample_count, 960);
     let mut transmit_plan = receive_plan.clone();
     transmit_plan.voice_telemetry.input_gain_db += 1.0;
-    // SAFETY: same sole owners and matching preceding plan.
     let transmit =
+        // SAFETY: same sole owners and matching preceding plan.
         unsafe { factory().prepare_replacement(&transmit_plan, &receive_plan, &receive) }.unwrap();
     let changed = transmit.transmit_loudness().unwrap();
     assert_ne!(changed.epoch, first.epoch);
     assert_eq!(changed.sample_count, 0);
-    // SAFETY: this inverse immediately follows its matching forward update.
     let restored =
+        // SAFETY: this inverse immediately follows its matching forward update.
         unsafe { factory().prepare_restore(&receive_plan, &receive, &transmit) }.unwrap();
     assert_ne!(restored.transmit_loudness().unwrap().epoch, first.epoch);
     let mut disabled_plan = original_plan.clone();
@@ -889,8 +889,8 @@ fn transmit_meter_epoch_follows_transmit_graph_and_enable_state() {
         .voice_telemetry
         .transmit_tail
         .loudness_meter_enabled = false;
-    // SAFETY: toggling the observer preserves the same serial graph owner.
     let disabled =
+        // SAFETY: toggling the observer preserves the same serial graph owner.
         unsafe { factory().prepare_replacement(&disabled_plan, &original_plan, &original) }
             .unwrap();
     assert!(disabled.transmit_loudness().is_none());
@@ -898,13 +898,13 @@ fn transmit_meter_epoch_follows_transmit_graph_and_enable_state() {
         &disabled.transmit_program.0,
         &original.transmit_program.0
     ));
-    // SAFETY: rolling back the disable uses the same retained graph owner.
     let rollback =
+        // SAFETY: rolling back the disable uses the same retained graph owner.
         unsafe { factory().prepare_restore(&original_plan, &original, &disabled) }.unwrap();
     assert_ne!(rollback.transmit_loudness().unwrap().epoch, first.epoch);
     assert_eq!(rollback.transmit_loudness().unwrap().sample_count, 0);
-    // SAFETY: the original same-owner graph remains retained through the toggle.
     let reenabled =
+        // SAFETY: the original same-owner graph remains retained through the toggle.
         unsafe { factory().prepare_replacement(&original_plan, &disabled_plan, &disabled) }
             .unwrap();
     assert_ne!(reenabled.transmit_loudness().unwrap().epoch, first.epoch);
@@ -1149,8 +1149,8 @@ fn tiny_limiter_handoff_primes_the_resampled_filter_before_its_48_frame_fade() {
     }
     let mut changed = original_plan.clone();
     changed.voice_telemetry.output_gain_db = -6.020_599_913;
-    // SAFETY: both generations retain this test's original serial TX owner.
     let mut replacement =
+        // SAFETY: both generations retain this test's original serial TX owner.
         unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
     for frame in 0..(240 + 256) {
         assert_eq!(

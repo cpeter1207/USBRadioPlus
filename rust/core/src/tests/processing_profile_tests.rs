@@ -13,6 +13,9 @@ fn shipped_profiles_match_each_source_role() {
     assert_eq!(link.receive.pl_filter, PlFilter::Disabled);
     assert_eq!(transmit.input_gain_db, 6.0);
     assert_eq!(transmit.output_gain_db, 0.0);
+    assert_eq!(local.agc.loudness_window_ms, 3_000.0);
+    assert_eq!(link.agc.loudness_window_ms, 3_000.0);
+    assert_eq!(transmit.agc.loudness_window_ms, 3_000.0);
     assert_eq!(transmit.transmit_tail.oversample, 4);
     assert!(local.validate().is_ok());
     assert!(link.validate().is_ok());

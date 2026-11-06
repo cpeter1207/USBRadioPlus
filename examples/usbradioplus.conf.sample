@@ -297,8 +297,8 @@ agc_target_lufs = -23.0
 agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
-; Fresh loudness window, 400 through 3000 ms; adds no program audio buffering.
-agc_loudness_window_ms = 400.0
+; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
+agc_loudness_window_ms = 3000.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
@@ -308,7 +308,7 @@ agc_gain_decrease_db_per_second = 6.0
 agc_activity_threshold_dbfs = -50.0
 ; Activity closes below threshold minus this margin, 0 through 12 dB.
 agc_activity_hysteresis_db = 3.0
-; After a fresh loudness window, require sustained active audio below target
+; After the initial loudness window, require sustained active audio below target
 ; minus deadband before raising gain, 0 through 10000 ms. Pauses reset the wait.
 agc_hold_ms = 500.0
 ; Hold gain within this distance either side of target, 0 through 6 dB.
@@ -522,8 +522,8 @@ agc_target_lufs = -23.0
 agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
-; Fresh loudness window, 400 through 3000 ms; adds no program audio buffering.
-agc_loudness_window_ms = 400.0
+; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
+agc_loudness_window_ms = 3000.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
@@ -533,7 +533,7 @@ agc_gain_decrease_db_per_second = 6.0
 agc_activity_threshold_dbfs = -50.0
 ; Activity closes below threshold minus this margin, 0 through 12 dB.
 agc_activity_hysteresis_db = 3.0
-; After a fresh loudness window, require sustained active audio below target
+; After the initial loudness window, require sustained active audio below target
 ; minus deadband before raising gain, 0 through 10000 ms. Pauses reset the wait.
 agc_hold_ms = 500.0
 ; Hold gain within this distance either side of target, 0 through 6 dB.
@@ -655,7 +655,7 @@ enabled = yes
 ; Gain ahead of dynamics. The 6 dB default supplies normal composite-path gain.
 input_gain_db = 6.0
 ; Reorder the equalizer and dynamics stages. The fixed final limiter and
-; post-limiter brick-wall band-pass are not listed here. The de-esser runs immediately before
+; fixed transmitter band-pass are not listed here. The de-esser runs immediately before
 ; the compressor by default.
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band voice/telemetry tone control.
@@ -705,6 +705,10 @@ compressor_enabled = no
 limiter_enabled = no
 ; Enable or disable the fixed final limiter explicitly.
 lookahead_limiter_enabled = no
+; Final program integrated loudness and maximum true-peak diagnostics.
+loudness_meter_enabled = no
+; Final limiter oversampling: 1, 2, or 4; 4 gives 192 kHz at native 48 kHz.
+lookahead_limiter_oversample = 4
 ; Explicit final-limiter ceiling, -30 through -0.1 dBFS.
 lookahead_limiter_ceiling_dbfs = -3.0
 ; Lookahead, attack, and release times in milliseconds.
@@ -713,7 +717,7 @@ lookahead_limiter_lookahead_ms = 5.0
 lookahead_limiter_attack_ms = 1.0
 ; Final limiter release time in milliseconds.
 lookahead_limiter_release_ms = 100.0
-; Enable the fixed brick-wall band-pass after final limiting.
+; Band-pass after main dynamics and before final oversampled limiting.
 post_limiter_bandpass_enabled = no
 ; Lower band-pass cutoff, 0 through 300 Hz; 0 disables the lower edge.
 post_limiter_bandpass_highpass_hz = 0.0
@@ -743,8 +747,8 @@ agc_target_lufs = -23.0
 agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
-; Fresh loudness window, 400 through 3000 ms; adds no program audio buffering.
-agc_loudness_window_ms = 400.0
+; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
+agc_loudness_window_ms = 3000.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
@@ -754,7 +758,7 @@ agc_gain_decrease_db_per_second = 6.0
 agc_activity_threshold_dbfs = -50.0
 ; Activity closes below threshold minus this margin, 0 through 12 dB.
 agc_activity_hysteresis_db = 3.0
-; After a fresh loudness window, require sustained active audio below target
+; After the initial loudness window, require sustained active audio below target
 ; minus deadband before raising gain, 0 through 10000 ms. Pauses reset the wait.
 agc_hold_ms = 500.0
 ; Hold gain within this distance either side of target, 0 through 6 dB.

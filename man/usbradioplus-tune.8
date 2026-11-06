@@ -217,17 +217,18 @@ The Local receiver, Linked audio, and Voice + telemetry menus edit their
 separate processing chains. Each Stages menu enables or disables the available
 stages and edits the order of equalizer, expander, AGC, de-esser, compressor,
 and limiter. RNNoise, local receiver filters, the final limiter, and its
-post-limiter brick-wall band-pass are not reorderable. The local chain alone offers RNNoise
+fixed transmitter band-pass are not reorderable. The local chain alone offers RNNoise
 and CTCSS filtering; the voice/telemetry chain alone offers the final limiter
-and post-limiter brick-wall band-pass.
+and fixed transmitter band-pass.
 .PP
 The Compressor and Limiter pages each select single-band or three-band mode.
 Three-band mode uses low, mid, and high controls around configurable
 crossovers. The Equalizer and De-esser pages expose their respective parameters.
 The AGC page exposes its full-program LUFS target and 400-3000 ms loudness
-window, gain rates and limits, separate raw dBFS activity gate, hold, and
-deadband. A fresh loudness window precedes gain changes; boosts also require
-the configured hold. AGC does not buffer program audio or provide a
+window (default 3000 ms), gain rates and limits, separate raw dBFS activity
+gate, hold, and deadband. A complete initial window precedes gain changes;
+renewed activity preserves its history. Boosts also require the configured
+hold. AGC does not buffer program audio or provide a
 true-peak ceiling. See
 .BR usbradioplus.conf (5)
 for parameter definitions and ranges.
@@ -264,7 +265,7 @@ Controls are grouped by source and signaling system; configure a
 signaling system before selecting it for either direction.
 The local Filters page controls the receive band-pass and one PL-removal mode:
 disabled, high-pass, or automatic decoded-tone notch. The voice/telemetry
-Filters page controls the post-limiter brick-wall band-pass. The link chain has no fixed
+Filters page controls the fixed transmitter band-pass. The link chain has no fixed
 filter page.
 .PP
 Compressor and Limiter pages select single-band or three-band operation.

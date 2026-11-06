@@ -10,7 +10,7 @@ pub(crate) const CONTROL_COUNT: usize = 10;
 /// A control's finite range and fallback, matching the published LADSPA contract.
 pub(crate) const SPECS: [(f64, f64, f64); CONTROL_COUNT] = [
     (-40.0, -3.0, -23.0),
-    (400.0, 3000.0, 400.0),
+    (400.0, 3000.0, 3000.0),
     (0.1, 100.0, 2.0),
     (0.1, 100.0, 6.0),
     (0.0, 30.0, 6.0),
@@ -175,15 +175,12 @@ impl GainRider {
             }
         } else if self.fast_power >= self.opening_power {
             self.active = true;
-            self.meter.reset();
-            self.meter_phase = 0;
-            self.loudness = None;
-            self.acquisition_samples = self.controls[1] * f64::from(self.rate.0) / 1000.0;
         }
         if self.active {
             self.active_samples += 1.0;
-            self.measure_loudness(sample as f32);
         }
+        // Pauses age the same rolling window without reopening acquisition.
+        self.measure_loudness(if self.active { sample as f32 } else { 0.0 });
         self.phase += 1000;
         self.elapsed += 1;
         if self.phase >= self.rate.0 {

@@ -39,7 +39,7 @@ struct fixture {
 static void initialize_descriptor(struct fixture *fixture, unsigned long rate,
 				  const LADSPA_Descriptor *descriptor)
 {
-	static const float defaults[CONTROLS] = {-23, 400, 2, 6, 6, 6, -50, 3, 500, 1};
+	static const float defaults[CONTROLS] = {-23, 3000, 2, 6, 6, 6, -50, 3, 500, 1};
 	memset(fixture, 0, sizeof(*fixture));
 	fixture->descriptor = descriptor;
 	fixture->handle = fixture->descriptor->instantiate(fixture->descriptor, rate);
@@ -117,7 +117,6 @@ static void test_lufs_weighting(void)
 	initialize(&fixture, 48000);
 	fixture.frequency = 4000.0;
 	control(&fixture, USBRADIOPLUS_AGC_TARGET_LUFS, -23);
-	control(&fixture, USBRADIOPLUS_AGC_LOUDNESS_WINDOW_MS, 400);
 	control(&fixture, USBRADIOPLUS_AGC_INCREASE_DB_PER_SECOND, 100);
 	control(&fixture, USBRADIOPLUS_AGC_DECREASE_DB_PER_SECOND, 100);
 	control(&fixture, USBRADIOPLUS_AGC_MAX_BOOST_DB, 30);
@@ -175,21 +174,21 @@ static void test_gain_policy(unsigned long rate)
 	initialize(&fixture, rate);
 	/* An unreachable target still reaches the gain cap with a one-dB deadband. */
 	control(&fixture, USBRADIOPLUS_AGC_DEADBAND_DB, 1);
-	gain = drive(&fixture, rate / 4, 0.01F, 0.1F);
+	gain = drive(&fixture, 3 * rate, 0.01F, 0.1F);
+	assert(fabs(gain - 1.0) < 1e-6);
+	gain = drive(&fixture, 2 * rate / 5, 0.01F, 0.1F);
 	assert(fabs(gain - 1.0) < 1e-6);
 	gain = drive(&fixture, rate / 2, 0.01F, 0.1F);
-	assert(fabs(gain - 1.0) < 1e-6);
-	gain = drive(&fixture, rate / 2, 0.01F, 0.1F);
-	assert(20.0 * log10(gain) > 0.5 && 20.0 * log10(gain) < 0.9);
+	assert(20.0 * log10(gain) > 0.79 && 20.0 * log10(gain) < 0.82);
 	gain = drive(&fixture, 4 * rate, 0.01F, 0.1F);
 	assert(fabs(20.0 * log10(gain) - 6.0) < 0.001);
 	/* Inactivity holds the last gain; it does not lift receiver noise between words. */
 	frozen = drive(&fixture, rate, 0.0001F, 0.1F);
 	gain = drive(&fixture, 2 * rate, 0.0001F, 0.1F);
 	assert(gain == frozen);
-	/* A fresh loudness window permits reduction without the gain-increase hold. */
+	/* The continuous window sees the louder rekey within its 100 ms query cadence. */
 	gain = drive(&fixture, rate / 2, 0.5F, 0.1F);
-	assert(20.0 * log10(gain) < 5.6 && 20.0 * log10(gain) > 5.2);
+	assert(20.0 * log10(gain) < 3.7 && 20.0 * log10(gain) > 3.5);
 	gain = drive(&fixture, 3 * rate, 0.5F, 0.1F);
 	assert(fabs(20.0 * log10(gain) + 6.0) < 0.001);
 	/* A tightened configured gain cap is honored, without clipping the program. */
@@ -199,7 +198,7 @@ static void test_gain_policy(unsigned long rate)
 	fixture.descriptor->cleanup(fixture.handle);
 }
 
-/** @brief Verify detector independence, hysteresis, deadband and reacquisition protection. */
+/** @brief Verify detector independence, hysteresis, deadband and continuous history. */
 static void test_activity_and_detector(void)
 {
 	struct fixture fixture;
@@ -209,7 +208,7 @@ static void test_activity_and_detector(void)
 	control(&fixture, USBRADIOPLUS_AGC_HOLD_MS, 0);
 	control(&fixture, USBRADIOPLUS_AGC_MAX_BOOST_DB, 30);
 	/* Loud program with quiet detector does not affect gain or invoke a limiter. */
-	assert(drive(&fixture, 48000, 0.001F, 4.0F) == 1.0);
+	assert(drive(&fixture, 3 * 48000, 0.001F, 4.0F) == 1.0);
 	previous = drive(&fixture, 24000, 0.006F, 0.1F);
 	/* A -52 dBFS sine remains active after opening above -50 dBFS. */
 	gain = drive(&fixture, 24000, 0.0035F, 0.1F);
@@ -217,10 +216,8 @@ static void test_activity_and_detector(void)
 	previous = drive(&fixture, 48000, 0.001F, 0.1F);
 	gain = drive(&fixture, 48000, 0.001F, 0.1F);
 	assert(gain == previous);
-	/* Reacquisition holds gain until a full new loudness window is ready. */
-	gain = drive(&fixture, 4800, 0.5F, 0.1F);
-	assert(gain == previous);
-	gain = drive(&fixture, 48000, 0.5F, 0.1F);
+	/* A louder rekey uses the retained three-second window without fresh acquisition. */
+	gain = drive(&fixture, 24000, 0.5F, 0.1F);
 	assert(gain < previous);
 	fixture.descriptor->activate(fixture.handle);
 	control(&fixture, USBRADIOPLUS_AGC_DEADBAND_DB, 1);
@@ -236,6 +233,7 @@ static void test_hold_resets(void)
 	double before;
 	double after;
 	initialize(&fixture, 8000);
+	assert(fabs(drive(&fixture, 24000, 0.1F, 0.1F) - 1.0) < 1e-6);
 	for (unsigned int iteration = 0; iteration < 4; ++iteration) {
 		assert(fabs(drive(&fixture, 2000, 0.01F, 0.1F) - 1.0) < 1e-6);
 		assert(fabs(drive(&fixture, 4000, 0.0001F, 0.1F) - 1.0) < 1e-6);
@@ -271,7 +269,7 @@ static void test_invalid_and_runtime_controls(void)
 	fixture.descriptor->cleanup(fixture.handle);
 	initialize(&fixture, 8000);
 	control(&fixture, USBRADIOPLUS_AGC_HOLD_MS, 0);
-	gain = drive(&fixture, 16000, 0.01F, 0.1F);
+	gain = drive(&fixture, 32000, 0.01F, 0.1F);
 	assert(gain > 1.0);
 	fixture.program[0] = FLT_MAX;
 	fixture.detector[0] = 0.01F;

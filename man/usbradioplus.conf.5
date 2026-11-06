@@ -587,8 +587,10 @@ the last gain without muting or resetting gain to unity. Existing compressor
 and limiter stages remain separate; AGC is not a true-peak limiter and does
 not itself guarantee a -1 dBTP ceiling.
 .PP
-A fresh complete loudness window is required on activation or renewed
-activity. Short transmissions and configured gain limits can prevent
+A complete initial loudness window is required after activation, a new
+instance, or a window change. Analysis advances with each delivered sample,
+using zero during inactivity; renewed activity preserves the history.
+Short transmissions and configured gain limits can prevent
 convergence to the target; this causal rider does not guarantee exact
 integrated program loudness. Verify representative output independently.
 .TP
@@ -606,8 +608,9 @@ Limit gain applied to active weak audio. Default is 6 dB.
 Limit attenuation applied to active strong audio. Default is 6 dB.
 .TP
 .B agc_loudness_window_ms = 400..3000
-Set the loudness measurement window. Default is 400 ms. A complete fresh
-window is required before gain changes; this does not delay program audio.
+Set the rolling loudness measurement window. Default is 3000 ms. A complete
+initial window is required before gain changes; this does not delay program
+audio. Inactivity advances the window without resetting its history.
 .TP
 .B agc_gain_increase_db_per_second = 0.1..100
 Limit how quickly gain rises after a fresh measurement and the hold interval.
@@ -627,7 +630,7 @@ audio or resetting gain to unity. This gate is not the LUFS target.
 Set the activity detector's closing margin. Default is 3 dB.
 .TP
 .B agc_hold_ms = 0..10000
-After a complete fresh loudness window, require continuously active audio
+After a complete initial loudness window, require continuously active audio
 below target minus deadband for this long before increasing gain. Inactivity,
 gain reduction, or return to the deadband restarts the wait. This does not
 add a hold to gain reduction. Default is 500 ms.
@@ -863,12 +866,27 @@ Set high-band release. Default is 25 ms.
 These options apply only to [voice_telemetry]. They do not belong in
 stage_order and run in a fixed transmitter-tail order.
 .TP
+.B loudness_meter_enabled = yes|no
+Measure final mono program output with gated integrated LUFS and maximum
+true peak. Default is no. The meter follows the audible graph handoff mix,
+before calibration signals, access tones, and hardware mixer scaling.
+Processing statistics report the meter epoch, sample count, validity,
+transmit_integrated_lufs, and transmit_true_peak_dbtp. Initial readings need
+at least 400 ms; silence retains history. Unchanged transmitter graphs retain
+history across reloads; graph changes or meter re-enabling start a new epoch.
+.TP
 .B lookahead_limiter_enabled = yes|no
 Enable or explicitly disable the final limiter. When omitted, the channel
 transmit limiter settings determine whether it runs and its ceiling.
 .TP
 .B lookahead_limiter_ceiling_dbfs = -30..-0.1
 Set the final-limiter ceiling. Default is -3 dBFS.
+.TP
+.B lookahead_limiter_oversample = 1|2|4
+Set final-limiter oversampling. Default is 4, giving 192 kHz limiting followed
+by a return to 48 kHz on the native path. One disables oversampling. The
+ceiling remains the internal sample ceiling; -2 dBFS provides reconstruction
+headroom for the -1 dBTP reference. Check true peak after downsampling.
 .TP
 .B lookahead_limiter_lookahead_ms = 0.1..20
 Set final-limiter lookahead. Default is 5 ms.
@@ -880,7 +898,8 @@ Set limiter attack. Default is 1 ms.
 Set limiter release. Default is 100 ms.
 .TP
 .B post_limiter_bandpass_enabled = yes|no
-Enable the fixed brick-wall band-pass after final limiting. Default is no.
+Enable the fixed band-pass after the main dynamics stages and before the
+final oversampled lookahead limiter. Default is no.
 .TP
 .B post_limiter_bandpass_highpass_hz = 0..300
 Set the post-limiter band-pass low-frequency cutoff. Zero disables the lower
@@ -907,7 +926,8 @@ reports processed, bypassed, and failed link blocks. Link processing never
 asserts or releases PTT.
 .PP
 The transmitter combines voice and telemetry, applies the voice/telemetry
-dynamics graph, and then applies its fixed filtering and peak-control tail.
+dynamics graph, preemphasis and output gain, optional band-pass, final
+oversampled lookahead limiter, and optional output meter.
 .SH EXAMPLE
 .nf
 [usb]
