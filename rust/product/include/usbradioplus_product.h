@@ -543,7 +543,7 @@ typedef struct UrpAstChannelReserveArgs {
 } UrpAstChannelReserveArgs;
 
 /** Exact native PCM/metadata callback contract shared by every host adapter. */
-#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION UINT32_C(5)
+#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION 5U
 
 /** Borrowed exact-frame native callbacks, independent of Asterisk frame queues. */
 typedef struct UrpAstDirectCallbacks {

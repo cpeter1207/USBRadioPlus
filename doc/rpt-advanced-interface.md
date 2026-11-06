@@ -7,8 +7,8 @@ own USB access, signaling, and FFmpeg processing. Ordinary `RadioPlus` uses the
 
 The current rpt_advanced controller attaches direct callbacks through
 `ast_channel_setoption` before channel startup. The descriptor must match
-`URP_AST_DIRECT_CALLBACKS_ABI_VERSION` 3; the host acknowledges the retained
-attachment by setting `accepted_abi_version` to 3. Channel availability alone
+`URP_AST_DIRECT_CALLBACKS_ABI_VERSION` 5; the host acknowledges the retained
+attachment by setting `accepted_abi_version` to 5. Channel availability alone
 does not prove that a provider supports this contract.
 
 Direct callbacks exchange mutable normalized mono F32 at 48,000 samples per
