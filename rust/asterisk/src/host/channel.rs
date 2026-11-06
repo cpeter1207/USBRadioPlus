@@ -1634,6 +1634,13 @@ pub(super) fn read_status(channel: &Channel, output: &mut UrpAstChannelStatus) -
     }
 }
 
+pub(super) fn processing_status_text(channel: &Channel) -> Result<String, i32> {
+    match channel.control(ControlOperation::ProcessingText) {
+        ControlResult::ProcessingText(URP_AST_OK, text) => String::from_utf8(text).map_err(|_| URP_AST_ASTERISK_FAILURE),
+        result => Err(result.status()),
+    }
+}
+
 pub(super) fn configure_pending_jitter(channel: &Channel) {
     // SAFETY: the caller retains channel ownership through synchronous setup.
     let _ = apply_pending_jitter(&channel.jitter_pending, || unsafe {

@@ -12,6 +12,7 @@ pub mod remote_operation;
 mod channel_configuration;
 mod config_document;
 mod ffmpeg_graph;
+mod loudness_meter;
 mod native_configuration;
 mod native_stream;
 mod processing_profile;
@@ -30,6 +31,9 @@ pub use channel_configuration::{
 };
 pub use config_document::{ConfigDocument, ConfigError};
 pub use ffmpeg_graph::{GraphDescriptionError, GraphDescriptionFactory};
+pub use loudness_meter::{
+    OutputLoudnessError, OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudnessSnapshot,
+};
 pub use native_configuration::{
     NativeDeviceSelection, NativePhysicalOptions, ResolvedNativeConfiguration,
     native_configured_nodes, native_processing_profile_configured,

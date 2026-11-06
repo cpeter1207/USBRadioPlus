@@ -10,6 +10,33 @@ use usbradioplus_driver::{HardwareMaintenance, HardwareStationDiagnostics, Hardw
 use usbradioplus_gpio::EepromImage;
 use usbradioplus_radio::SessionSnapshot;
 
+/// Render control-plane diagnostics for the final mono transmit programme.
+/// `valid` describes gated integrated loudness; true peak can be available sooner.
+pub(crate) fn processing_status_text(
+    observation: usbradioplus_station::CallbackStatistics,
+    loudness: Option<usbradioplus_core::OutputLoudnessSnapshot>,
+) -> String {
+    let mut output = format!(
+        "radio_receive_calls={}\nradio_transmit_calls={}\nradio_receive_failures={}\nradio_transmit_failures={}\n",
+        observation.receive_calls, observation.transmit_calls,
+        observation.receive_failures, observation.transmit_failures,
+    );
+    writeln!(output, "transmit_loudness_meter_enabled={}", u8::from(loudness.is_some())).expect("writing to String cannot fail");
+    writeln!(output, "transmit_loudness_epoch={}", loudness.map_or(0, |value| value.epoch)).expect("writing to String cannot fail");
+    writeln!(output, "transmit_loudness_sample_count={}", loudness.map_or(0, |value| value.sample_count)).expect("writing to String cannot fail");
+    writeln!(output, "transmit_loudness_valid={}", u8::from(loudness.is_some_and(|value| value.integrated_lufs.is_some()))).expect("writing to String cannot fail");
+    for (key, value) in [
+        ("transmit_integrated_lufs", loudness.and_then(|value| value.integrated_lufs)),
+        ("transmit_true_peak_dbtp", loudness.and_then(|value| value.true_peak_dbtp)),
+    ] {
+        match value {
+            Some(value) => writeln!(output, "{key}={value:.2}"),
+            None => writeln!(output, "{key}=unavailable"),
+        }.expect("writing to String cannot fail");
+    }
+    output
+}
+
 /// Physical-only native station measurements; controller rings remain with the controller.
 #[repr(C)]
 #[derive(Clone, Copy, Default)]

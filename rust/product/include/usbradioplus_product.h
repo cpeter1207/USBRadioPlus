@@ -1398,6 +1398,11 @@ typedef struct UrpAstDescriptor {
 	int (*native_activation_status)(void *native);
 	/** Same readiness observation on the existing channel control owner. */
 	int (*channel_activation_status)(void *channel);
+	/** Synchronous UTF-8 processing diagnostics on the serialized channel owner.
+	 * Includes final transmit programme integrated LUFS and maximum dBTP since
+	 * the reported graph meter epoch; unavailable values are explicit text. */
+	int (*channel_processing_status_text)(void *channel, UrpNativeProcessingDiagnostic sink,
+					      void *context);
 } UrpAstDescriptor;
 
 #ifdef __cplusplus

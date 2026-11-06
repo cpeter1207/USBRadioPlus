@@ -1109,6 +1109,7 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     STOPS.set(0);
     DESTROYS.set(0);
     let (mut runtime, mut control) = runtime(20);
+    assert!(control.transmit_loudness().is_none());
     let hardware = runtime.hardware_state();
     hardware.publish_inputs(HardwareInputs {
         carrier: true,
@@ -1125,6 +1126,7 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     let before = control.radio().radio().snapshot().unwrap();
     let mut configuration = control.plan().configuration().clone();
     configuration.local.input_gain_db = 3.0;
+    configuration.voice_telemetry.transmit_tail.loudness_meter_enabled = true;
     let plan = StationPlan::new("usb", configuration, control.plan().transport(), 21, 960).unwrap();
     let update = runtime
         .prepare_update(&control, plan, &factory(), radio_provider())
@@ -1136,11 +1138,13 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     ));
     // Explicit ticks let the test observe each owner without a timing-dependent sleep.
     update_tick(&mut runtime, true);
+    assert!(control.transmit_loudness().is_none());
     assert!(matches!(
         runtime.update_result(),
         Err(crate::StationUpdateError::Pending)
     ));
     update_tick(&mut runtime, false);
+    assert!(control.transmit_loudness().is_some());
     runtime.accept_update(&mut control).unwrap();
     runtime.finish_update(&mut control, true).unwrap();
     let after = control.radio().radio().snapshot().unwrap();

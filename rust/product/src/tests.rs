@@ -8,6 +8,33 @@ mod native;
 #[path = "tests/link_observer.rs"]
 mod link_observer;
 
+unsafe extern "C" fn append_processing_text(context: *mut c_void, text: *const u8, length: u32) {
+    // SAFETY: synchronous diagnostics retain the owned output and complete span.
+    let (output, text) = unsafe {
+        (&mut *context.cast::<String>(), std::slice::from_raw_parts(text, length as usize))
+    };
+    output.push_str(std::str::from_utf8(text).unwrap());
+}
+
+#[test]
+fn processing_text_formats_measured_and_unmeasured_epochs() {
+    use usbradioplus_core::OutputLoudnessSnapshot;
+    use usbradioplus_station::CallbackStatistics;
+    let observation = CallbackStatistics { receive_calls: 2, transmit_calls: 3, receive_failures: 4, transmit_failures: 5 };
+    let measured = maintenance::processing_status_text(observation, Some(OutputLoudnessSnapshot {
+        epoch: 7, sample_count: 48000, integrated_lufs: Some(-23.05), true_peak_dbtp: Some(-1.1),
+    }));
+    for expected in ["radio_receive_calls=2\n", "radio_transmit_calls=3\n", "radio_receive_failures=4\n", "radio_transmit_failures=5\n", "transmit_loudness_meter_enabled=1\n", "transmit_loudness_epoch=7\n", "transmit_loudness_sample_count=48000\n", "transmit_loudness_valid=1\n", "transmit_integrated_lufs=-23.05\n", "transmit_true_peak_dbtp=-1.10\n"] {
+        assert!(measured.contains(expected), "{expected}");
+    }
+    let warmup = maintenance::processing_status_text(observation, Some(OutputLoudnessSnapshot {
+        epoch: 8, sample_count: 1, integrated_lufs: None, true_peak_dbtp: Some(-20.0),
+    }));
+    assert!(warmup.contains("transmit_loudness_valid=0\n"));
+    assert!(warmup.contains("transmit_integrated_lufs=unavailable\n"));
+    assert!(warmup.contains("transmit_true_peak_dbtp=-20.00\n"));
+}
+
 #[test]
 fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
@@ -921,6 +948,7 @@ fn descriptor_exposes_one_complete_versioned_boundary() {
     assert!(descriptor.channel_get_jitter_config.is_some());
     assert!(descriptor.channel_command.is_some());
     assert!(descriptor.channel_get_status.is_some());
+    assert!(descriptor.channel_processing_status_text.is_some());
     assert!(descriptor.channel_service.is_some());
     assert!(descriptor.channel_destroy.is_some());
 }
@@ -1352,6 +1380,8 @@ fn exported_operations_contain_panics_and_reject_null_handles() {
         );
         assert_eq!(channel_command(ptr::null_mut(), ptr::null_mut()), -1);
         assert_eq!(channel_get_status(ptr::null_mut(), ptr::null_mut()), -1);
+        assert_eq!(channel_processing_status_text(ptr::null_mut(), None, ptr::null_mut()), -1);
+        assert_eq!(channel_processing_status_text(ptr::null_mut(), Some(append_processing_text), ptr::null_mut()), -1);
         assert_eq!(channel_service(ptr::null_mut()), -1);
         driver_destroy(ptr::null_mut());
         channel_destroy(ptr::null_mut());
@@ -1697,6 +1727,11 @@ fn complete_driver_channel_lifecycle_crosses_the_c_boundary() {
         URP_AST_OK
     );
     assert_eq!(status.running, 0);
+    let mut processing_text = String::new();
+    // SAFETY: the live channel and synchronous output sink remain owned here.
+    assert_eq!(unsafe { channel_processing_status_text(channel, Some(append_processing_text), ptr::from_mut(&mut processing_text).cast()) }, URP_AST_OK);
+    assert!(processing_text.contains("transmit_loudness_meter_enabled=0\n"));
+    assert!(processing_text.contains("transmit_integrated_lufs=unavailable\n"));
     let mut prestart = command(URP_AST_COMMAND_GET_MIXER, URP_AST_MIXER_RECEIVE, 0);
     // SAFETY: commands requiring opened hardware reject this prepared channel.
     assert_eq!(
@@ -1814,6 +1849,12 @@ fn complete_driver_channel_lifecycle_crosses_the_c_boundary() {
     assert_eq!(unsafe { channel_start(channel) }, URP_AST_OK);
     // SAFETY: channel is live and provider callbacks completed during start.
     assert_eq!(unsafe { channel_service(channel) }, URP_AST_OK);
+
+    processing_text.clear();
+    // SAFETY: the live physical channel and synchronous output remain retained.
+    assert_eq!(unsafe { channel_processing_status_text(channel, Some(append_processing_text), ptr::from_mut(&mut processing_text).cast()) }, URP_AST_OK);
+    assert!(processing_text.contains("radio_transmit_calls=1\n"));
+    assert!(processing_text.contains("transmit_true_peak_dbtp=unavailable\n"));
 
     for (target, value) in [
         (URP_AST_MIXER_RECEIVE, 401),

@@ -349,6 +349,9 @@ version = "0.1.0-alpha19"
 [[package]]
 name = "usbradioplus-core"
 version = "0.1.0-alpha19"
+dependencies = [
+ "ebur128",
+]
 
 [[package]]
 name = "usbradioplus-driver"

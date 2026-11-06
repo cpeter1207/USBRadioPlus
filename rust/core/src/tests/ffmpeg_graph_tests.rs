@@ -68,9 +68,10 @@ fn dynamics_graph_uses_only_enabled_stages_in_requested_order() {
 }
 
 #[test]
-fn transmitter_graph_contains_preemphasis_gain_limiter_and_final_bandpass() {
+fn transmitter_graph_places_bandpass_and_all_gain_before_final_limiter() {
     let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
     chain.equalizer.enabled = false;
+    chain.output_gain_db = 3.0;
     chain.transmit_tail.limiter_enabled = true;
     chain.transmit_tail.bandpass_enabled = true;
     chain.transmit_tail.bandpass_highpass_hz = 0.0;
@@ -79,7 +80,115 @@ fn transmitter_graph_contains_preemphasis_gain_limiter_and_final_bandpass() {
     assert!(graph.contains("volume=1.995262314969"));
     assert!(graph.contains("biquad=b0="));
     assert!(graph.contains("alimiter=limit="));
-    assert!(graph.contains("split=5000.000000000:order=20th[out]"));
+    assert!(graph.contains("split=5000.000000000:order=20th"));
+    assert!(graph.contains("aresample=192000"));
+    assert!(graph.contains("aresample=48000"));
+    assert!(graph.find("biquad=b0=").unwrap() < graph.rfind("volume=").unwrap());
+    assert!(graph.rfind("volume=").unwrap() < graph.find("split=5000.").unwrap());
+    assert!(graph.find("split=5000.").unwrap() < graph.find("aresample=192000").unwrap());
+    assert!(graph.find("aresample=192000").unwrap() < graph.find("alimiter=").unwrap());
+    assert!(graph.find("alimiter=").unwrap() < graph.find("aresample=48000").unwrap());
+}
+
+#[test]
+fn final_limiter_oversampling_is_selectable_and_disabled_with_the_limiter() {
+    let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
+    chain.transmit_tail.limiter_enabled = true;
+    for (factor, rate) in [(1, None), (2, Some("96000")), (4, Some("192000"))] {
+        chain.transmit_tail.oversample = factor;
+        let graph = factory().transmitter(&chain, false, 300.0).unwrap();
+        assert_eq!(graph.matches("alimiter=").count(), 1);
+        assert!(graph.contains(":level=0:latency=0"));
+        if let Some(rate) = rate {
+            assert!(graph.contains(&format!("aresample={rate},alimiter=")));
+            assert!(graph.contains(",aresample=48000["));
+        } else {
+            assert!(!graph.contains("aresample="));
+        }
+    }
+    chain.transmit_tail.limiter_enabled = false;
+    let graph = factory().transmitter(&chain, false, 300.0).unwrap();
+    assert!(!graph.contains("alimiter="));
+    assert!(!graph.contains("aresample="));
+}
+
+fn ffmpeg_true_peak(source: &str, graph: &str) -> f64 {
+    let graph = format!(
+        "{};[meter]aformat=sample_fmts=flt,ebur128=peak=true:metadata=1:framelog=verbose,ametadata=print:key=lavfi.r128.true_peak:file=-[out]",
+        graph.replace("[in]", "[0:a]").replace("[out]", "[meter]")
+    );
+    let output = std::process::Command::new("ffmpeg")
+        .args([
+            "-hide_banner",
+            "-nostdin",
+            "-v",
+            "error",
+            "-filter_complex_threads",
+            "1",
+            "-f",
+            "lavfi",
+            "-i",
+            source,
+            "-filter_complex",
+            &graph,
+            "-map",
+            "[out]",
+            "-f",
+            "null",
+            "-",
+        ])
+        .output()
+        .expect("FFmpeg CLI is required for final-limiter output tests");
+    assert!(
+        output.status.success(),
+        "FFmpeg failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut max_peak: Option<f64> = None;
+    for line in stdout.lines() {
+        if let Some(peak) = line.strip_prefix("lavfi.r128.true_peak=") {
+            let value = peak.parse::<f64>().expect("invalid FFmpeg true peak");
+            max_peak = Some(max_peak.map_or(value, |maximum| maximum.max(value)));
+        }
+    }
+    max_peak.expect("FFmpeg did not report true peak")
+}
+
+#[test]
+fn final_limiter_bounds_true_peak_after_return_to_native_rate() {
+    let sources = [
+        "aevalsrc=1.41*sin(2*PI*12000*t+PI/4):s=48000:d=1,afade=t=in:d=0.01,afade=t=out:st=0.99:d=0.01",
+        "aevalsrc='if(gte(sin(2*PI*1000*t),0),1.5,-1.5)':s=48000:d=1",
+        "anoisesrc=color=white:amplitude=1:sample_rate=48000:duration=1:seed=1,volume=3",
+    ];
+    std::thread::scope(|scope| {
+        let mut tasks = Vec::new();
+        for source in sources {
+            for bandpass_enabled in [false, true] {
+                let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
+                chain.enabled = false;
+                chain.input_gain_db = 0.0;
+                chain.output_gain_db = 0.0;
+                chain.transmit_tail.limiter_enabled = true;
+                chain.transmit_tail.ceiling_dbfs = -2.0;
+                chain.transmit_tail.oversample = 4;
+                chain.transmit_tail.bandpass_enabled = bandpass_enabled;
+                chain.transmit_tail.bandpass_lowpass_hz = 5_000.0;
+                let graph = factory().transmitter(&chain, false, 300.0).unwrap();
+                tasks.push(scope.spawn(move || {
+                    let peak = ffmpeg_true_peak(source, &graph);
+                    assert!(
+                        peak <= db_to_linear(-1.0),
+                        "source={source}, bandpass={bandpass_enabled}, true peak={peak}"
+                    );
+                }));
+            }
+        }
+        for task in tasks {
+            task.join().unwrap();
+        }
+    });
 }
 
 #[test]

@@ -169,6 +169,8 @@ pub(super) struct UpdateMailbox {
     storage: Mutex<UpdateStorage>,
     receive: AtomicPtr<UpdateOwner>,
     transmit: AtomicPtr<UpdateOwner>,
+    // The actual TX adoption can precede the control-plane commit.
+    transmit_processing: AtomicPtr<ProcessingGeneration>,
     receive_result: AtomicI32,
     transmit_result: AtomicI32,
 }
@@ -223,8 +225,27 @@ impl UpdateMailbox {
         // SAFETY: control retains the stable owner until this final release ACK.
         let owner = unsafe { &*pointer };
         let result = station.radio().apply_update(&owner.radio);
+        if result.is_ok() {
+            self.transmit_processing.store(
+                ptr::from_ref(owner.processing.as_ref()).cast_mut(),
+                Ordering::Release,
+            );
+        }
         self.transmit_result
             .store(if result.is_ok() { 1 } else { -1 }, Ordering::Release);
+    }
+}
+
+impl StationControlHost {
+    /// Read final-programme loudness from the generation actually adopted by TX,
+    /// including an update awaiting its independent RX acknowledgement.
+    pub fn transmit_loudness(&self) -> Option<usbradioplus_core::OutputLoudnessSnapshot> {
+        let _storage = self._updates.storage.lock().expect("update storage poisoned");
+        let pointer = self._updates.transmit_processing.load(Ordering::Acquire);
+        // SAFETY: control storage retains every adopted owner until its successor
+        // is acknowledged. This control-plane lock prevents reclamation here.
+        let processing = unsafe { pointer.as_ref() }.unwrap_or_else(|| self.control.processing());
+        processing.transmit_loudness()
     }
 }
 

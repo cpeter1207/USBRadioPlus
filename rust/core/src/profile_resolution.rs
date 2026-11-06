@@ -617,8 +617,19 @@ fn apply_setting(
         | "ctcss_filter_mode"
         | "ctcss_notch_width_hz"
         | "ctcss_highpass_hz" => unsupported_warning(warnings, overlay, setting),
+        "loudness_meter_enabled" if chain.role == ChainRole::VoiceTelemetry => {
+            boolean!(chain.transmit_tail.loudness_meter_enabled)
+        }
         "lookahead_limiter_enabled" if chain.role == ChainRole::VoiceTelemetry => {
             boolean!(chain.transmit_tail.limiter_enabled)
+        }
+        "lookahead_limiter_oversample" if chain.role == ChainRole::VoiceTelemetry => {
+            oversample_factor(
+                &mut chain.transmit_tail.oversample,
+                warnings,
+                overlay,
+                setting,
+            );
         }
         "lookahead_limiter_ceiling_dbfs" if chain.role == ChainRole::VoiceTelemetry => {
             number!(chain.transmit_tail.ceiling_dbfs, -30.0, -0.1)
@@ -641,7 +652,9 @@ fn apply_setting(
         "post_limiter_bandpass_lowpass_hz" if chain.role == ChainRole::VoiceTelemetry => {
             number!(chain.transmit_tail.bandpass_lowpass_hz, 2_500.0, 20_000.0)
         }
-        "lookahead_limiter_enabled"
+        "loudness_meter_enabled"
+        | "lookahead_limiter_enabled"
+        | "lookahead_limiter_oversample"
         | "lookahead_limiter_ceiling_dbfs"
         | "lookahead_limiter_lookahead_ms"
         | "lookahead_limiter_attack_ms"
@@ -709,6 +722,26 @@ fn parse_number(value: &str, minimum: f64, maximum: f64) -> Result<f64, String> 
         Err(format!(
             "requires a finite number from {minimum} through {maximum}"
         ))
+    }
+}
+
+fn oversample_factor(
+    target: &mut u8,
+    warnings: &mut Vec<ResolutionWarning>,
+    overlay: &RawOverlay,
+    setting: &RawSetting,
+) {
+    match setting.value.trim() {
+        "1" => *target = 1,
+        "2" => *target = 2,
+        "4" => *target = 4,
+        _ => invalid_warning(
+            warnings,
+            overlay,
+            setting,
+            target.to_string(),
+            "requires 1, 2, or 4".to_owned(),
+        ),
     }
 }
 

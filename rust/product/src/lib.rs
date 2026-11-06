@@ -815,12 +815,16 @@ pub struct UrpAstDescriptor {
     pub native_activation_status: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     /// Same observation on the existing channel control owner, without changing service status.
     pub channel_activation_status: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Copy final-programme processing diagnostics through a synchronous UTF-8 sink
+    /// on the serialized channel owner. No fixed status record is extended.
+    pub channel_processing_status_text: Option<unsafe extern "C" fn(*mut c_void, Option<UrpNativeProcessingDiagnostic>, *mut c_void) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    channel_processing_status_text: Some(channel_processing_status_text),
     native_activation_status: Some(remote::native_activation_status),
     channel_activation_status: Some(remote::channel_activation_status),
     native_configuration_remote_options: Some(native_configuration::remote_options),
@@ -2726,6 +2730,29 @@ unsafe extern "C" fn channel_command(
         })?;
         // SAFETY: the same complete writable command storage was validated above.
         unsafe { write_abi(command, command_value) }
+    })
+}
+
+unsafe extern "C" fn channel_processing_status_text(
+    channel: *mut c_void,
+    sink: Option<UrpNativeProcessingDiagnostic>,
+    context: *mut c_void,
+) -> c_int {
+    ffi_status(|| {
+        let sink = sink.ok_or(Status::InvalidArgument)?;
+        // SAFETY: the taskprocessor owns this live channel control endpoint.
+        let (_, control) = unsafe { channel_control(channel)? };
+        let (observation, loudness) = control.hardware.as_mut().map_or_else(
+            || (usbradioplus_station::CallbackStatistics::default(), None),
+            |hardware| {
+                let control = hardware.control();
+                (control.hardware_state().callback_statistics(), control.transmit_loudness())
+            },
+        );
+        let text = maintenance::processing_status_text(observation, loudness);
+        // SAFETY: the synchronous sink borrows this complete UTF-8 span only.
+        unsafe { sink(context, text.as_ptr(), text.len() as u32) };
+        Ok(())
     })
 }
 

@@ -13,6 +13,7 @@ fn shipped_profiles_match_each_source_role() {
     assert_eq!(link.receive.pl_filter, PlFilter::Disabled);
     assert_eq!(transmit.input_gain_db, 6.0);
     assert_eq!(transmit.output_gain_db, 0.0);
+    assert_eq!(transmit.transmit_tail.oversample, 4);
     assert!(local.validate().is_ok());
     assert!(link.validate().is_ok());
     assert!(transmit.validate().is_ok());
@@ -74,6 +75,15 @@ fn source_specific_stages_are_rejected_elsewhere() {
             ChainRole::LocalReceive
         ))
     );
+
+    let mut local_meter = ProcessingChain::shipped(ChainRole::LocalReceive);
+    local_meter.transmit_tail.loudness_meter_enabled = true;
+    assert_eq!(
+        local_meter.validate(),
+        Err(ProcessingConfigError::StageNotAllowed(
+            ChainRole::LocalReceive
+        ))
+    );
 }
 
 #[test]
@@ -101,6 +111,7 @@ fn every_numeric_family_rejects_invalid_and_non_finite_values() {
         |c| c.compressor.high_crossover_hz = c.compressor.low_crossover_hz,
         |c| c.limiter.high.attack_ms = 101.0,
         |c| c.transmit_tail.ceiling_dbfs = 0.0,
+        |c| c.transmit_tail.oversample = 3,
     ];
     for mutate in cases {
         let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
@@ -125,6 +136,10 @@ fn expander_sidechain_edges_are_valid_but_inverted_edges_are_not() {
 
 #[test]
 fn validation_errors_have_stable_contextual_messages() {
+    assert_eq!(
+        ProcessingConfigError::InvalidOversample.to_string(),
+        "lookahead_limiter_oversample requires 1, 2, or 4"
+    );
     assert_eq!(
         ProcessingConfigError::Range {
             field: "gain",

@@ -32,7 +32,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
       "asl3-asterisk-dev=2:22.9.0+asl3-3.9.3-1.deb${DEBIAN_VERSION}" build-essential clang clang-format clang-tidy cppcheck doxygen git graphviz \
       gcovr pkg-config python3 python3-pytest python3-venv shellcheck \
       libasound2-dev libusb-1.0-0-dev \
-      libavfilter-dev libavutil-dev ladspa-sdk portaudio19-dev autoconf automake libtool \
+      libavfilter-dev libavutil-dev ffmpeg ladspa-sdk portaudio19-dev autoconf automake libtool \
       ca-certificates cargo curl libclang-dev patch rustc xz-utils && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m venv /opt/usbradioplus-quality && \

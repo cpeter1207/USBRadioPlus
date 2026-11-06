@@ -162,7 +162,9 @@ fn every_common_and_source_specific_schema_field_is_applied() {
 
     let mut voice_values = common_values();
     voice_values.extend(values(&[
+        ("loudness_meter_enabled", "yes"),
         ("lookahead_limiter_enabled", "yes"),
+        ("lookahead_limiter_oversample", "2"),
         ("lookahead_limiter_ceiling_dbfs", "-2"),
         ("lookahead_limiter_lookahead_ms", "4"),
         ("lookahead_limiter_attack_ms", "2"),
@@ -174,9 +176,47 @@ fn every_common_and_source_specific_schema_field_is_applied() {
     let voice = RawOverlay::flat(ChainRole::VoiceTelemetry, "radio.conf", voice_values);
     let voice = ResolvedProfile::resolve(ChainRole::VoiceTelemetry, &voice, None).unwrap();
     assert!(voice.warnings().is_empty());
+    assert!(voice.chain().transmit_tail.loudness_meter_enabled);
     assert!(voice.chain().transmit_tail.limiter_enabled);
     assert!(voice.chain().transmit_tail.bandpass_enabled);
     assert_eq!(voice.chain().transmit_tail.ceiling_dbfs, -2.0);
+    assert_eq!(voice.chain().transmit_tail.oversample, 2);
+}
+
+#[test]
+fn final_limiter_oversample_preserves_valid_inheritance_and_warns_for_other_factors() {
+    for (supplied, expected) in [("1", 1), ("2", 2), ("4", 4)] {
+        let flat = RawOverlay::flat(
+            ChainRole::VoiceTelemetry,
+            "radio.conf",
+            values(&[("lookahead_limiter_oversample", supplied)]),
+        );
+        let resolved = ResolvedProfile::resolve(ChainRole::VoiceTelemetry, &flat, None).unwrap();
+        assert_eq!(resolved.chain().transmit_tail.oversample, expected);
+        assert!(resolved.warnings().is_empty());
+    }
+    for supplied in ["0", "3", "8", "2.0", "bad"] {
+        let flat = RawOverlay::flat(
+            ChainRole::VoiceTelemetry,
+            "radio.conf",
+            values(&[("lookahead_limiter_oversample", "2")]),
+        );
+        let scoped = RawOverlay::scoped(
+            ChainRole::VoiceTelemetry,
+            "radio.conf",
+            "voice_telemetry hilltop",
+            values(&[("lookahead_limiter_oversample", supplied)]),
+        );
+        let resolved =
+            ResolvedProfile::resolve(ChainRole::VoiceTelemetry, &flat, Some(&scoped)).unwrap();
+        assert_eq!(resolved.chain().transmit_tail.oversample, 2);
+        assert_eq!(resolved.warnings().len(), 1);
+        assert_eq!(resolved.warnings()[0].fallback, "2");
+        assert_eq!(
+            resolved.warnings()[0].kind,
+            ResolutionWarningKind::InvalidValue
+        );
+    }
 }
 
 #[test]
@@ -481,7 +521,9 @@ fn all_source_specific_options_apply_only_to_their_own_schema() {
         values(&[
             ("rnnoise_enabled", "yes"),
             ("ctcss_filter_mode", "notch"),
+            ("loudness_meter_enabled", "yes"),
             ("lookahead_limiter_enabled", "yes"),
+            ("lookahead_limiter_oversample", "2"),
             ("lookahead_limiter_ceiling_dbfs", "-2"),
             ("lookahead_limiter_lookahead_ms", "4"),
             ("lookahead_limiter_attack_ms", "2"),
@@ -495,7 +537,11 @@ fn all_source_specific_options_apply_only_to_their_own_schema() {
     assert!(local.chain().rnnoise_enabled);
     assert_eq!(local.chain().receive.pl_filter, PlFilter::DecodedToneNotch);
     assert!(!local.chain().transmit_tail.limiter_enabled);
-    assert_eq!(local.warnings().len(), 8);
+    assert_eq!(local.warnings().len(), 10);
+    assert!(local.warnings().iter().any(|warning| {
+        warning.name == "loudness_meter_enabled"
+            && warning.kind == ResolutionWarningKind::UnsupportedOption
+    }));
 
     let voice = RawOverlay::flat(
         ChainRole::VoiceTelemetry,

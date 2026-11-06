@@ -430,6 +430,8 @@ struct Fixture {
     active: Option<String>,
     status: UrpAstChannelStatus,
     status_result: i32,
+    processing_text: String,
+    processing_result: i32,
     select_result: i32,
     echo_result: i32,
     transmit_result: i32,
@@ -487,6 +489,13 @@ impl CliBackend for Fixture {
             self.active_channel().map(|name| (name, self.status))
         } else {
             Err(self.status_result)
+        }
+    }
+    fn processing_text(&mut self) -> Result<String, i32> {
+        if self.processing_result == URP_AST_OK {
+            Ok(self.processing_text.clone())
+        } else {
+            Err(self.processing_result)
         }
     }
     fn set_echo(&mut self, enabled: bool) -> i32 {
@@ -866,6 +875,8 @@ fn flash_uses_three_one_second_bursts_with_established_spacing_and_cleanup() {
 #[test]
 fn reload_statistics_and_failures_preserve_operator_output() {
     let mut fixture = Fixture::healthy();
+    fixture.processing_text = "transmit_integrated_lufs=-23.05\ntransmit_true_peak_dbtp=-1.10\n".into();
+    assert_eq!(fixture.processing_text().unwrap(), fixture.processing_text);
     fixture.links.push(LinkStatus {
         name: "IAX2/506316-1".into(),
         processed_blocks: 7,
@@ -877,6 +888,11 @@ fn reload_statistics_and_failures_preserve_operator_output() {
         CliCommand::ProcessingStats,
         &["radioplus", "processing", "stats"],
     );
+    assert!(result.output.contains("transmit_integrated_lufs=-23.05\n"));
+    assert!(result.output.contains("transmit_true_peak_dbtp=-1.10\n"));
+    fixture.processing_result = URP_AST_SETUP_FAILED;
+    assert_eq!(run(&mut fixture, CliCommand::ProcessingStats, &["radioplus", "processing", "stats"]), CliResult::failure(""));
+    fixture.processing_result = URP_AST_OK;
     assert!(
         result
             .output

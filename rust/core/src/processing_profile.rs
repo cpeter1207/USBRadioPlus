@@ -358,29 +358,35 @@ impl Default for ReceiveConditioning {
 /// Fixed final transmitter limiter and band-pass.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TransmitTail {
+    /// Enable integrated loudness and maximum true-peak output measurements.
+    pub loudness_meter_enabled: bool,
     /// Whether the final limiter is enabled.
     pub limiter_enabled: bool,
     /// Final-limiter ceiling in dBFS.
     pub ceiling_dbfs: f64,
+    /// Final-limiter oversampling factor: 1, 2, or 4.
+    pub oversample: u8,
     /// Lookahead in milliseconds.
     pub lookahead_ms: f64,
     /// Attack time in milliseconds.
     pub attack_ms: f64,
     /// Release time in milliseconds.
     pub release_ms: f64,
-    /// Whether the post-limiter brick-wall band-pass is enabled.
+    /// Whether the band-pass before the final limiter is enabled.
     pub bandpass_enabled: bool,
-    /// Post-limiter lower edge in Hz; zero disables the lower edge.
+    /// Lower band-pass edge in Hz; zero disables the lower edge.
     pub bandpass_highpass_hz: f64,
-    /// Post-limiter upper edge in Hz.
+    /// Upper band-pass edge in Hz.
     pub bandpass_lowpass_hz: f64,
 }
 
 impl Default for TransmitTail {
     fn default() -> Self {
         Self {
+            loudness_meter_enabled: false,
             limiter_enabled: false,
             ceiling_dbfs: -3.0,
+            oversample: 4,
             lookahead_ms: 5.0,
             attack_ms: 1.0,
             release_ms: 100.0,
@@ -470,7 +476,9 @@ impl ProcessingChain {
             return Err(ProcessingConfigError::StageNotAllowed(self.role));
         }
         if self.role != ChainRole::VoiceTelemetry
-            && (self.transmit_tail.limiter_enabled || self.transmit_tail.bandpass_enabled)
+            && (self.transmit_tail.loudness_meter_enabled
+                || self.transmit_tail.limiter_enabled
+                || self.transmit_tail.bandpass_enabled)
         {
             return Err(ProcessingConfigError::StageNotAllowed(self.role));
         }
@@ -742,6 +750,9 @@ impl ProcessingChain {
 
     fn validate_transmit_tail(&self) -> Result<(), ProcessingConfigError> {
         let tail = &self.transmit_tail;
+        if !matches!(tail.oversample, 1 | 2 | 4) {
+            return Err(ProcessingConfigError::InvalidOversample);
+        }
         finite_range(
             "lookahead_limiter_ceiling_dbfs",
             tail.ceiling_dbfs,
@@ -779,6 +790,8 @@ impl ProcessingChain {
 /// Invalid typed processing configuration.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProcessingConfigError {
+    /// The final-limiter oversampling factor was not 1, 2, or 4.
+    InvalidOversample,
     /// A numeric setting was non-finite or outside its inclusive range.
     Range {
         /// Configuration setting name.
@@ -804,6 +817,9 @@ pub enum ProcessingConfigError {
 impl fmt::Display for ProcessingConfigError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidOversample => {
+                formatter.write_str("lookahead_limiter_oversample requires 1, 2, or 4")
+            }
             Self::Range {
                 field,
                 minimum,

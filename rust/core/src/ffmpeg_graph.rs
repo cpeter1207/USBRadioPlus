@@ -217,29 +217,42 @@ impl GraphDescriptionFactory {
             )?;
             current = next;
         }
-        if include_transmit_tail && chain.transmit_tail.limiter_enabled {
-            let next = next_label(&mut serial);
-            write!(
-                graph,
-                "[{current}]alimiter=limit={:.12}:attack={:.9}:release={:.9}:level=0:latency=0[{next}];",
-                db_to_linear(chain.transmit_tail.ceiling_dbfs),
-                chain.transmit_tail.lookahead_ms,
-                chain.transmit_tail.release_ms,
-            )?;
-            current = next;
-        }
         if include_transmit_tail && chain.transmit_tail.bandpass_enabled {
+            let next = next_label(&mut serial);
             append_brickwall_bandpass(
                 &mut graph,
                 &current,
-                "out",
+                &next,
                 "cln",
                 chain.transmit_tail.bandpass_highpass_hz,
                 chain.transmit_tail.bandpass_lowpass_hz,
             )?;
-        } else {
-            write!(graph, "[{current}]anull[out]")?;
+            current = next;
         }
+        if include_transmit_tail && chain.transmit_tail.limiter_enabled {
+            let next = next_label(&mut serial);
+            write!(graph, "[{current}]")?;
+            if chain.transmit_tail.oversample > 1 {
+                write!(
+                    graph,
+                    "aresample={},",
+                    48_000 * u32::from(chain.transmit_tail.oversample)
+                )?;
+            }
+            write!(
+                graph,
+                "alimiter=limit={:.12}:attack={:.9}:release={:.9}:level=0:latency=0",
+                db_to_linear(chain.transmit_tail.ceiling_dbfs),
+                chain.transmit_tail.lookahead_ms,
+                chain.transmit_tail.release_ms,
+            )?;
+            if chain.transmit_tail.oversample > 1 {
+                graph.push_str(",aresample=48000");
+            }
+            write!(graph, "[{next}];")?;
+            current = next;
+        }
+        write!(graph, "[{current}]anull[out]")?;
         Ok(graph)
     }
 

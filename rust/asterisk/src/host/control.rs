@@ -30,6 +30,7 @@ pub(super) enum ControlOperation {
     Jitter,
     Command(UrpAstChannelCommand),
     Status,
+    ProcessingText,
     Service,
     Destroy,
 }
@@ -40,6 +41,7 @@ pub(super) enum ControlResult {
     Jitter(i32, UrpAstJitterConfig),
     Command(i32, UrpAstChannelCommand),
     ChannelStatus(i32, UrpAstChannelStatus),
+    ProcessingText(i32, Vec<u8>),
     Site(i32, super::super::UrpAstSiteControl),
     Remote(i32, super::super::UrpAstRemoteControl),
 }
@@ -52,6 +54,7 @@ impl ControlResult {
             | Self::Jitter(status, _)
             | Self::Command(status, _)
             | Self::ChannelStatus(status, _)
+            | Self::ProcessingText(status, _)
             | Self::Site(status, _)
             | Self::Remote(status, _) => *status,
         }
@@ -193,6 +196,14 @@ unsafe fn execute(
             ControlOperation::Service => {
                 ControlResult::Status(status(descriptor.channel_service.map(|call| call(channel))))
             }
+            ControlOperation::ProcessingText => {
+                let mut output = Vec::new();
+                let result = match descriptor.channel_processing_status_text {
+                    Some(call) => call(channel, Some(append_processing_text), (&mut output as *mut Vec<u8>).cast()),
+                    None => URP_AST_OK,
+                };
+                ControlResult::ProcessingText(result, output)
+            }
             ControlOperation::Remote(mut request) => {
                 use super::super::{
                     URP_AST_REMOTE_QUIESCE, URP_AST_REMOTE_READY, URP_AST_REMOTE_SERVICE,
@@ -261,6 +272,16 @@ unsafe fn execute(
             }
         }
     }
+}
+
+unsafe extern "C" fn append_processing_text(context: *mut c_void, text: *const u8, length: u32) {
+    if length == 0 { return; }
+    // SAFETY: the product's synchronous sink lends a complete text span and
+    // execute retains this exclusively borrowed vector until the call returns.
+    let (output, text) = unsafe {
+        (&mut *context.cast::<Vec<u8>>(), std::slice::from_raw_parts(text, length as usize))
+    };
+    output.extend_from_slice(text);
 }
 
 unsafe extern "C" fn execute_task(opaque: *mut c_void) -> i32 {

@@ -549,6 +549,7 @@ fn native_physical_commands_snapshot_and_manual_cleanup_share_the_owner() {
         assert!(processing.contains("radio_receive_calls=1"));
         assert!(processing.contains("radio_transmit_calls=1"));
         assert!(processing.contains("radio_receive_failures=0"));
+        assert!(processing.contains("transmit_loudness_meter_enabled=0\n"));         assert!(processing.contains("transmit_integrated_lufs=unavailable\n"));         assert!(processing.contains("transmit_true_peak_dbtp=unavailable\n"));         assert!(processing.contains("transmit_loudness_sample_count=0\n"));
         assert_eq!(crate::native::set_transmit(handle, 1, 1_000), URP_AST_OK);
         command.command = URP_AST_COMMAND_SET_TEST_TONE;
         command.value = 1;

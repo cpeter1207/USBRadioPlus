@@ -113,7 +113,11 @@ impl LinkProcessingFactory {
         let maximum = maximum_frame_count as usize;
         let silence = vec![0.0; maximum];
         let mut output = vec![0.0; maximum];
-        graph.warm_up(&silence, &mut output, GRAPH_WARMUP_BLOCKS)?;
+        graph.warm_up(
+            &silence,
+            &mut output,
+            GRAPH_WARMUP_BLOCKS.max(64_usize.div_ceil(maximum)),
+        )?;
         Ok(
             PreparedLink::new(sample_rate_hz, maximum, Box::new(LinkGraph(graph)))
                 .expect("nonzero link rate and frame bound were validated"),

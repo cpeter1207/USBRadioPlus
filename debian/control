@@ -13,7 +13,7 @@ Build-Depends: debhelper-compat (= 13), cargo (>= 1.85), rustc (>= 1.85),
  librptadv-rnnoise-adapter-dev (>= 0.1.0~alpha2),
  librptadvremote-dev (>= 0.1.0~alpha1),
  librptadv-hamlib-adapter-dev (>= 0.1.0~alpha1),
- ladspa-sdk, python3, python3-pytest
+ ladspa-sdk, python3, python3-pytest, ffmpeg
 Standards-Version: 4.7.2
 Homepage: https://github.com/cpeter1207/USBRadioPlus
 Rules-Requires-Root: no

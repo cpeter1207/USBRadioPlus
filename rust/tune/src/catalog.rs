@@ -294,6 +294,12 @@ fn stage_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
     ]);
     if chain.role == ChainRole::VoiceTelemetry {
         settings.push(on_off(
+            "loudness_meter_enabled",
+            "Integrated loudness and true-peak meter",
+            chain.transmit_tail.loudness_meter_enabled,
+            ApplyMode::Reload,
+        ));
+        settings.push(on_off(
             "lookahead_limiter_enabled",
             "Final limiter",
             chain.transmit_tail.limiter_enabled,
@@ -912,6 +918,13 @@ fn final_limiter_section(section_name: &str, chain: &ProcessingChain) -> Section
         section_name,
         "Voice + telemetry: final limiter",
         vec![
+            enumeration(
+                "lookahead_limiter_oversample",
+                "Oversampling",
+                value.oversample.to_string(),
+                &[("1", "1x"), ("2", "2x"), ("4", "4x")],
+                ApplyMode::Reload,
+            ),
             number(
                 "lookahead_limiter_ceiling_dbfs",
                 "Ceiling",
@@ -2059,8 +2072,13 @@ mod tests {
         assert!(!link.contains("receive_bandpass_enabled"));
         assert!(!voice.contains("receive_bandpass_enabled"));
         assert!(voice.contains("lookahead_limiter_enabled"));
+        assert!(voice.contains("lookahead_limiter_oversample"));
+        assert!(voice.contains("loudness_meter_enabled"));
         assert!(voice.contains("post_limiter_bandpass_enabled"));
         assert!(!local.contains("lookahead_limiter_enabled"));
+        assert!(!local.contains("lookahead_limiter_oversample"));
+        assert!(!link.contains("lookahead_limiter_oversample"));
+        assert!(!local.contains("loudness_meter_enabled"));
         assert!(!link.contains("post_limiter_bandpass_enabled"));
     }
 

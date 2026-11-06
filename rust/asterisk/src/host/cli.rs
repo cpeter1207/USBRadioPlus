@@ -194,6 +194,8 @@ pub(super) trait CliBackend {
     fn select_active(&mut self, name: &str) -> i32;
     /// Read active-channel identity and status atomically with teardown exclusion.
     fn active_status(&mut self) -> Result<(String, UrpAstChannelStatus), i32>;
+    /// Copy optional programme-processing diagnostics on the control owner.
+    fn processing_text(&mut self) -> Result<String, i32>;
     /// Change echo mode on the active live channel.
     fn set_echo(&mut self, enabled: bool) -> i32;
     /// Change transmitter state on the active live channel.
@@ -447,6 +449,10 @@ fn processing_stats(backend: &mut impl CliBackend, args: &[&str]) -> CliResult {
         return CliResult::failure("");
     };
     let mut output = format_status(&name, &status);
+    match backend.processing_text() {
+        Ok(text) => output.push_str(&text),
+        Err(_) => return CliResult::failure(""),
+    }
     let links = backend.link_status();
     if links.is_empty() {
         output.push_str("No USBRadioPlus link-processing hook is attached.\n");
@@ -761,6 +767,10 @@ impl CliBackend for ProductionBackend {
     fn set_echo(&mut self, enabled: bool) -> i32 {
         self.with_active(|selected| channel::set_echo(selected, enabled))
             .unwrap_or_else(|status| status)
+    }
+
+    fn processing_text(&mut self) -> Result<String, i32> {
+        self.with_active(channel::processing_status_text)?
     }
 
     fn set_transmit(&mut self, keyed: bool, ctcss_tenths_hz: u32) -> i32 {
