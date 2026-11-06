@@ -522,6 +522,13 @@ struct RadioReceiveResult {
     output_rms: f32,
     output_rail_samples: u64,
     periodic_status_due: u32,
+    raw_receiver_keyed: u32,
+    rf_burst_id: u64,
+    vad_mode: u32,
+    vad_voice_active: u32,
+    vad_score: f32,
+    vad_voice_sample_index: u64,
+    vad_preroll_frames: u32,
 }
 
 #[repr(C)]
@@ -585,6 +592,13 @@ struct RadioSnapshotValue {
     ctcss_decoded_index: i32,
     dcs_valid: u32,
     program_ring: RadioRingObservation,
+    raw_receiver_keyed: u32,
+    rf_burst_id: u64,
+    vad_mode: u32,
+    vad_voice_active: u32,
+    vad_score: f32,
+    vad_voice_sample_index: u64,
+    vad_preroll_frames: u32,
 }
 
 #[repr(C)]
@@ -651,6 +665,7 @@ unsafe extern "C" fn radio_receive(
                 carrier_active: 1,
                 subaudible_active: 1,
                 receiver_keyed: 1,
+                raw_receiver_keyed: 1,
                 ctcss_decoded_index: -1,
                 rssi_peak: 123,
                 rssi_updated: 1,
@@ -724,6 +739,7 @@ unsafe extern "C" fn radio_snapshot(handle: *const c_void, output: *mut c_void) 
                 carrier_active: 1,
                 subaudible_active: 1,
                 receiver_keyed: 1,
+                raw_receiver_keyed: 1,
                 logical_ptt: 1,
                 ctcss_decoded_index: -1,
                 program_ring: RadioRingObservation {
@@ -753,7 +769,7 @@ unsafe extern "C" fn radio_destroy(handle: *mut c_void) {
 
 static RADIO: RadioDescriptor = RadioDescriptor {
     struct_size: size_of::<RadioDescriptor>() as u32,
-    abi_version: 4,
+    abi_version: 5,
     capability_name: c"rptadv.radio-core".as_ptr(),
     create: Some(radio_create),
     warm: Some(radio_warm),

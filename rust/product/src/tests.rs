@@ -409,7 +409,12 @@ pub(crate) mod provider_support;
 
 pub(crate) static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
 
-unsafe extern "C" fn direct_receive_noop(_: *mut c_void, _: u32, _: *mut f32, _: u32) -> c_int {
+unsafe extern "C" fn direct_receive_noop(
+    _: *mut c_void,
+    _: *const UrpNativeReceiveMetadata,
+    _: *mut f32,
+    _: u32,
+) -> c_int {
     0
 }
 unsafe extern "C" fn direct_transmit_noop(
@@ -1789,6 +1794,20 @@ fn complete_driver_channel_lifecycle_crosses_the_c_boundary() {
     );
     assert!(processing_text.contains("transmit_loudness_meter_enabled=0\n"));
     assert!(processing_text.contains("transmit_integrated_lufs=unavailable\n"));
+    let mut policy = command(URP_AST_COMMAND_GET_RECEIVE_POLICY, 0, -1);
+    policy.flags = u32::MAX;
+    assert_eq!(
+        // SAFETY: the reserved channel and complete writable command are live.
+        unsafe { channel_command(channel, &mut policy) },
+        URP_AST_OK
+    );
+    assert_eq!((policy.value, policy.flags), (0, 0));
+    policy.target = 1;
+    assert_eq!(
+        // SAFETY: the same live reservation validates this unsupported target.
+        unsafe { channel_command(channel, &mut policy) },
+        URP_AST_INVALID_ARGUMENT
+    );
     let mut prestart = command(URP_AST_COMMAND_GET_MIXER, URP_AST_MIXER_RECEIVE, 0);
     // SAFETY: commands requiring opened hardware reject this prepared channel.
     assert_eq!(
@@ -3313,5 +3332,60 @@ fn multi_channel_activation_failure_rolls_every_owner_back_before_publication() 
         channel_destroy(one);
         channel_destroy(two);
         driver_destroy(driver);
+    }
+}
+
+#[test]
+fn receive_policy_query_reports_resolved_modes_before_and_after_start() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    for (mode, carrier, expected) in [
+        ("off", "dsp", 0),
+        ("kerchunk", "dsp", 1),
+        ("on", "dsp", 2),
+        ("kerchunk", "no", 2),
+    ] {
+        let context = RefCell::new(Calls::default());
+        let text = format!("[usb]\n[receive]\nvad_mode={mode}\ncos_assignment={carrier}\n");
+        let driver = create_driver(&context, text.as_bytes());
+        // SAFETY: the driver retains its reserved channel until destruction below.
+        let channel = unsafe { reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED) };
+        let mut policy = command(URP_AST_COMMAND_GET_RECEIVE_POLICY, 0, -1);
+        policy.flags = u32::MAX;
+        assert_eq!(
+            // SAFETY: the live reservation and complete writable command remain owned here.
+            unsafe { channel_command(channel, &mut policy) },
+            URP_AST_OK
+        );
+        assert_eq!(
+            (policy.value, policy.flags),
+            (expected, if expected == 0 { 0 } else { 7680 })
+        );
+        assert_eq!(
+            // SAFETY: this fixture owns the prepared channel and all fake providers.
+            unsafe { channel_start(channel) },
+            URP_AST_OK
+        );
+        policy.value = -1;
+        policy.flags = u32::MAX;
+        assert_eq!(
+            // SAFETY: the unique active channel serializes this complete control request.
+            unsafe { channel_command(channel, &mut policy) },
+            URP_AST_OK
+        );
+        assert_eq!(
+            (policy.value, policy.flags),
+            (expected, if expected == 0 { 0 } else { 7680 })
+        );
+        assert_eq!(
+            // SAFETY: stop quiesces the fixture before destroying its unique handles.
+            unsafe { channel_stop(channel) },
+            URP_AST_OK
+        );
+        // SAFETY: callbacks are stopped; destroy consumes each unique handle once.
+        unsafe {
+            channel_destroy(channel);
+            driver_destroy(driver);
+        }
     }
 }

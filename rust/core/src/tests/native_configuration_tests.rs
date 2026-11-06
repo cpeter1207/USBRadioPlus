@@ -379,3 +379,37 @@ fn native_aliases_keep_shared_conflicting_assignment_errors() {
         );
     }
 }
+
+#[test]
+fn native_vad_aliases_use_receive_profiles_and_keep_diagnostic_origins() {
+    for (section, key) in [("receive", "vad_mode"), ("receive", "vad_hang_ms")] {
+        assert_eq!(native_radio_setting_destination(section, key), Some(key));
+    }
+    let resolved = resolve(
+        "[1000]\n[radio]\nvad_mode=kerchunk\nvad_hang_ms=333\ncarrier_source=dsp\n[radio 1000]\nvad_hang_ms=1200\n",
+    );
+    assert_eq!(
+        resolved.config().station.receive.vad_mode,
+        VadMode::Kerchunk
+    );
+    assert_eq!(resolved.config().station.receive.vad_hang_ms, 1200);
+    assert!(resolved.warnings().is_empty());
+    let fallback = resolve(
+        "[1000]\n[radio 1000]\ncarrier_source=disabled\nvad_mode=kerchunk\nvad_hang_ms=32768\n",
+    );
+    assert_eq!(fallback.config().station.receive.vad_mode, VadMode::On);
+    assert_eq!(fallback.config().station.receive.vad_hang_ms, 1000);
+    assert_eq!(fallback.warnings().len(), 2);
+    assert!(
+        fallback
+            .warnings()
+            .iter()
+            .all(|w| w.source == "native.conf" && w.section == "radio 1000")
+    );
+    assert!(
+        fallback
+            .warnings()
+            .iter()
+            .any(|w| w.name == "vad_mode" && w.supplied_value == "kerchunk" && w.fallback == "on")
+    );
+}

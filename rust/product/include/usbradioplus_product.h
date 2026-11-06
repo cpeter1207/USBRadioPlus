@@ -13,7 +13,7 @@
 struct rptadv_radio_session_config;
 
 /** Current resolved native station request ABI. */
-#define URP_NATIVE_CONFIG_ABI_VERSION 3U
+#define URP_NATIVE_CONFIG_ABI_VERSION 4U
 /** Apply the configured hardware capture gain at native startup. */
 #define URP_NATIVE_HARDWARE_GAIN_INPUT 1U
 /** Apply the configured hardware output-A gain at native startup. */
@@ -27,7 +27,7 @@ struct rptadv_radio_session_config;
  * transition applies selected gains and valid EEPROM tuning before GPIO or audio
  * starts; omitted controls and all switches are preserved.
  * Radio generation/frame bounds/publication cadence are set by native lifecycle;
- * effective released ABI-4 radio settings are otherwise preserved. Inactive
+ * effective released ABI-5 radio settings are otherwise preserved. Inactive
  * signaling fields are normalized by the typed radio configuration.
  */
 typedef struct UrpNativeStationConfig {
@@ -35,7 +35,7 @@ typedef struct UrpNativeStationConfig {
 	uint32_t struct_size;
 	/** Native request ABI, URP_NATIVE_CONFIG_ABI_VERSION. */
 	uint32_t abi_version;
-	/** Borrowed released ABI-4 radio settings template. */
+	/** Borrowed released ABI-5 radio settings template. */
 	const struct rptadv_radio_session_config *radio;
 	/** Released audio selection policy: exact zero or automatic one. */
 	uint32_t device_selection;
@@ -305,6 +305,17 @@ typedef void (*UrpNativeProcessingDiagnostic)(void *context, const uint8_t *text
  */
 #define URP_AST_COMMAND_SAVE_TUNING_EEPROM 9
 
+/** Read resolved receive policy before hardware activation. Target must be zero.
+ * Value returns VAD mode 0 Off, 1 Kerchunk, or 2 On; flags returns the minimum
+ * native preroll: zero for Off, 7680 frames for either active mode. */
+#define URP_AST_COMMAND_GET_RECEIVE_POLICY 10
+
+/** Read receive policy through Asterisk with one exact UrpAstChannelCommand,
+ * block=0. Only GET_RECEIVE_POLICY with target zero is accepted. Initialize
+ * value=-1 and flags=UINT32_MAX and validate both outputs: an older driver may
+ * report success for an unknown option without changing the payload. */
+#define URP_AST_OPTION_RECEIVE_POLICY 0x52505250
+
 /**
  * Receiver ADC mixer.
  */
@@ -556,8 +567,32 @@ typedef struct UrpAstChannelReserveArgs {
 	void *channel_context;
 } UrpAstChannelReserveArgs;
 
+/** Exact native receive identity and qualification record version. */
+#define URP_NATIVE_RECEIVE_METADATA_ABI_VERSION 1U
+
+/** Borrowed metadata for exactly the accompanying native receive PCM span. */
+typedef struct UrpNativeReceiveMetadata {
+	uint32_t struct_size;	     /**< Exact complete record size. */
+	uint32_t abi_version;	     /**< URP_NATIVE_RECEIVE_METADATA_ABI_VERSION. */
+	uint64_t generation_id;	     /**< Source radio generation. */
+	uint64_t first_sample_index; /**< First source-native frame in this span. */
+	uint32_t frame_count;	     /**< Exact accompanying mono sample count. */
+	uint32_t raw_receiver_keyed; /**< RF and guard qualification before VAD, zero or one. */
+	uint32_t receiver_keyed;     /**< Speech-admitted receive, zero or one. */
+	uint32_t vad_mode;	     /**< Effective mode: off0, kerchunk1, on2. */
+	uint64_t rf_burst_id; /**< Identity of the current or most recent qualified RF burst. */
+	uint64_t vad_voice_sample_index; /**< Last fresh voiced decision, UINT64_MAX if absent. */
+	uint32_t vad_preroll_frames;	 /**< Minimum external-ring reserve, native frames. */
+	uint32_t vad_voice_active;	 /**< Latest actual neural decision, zero or one. */
+	float vad_score; /**< Latest actual normalized score; priming is not speech. */
+	int32_t status; /**< Zero success; negative cancels receive, with optional zero identity. */
+} UrpNativeReceiveMetadata;
+
+/** Process one exact span while this immutable metadata remains borrowed. */
+typedef int (*UrpNativeReceive)(void *, const UrpNativeReceiveMetadata *, float *, uint32_t);
+
 /** Exact native PCM/metadata callback contract shared by every host adapter. */
-#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION 5U
+#define URP_AST_DIRECT_CALLBACKS_ABI_VERSION 6U
 
 /** Borrowed exact-frame native callbacks, independent of Asterisk frame queues. */
 typedef struct UrpAstDirectCallbacks {
@@ -566,7 +601,7 @@ typedef struct UrpAstDirectCallbacks {
 	 */
 	uint32_t struct_size;
 	/**
-	 * Exact direct-callback contract version, currently five.
+	 * Exact direct-callback contract version, currently six.
 	 */
 	uint32_t abi_version;
 	/**
@@ -574,9 +609,9 @@ typedef struct UrpAstDirectCallbacks {
 	 */
 	void *receive_context;
 	/**
-	 * Process USB receive DSP output and its qualified receiver key.
+	 * Process USB receive DSP output and its source-associated qualification.
 	 */
-	int (*receive)(void *, uint32_t, float *, uint32_t);
+	UrpNativeReceive receive;
 	/**
 	 * Borrowed transmit context, valid until synchronous stream shutdown.
 	 */

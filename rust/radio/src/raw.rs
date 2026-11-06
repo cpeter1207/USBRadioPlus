@@ -17,6 +17,9 @@ pub(super) struct RawReceiveConfig {
     pub(super) dcs_inverted: u32,
     pub(super) cpu_saver_enabled: u32,
     pub(super) native_squelch_delay_frames: u32,
+    pub(super) vad_mode: u32,
+    pub(super) vad_hang_ms: u32,
+    pub(super) vad_external_delay: u32,
 }
 
 #[repr(C)]
@@ -135,6 +138,13 @@ pub(super) struct RawReceiveResult {
     pub(super) output_rms: f32,
     pub(super) output_rail_samples: u64,
     pub(super) periodic_status_due: u32,
+    pub(super) raw_receiver_keyed: u32,
+    pub(super) rf_burst_id: u64,
+    pub(super) vad_mode: u32,
+    pub(super) vad_voice_active: u32,
+    pub(super) vad_score: f32,
+    pub(super) vad_voice_sample_index: u64,
+    pub(super) vad_preroll_frames: u32,
 }
 
 #[repr(C)]
@@ -194,6 +204,13 @@ pub(super) struct RawSnapshot {
     pub(super) ctcss_decoded_index: i32,
     pub(super) dcs_valid: u32,
     pub(super) program_ring: RingObservation,
+    pub(super) raw_receiver_keyed: u32,
+    pub(super) rf_burst_id: u64,
+    pub(super) vad_mode: u32,
+    pub(super) vad_voice_active: u32,
+    pub(super) vad_score: f32,
+    pub(super) vad_voice_sample_index: u64,
+    pub(super) vad_preroll_frames: u32,
 }
 
 pub(super) type SessionCreate = unsafe extern "C" fn(
@@ -278,7 +295,7 @@ pub(super) struct Functions {
 }
 
 impl SessionConfig {
-    /// Visit the released ABI-4 representation without duplicating its encoding.
+    /// Visit the released ABI-5 representation without duplicating its encoding.
     ///
     /// The pointer is readable only for the callback and must not be retained.
     pub fn with_abi<T>(&self, visit: impl FnOnce(*const c_void) -> T) -> T {
@@ -286,7 +303,7 @@ impl SessionConfig {
         visit(std::ptr::from_ref(&raw).cast())
     }
 
-    /// Copy a released ABI-4 configuration into the typed station request.
+    /// Copy a released ABI-5 configuration into the typed station request.
     ///
     /// # Safety
     /// A non-null pointer must expose a readable size word and all bytes it
@@ -321,6 +338,9 @@ impl SessionConfig {
             };
         }
         let receive = raw.receive;
+        if receive.vad_hang_ms > 32_767 {
+            return Err(RadioError::InvalidArgument);
+        }
         let transmit = raw.transmit;
         let qualification = raw.qualification;
         let receive_signaling = match (
@@ -377,9 +397,12 @@ impl SessionConfig {
                 signaling: receive_signaling,
                 cpu_saver_enabled: boolean(receive.cpu_saver_enabled)?,
                 native_squelch_delay_frames: receive.native_squelch_delay_frames,
+                vad_mode: choice!(receive.vad_mode, 0 => VadMode::Off, 1 => VadMode::Kerchunk, 2 => VadMode::On),
+                vad_hang_ms: receive.vad_hang_ms,
+                vad_external_delay: boolean(receive.vad_external_delay)?,
             },
             qualification: QualificationConfig {
-                carrier_source: choice!(qualification.carrier_source, 0 => CarrierSource::Disabled, 1 => CarrierSource::DspNoise, 2 => CarrierSource::Vox, 3 => CarrierSource::Usb, 4 => CarrierSource::UsbInverted, 5 => CarrierSource::Parallel, 6 => CarrierSource::ParallelInverted, 7 => CarrierSource::External),
+                carrier_source: choice!(qualification.carrier_source, 0 => CarrierSource::Disabled, 1 => CarrierSource::DspNoise, 2 => CarrierSource::Vox, 3 => CarrierSource::Usb, 4 => CarrierSource::UsbInverted, 5 => CarrierSource::Parallel, 6 => CarrierSource::ParallelInverted, 7 => CarrierSource::External, 8 => CarrierSource::Open),
                 subaudible_source: choice!(qualification.subaudible_source, 0 => SubaudibleSource::Disabled, 1 => SubaudibleSource::Usb, 2 => SubaudibleSource::UsbInverted, 3 => SubaudibleSource::Dsp, 4 => SubaudibleSource::Parallel, 5 => SubaudibleSource::ParallelInverted),
                 subaudible_override: boolean(qualification.subaudible_override)?,
                 advanced_transport: boolean(qualification.advanced_transport)?,
@@ -455,6 +478,9 @@ impl SessionConfig {
                 dcs_inverted: u32::from(receive_dcs_config.inverted),
                 cpu_saver_enabled: u32::from(self.receive.cpu_saver_enabled),
                 native_squelch_delay_frames: self.receive.native_squelch_delay_frames,
+                vad_mode: self.receive.vad_mode as u32,
+                vad_hang_ms: self.receive.vad_hang_ms,
+                vad_external_delay: u32::from(self.receive.vad_external_delay),
             },
             qualification: RawQualificationConfig {
                 carrier_source: self.qualification.carrier_source as u32,

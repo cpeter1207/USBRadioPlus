@@ -1,3 +1,11 @@
+usbradioplus (0.1.0~alpha31-1+vad.20261106) unstable; urgency=medium
+
+  * Add Earshot receiver VAD with Off, Kerchunk filter and On modes.
+  * Preserve receive onset in the existing PCM delay line.
+  * Require matched radio ABI5 and direct receive callback ABI6.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 06 Nov 2026 20:00:00 -0600
+
 usbradioplus (0.1.0~alpha30-1+bs1770.20261106) unstable; urgency=medium
 
   * Share the fixed Peak Limiter across local, link, and transmit profiles.

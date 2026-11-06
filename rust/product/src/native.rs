@@ -30,7 +30,7 @@ use usbradioplus_station::{
 };
 
 /// Current resolved native station request ABI.
-pub const URP_NATIVE_CONFIG_ABI_VERSION: u32 = 3;
+pub const URP_NATIVE_CONFIG_ABI_VERSION: u32 = 4;
 /// Select hardware capture gain at native startup.
 pub const URP_NATIVE_HARDWARE_GAIN_INPUT: u32 = 1;
 /// Select hardware output-A gain at native startup.
@@ -45,9 +45,9 @@ pub const URP_NATIVE_HARDWARE_GAIN_OUTPUT_B: u32 = 4;
 pub struct UrpNativeStationConfig {
     /// Exact structure size.
     pub struct_size: u32,
-    /// Native request ABI, currently three.
+    /// Native request ABI, currently four.
     pub abi_version: u32,
-    /// Pointer to the released `rptadv_radio_session_config` ABI-4 template.
+    /// Pointer to the released `rptadv_radio_session_config` ABI-5 template.
     /// Effective settings are preserved except lifecycle generation, frame bounds
     /// and publication cadence; inactive signaling fields are normalized.
     pub radio: *const c_void,

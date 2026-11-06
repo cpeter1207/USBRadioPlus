@@ -703,6 +703,8 @@ const ALIASES: &[Alias] = &[
     alias!("noise_filter", "receive", "noise_filter_type", Noise),
     alias!("vox_threshold", "receive", "vox_threshold", Identity),
     alias!("vox_hang_ms", "receive", "vox_hang_ms", Identity),
+    alias!("vad_mode", "receive", "vad_mode", Identity),
+    alias!("vad_hang_ms", "receive", "vad_hang_ms", Identity),
     alias!(
         "receive_on_delay_ms",
         "receive",

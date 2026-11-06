@@ -2148,3 +2148,49 @@ fn direct_call_rejects_terminal_activation_failure_without_starting_delivery() {
         .is_err()
     );
 }
+
+#[test]
+fn receive_policy_option_rejects_foreign_commands_and_forwards_unaligned_payloads() {
+    let _fixture = Fixture::new();
+    let mut descriptor = callback_descriptor();
+    descriptor.channel_command = Some(capture_command);
+    let calls = Mutex::new(DriverCalls::default());
+    let (_channel, mut owner) = callback_channel(&descriptor, &calls);
+    for defect in 0..6 {
+        // SAFETY: the command contains only integers and a fixed integer array.
+        let mut command: UrpAstChannelCommand = unsafe { zeroed() };
+        command.struct_size = size_of::<UrpAstChannelCommand>() as u32;
+        command.abi_version = 1;
+        command.command = crate::URP_AST_COMMAND_GET_RECEIVE_POLICY;
+        command.value = -7;
+        let mut length = size_of::<UrpAstChannelCommand>() as c_int;
+        match defect {
+            0 => command.struct_size = 4,
+            1 => command.abi_version = 2,
+            2 => command.command = crate::URP_AST_COMMAND_GET_MIXER,
+            3 => command.target = 1,
+            4 => length -= 1,
+            _ => {}
+        }
+        let mut storage = vec![0u8; size_of::<UrpAstChannelCommand>() + 1];
+        // SAFETY: storage includes the byte offset and one complete command.
+        let data = unsafe { storage.as_mut_ptr().add(1).cast::<UrpAstChannelCommand>() };
+        // SAFETY: the possibly unaligned command fits entirely in storage.
+        unsafe { data.write_unaligned(command) };
+        // SAFETY: the fake owner and complete borrowed storage remain live.
+        let result = unsafe {
+            setoption(
+                owner.as_ptr(),
+                crate::URP_AST_OPTION_RECEIVE_POLICY,
+                data.cast(),
+                length,
+            )
+        };
+        assert_eq!(result, if defect == 5 { 0 } else { -1 });
+        assert_eq!(
+            // SAFETY: setoption has returned; storage still contains the full record.
+            unsafe { data.read_unaligned().value },
+            if defect == 5 { 0 } else { -7 }
+        );
+    }
+}

@@ -422,6 +422,13 @@ struct RadioReceiveResult {
     output_rms: f32,
     output_rail_samples: u64,
     periodic_status_due: u32,
+    raw_receiver_keyed: u32,
+    rf_burst_id: u64,
+    vad_mode: u32,
+    vad_voice_active: u32,
+    vad_score: f32,
+    vad_voice_sample_index: u64,
+    vad_preroll_frames: u32,
 }
 
 #[repr(C)]
@@ -580,7 +587,7 @@ unsafe extern "C" fn radio_pop(_handle: *const c_void, _output: *mut c_void) -> 
 
 static RADIO: RadioDescriptor = RadioDescriptor {
     struct_size: size_of::<RadioDescriptor>() as u32,
-    abi_version: 4,
+    abi_version: 5,
     capability_name: c"rptadv.radio-core".as_ptr(),
     create: Some(radio_create),
     warm: Some(radio_warm),

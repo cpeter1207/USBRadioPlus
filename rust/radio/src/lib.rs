@@ -1,4 +1,4 @@
-//! Safe ownership for the ABI-4 whole-session radio core.
+//! Safe ownership for the ABI-5 whole-session radio core.
 //!
 //! Product composition validates the process-lifetime descriptor and prepares
 //! all borrowed processing ports on its control plane. A prepared session then
@@ -26,7 +26,7 @@ pub const CTCSS_TONE_COUNT: usize = 38;
 /// Normalized receive CTCSS decoder peak used by the calibration procedure.
 pub const CTCSS_CALIBRATION_TARGET: f32 = 2_400.0 / 32_768.0;
 
-const ABI_VERSION: u32 = 4;
+const ABI_VERSION: u32 = 5;
 const CAPABILITY: &CStr = c"rptadv.radio-core";
 const RESULT_OK: c_int = 0;
 const RESULT_INVALID_ARGUMENT: c_int = -1;
@@ -265,6 +265,19 @@ pub enum ReceiveSignaling {
     Dcs(DcsReceiveConfig),
 }
 
+/// Neural speech admission policy in the released radio ABI.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[repr(u32)]
+pub enum VadMode {
+    /// Preserve RF-only admission and avoid neural detector work.
+    #[default]
+    Off = 0,
+    /// Admit a qualified RF burst after its first fresh speech decision.
+    Kerchunk = 1,
+    /// Require speech or the configured speech hold.
+    On = 2,
+}
+
 /// Immutable high-level receive detector policy.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReceiveConfig {
@@ -286,6 +299,12 @@ pub struct ReceiveConfig {
     pub cpu_saver_enabled: bool,
     /// Native pre-deemphasis delay in frames.
     pub native_squelch_delay_frames: u32,
+    /// Speech qualification policy, independent of VOX.
+    pub vad_mode: VadMode,
+    /// Speech hold in milliseconds, from zero through 32767.
+    pub vad_hang_ms: u32,
+    /// Whether the controller owns the sole receive delay line.
+    pub vad_external_delay: bool,
 }
 
 impl Default for ReceiveConfig {
@@ -300,6 +319,9 @@ impl Default for ReceiveConfig {
             signaling: ReceiveSignaling::Disabled,
             cpu_saver_enabled: false,
             native_squelch_delay_frames: 0,
+            vad_mode: VadMode::Off,
+            vad_hang_ms: 1_000,
+            vad_external_delay: false,
         }
     }
 }
@@ -765,6 +787,20 @@ pub struct ReceiveResult {
     pub output_rail_samples: u64,
     /// Whether the periodic publication deadline crossed.
     pub periodic_status_due: bool,
+    /// RF qualification before speech admission.
+    pub raw_receiver_keyed: bool,
+    /// RF burst identity within this generation.
+    pub rf_burst_id: u64,
+    /// Effective neural speech admission mode.
+    pub vad_mode: VadMode,
+    /// Whether the latest fresh detector decision indicates speech.
+    pub vad_voice_active: bool,
+    /// Latest speech probability from zero through one.
+    pub vad_score: f32,
+    /// End sample of the latest fresh speech decision, or `u64::MAX` if absent.
+    pub vad_voice_sample_index: u64,
+    /// Minimum reserve required in the sole receive delay owner, in native frames.
+    pub vad_preroll_frames: u32,
 }
 
 /// Transmitter signaling state after one callback.
@@ -904,6 +940,20 @@ pub struct SessionSnapshot {
     pub dcs_valid: bool,
     /// Latest program-ring diagnostics.
     pub program_ring: RingObservation,
+    /// RF qualification before speech admission.
+    pub raw_receiver_keyed: bool,
+    /// RF burst identity within this generation.
+    pub rf_burst_id: u64,
+    /// Effective neural speech admission mode.
+    pub vad_mode: VadMode,
+    /// Whether the latest fresh detector decision indicates speech.
+    pub vad_voice_active: bool,
+    /// Latest speech probability from zero through one.
+    pub vad_score: f32,
+    /// End sample of the latest fresh speech decision, or `u64::MAX` if absent.
+    pub vad_voice_sample_index: u64,
+    /// Minimum reserve required in the sole receive delay owner, in native frames.
+    pub vad_preroll_frames: u32,
 }
 
 mod raw;

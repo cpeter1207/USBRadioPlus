@@ -19,6 +19,61 @@ use crate::{
     prepare_program_ring,
 };
 
+/// Exact native source identity and raw-versus-speech receive qualification.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct DirectReceiveMetadata {
+    /// Exact complete record size.
+    pub struct_size: u32,
+    /// Receive metadata contract, one.
+    pub abi_version: u32,
+    /// Source radio generation.
+    pub generation_id: u64,
+    /// First source-native frame in this span.
+    pub first_sample_index: u64,
+    /// Exact accompanying mono sample count.
+    pub frame_count: u32,
+    /// RF and guard qualification before VAD, zero or one.
+    pub raw_receiver_keyed: u32,
+    /// Speech-admitted receive, zero or one.
+    pub receiver_keyed: u32,
+    /// Effective mode: off0, kerchunk1, on2.
+    pub vad_mode: u32,
+    /// Current or most recent qualified RF burst identity.
+    pub rf_burst_id: u64,
+    /// Last fresh voiced decision, `u64::MAX` if absent.
+    pub vad_voice_sample_index: u64,
+    /// Minimum external-ring reserve in native frames.
+    pub vad_preroll_frames: u32,
+    /// Latest actual neural decision, zero or one.
+    pub vad_voice_active: u32,
+    /// Latest normalized neural score; priming is not speech.
+    pub vad_score: f32,
+    /// Zero success; negative cancels receive even when source identity is unavailable.
+    pub status: i32,
+}
+
+impl DirectReceiveMetadata {
+    pub(crate) fn from_result(result: usbradioplus_radio::ReceiveResult) -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: 1,
+            generation_id: result.generation_id,
+            first_sample_index: result.first_sample_index,
+            frame_count: result.frame_count,
+            raw_receiver_keyed: u32::from(result.raw_receiver_keyed),
+            receiver_keyed: u32::from(result.receiver_keyed),
+            vad_mode: result.vad_mode as u32,
+            rf_burst_id: result.rf_burst_id,
+            vad_voice_sample_index: result.vad_voice_sample_index,
+            vad_preroll_frames: result.vad_preroll_frames,
+            vad_voice_active: u32::from(result.vad_voice_active),
+            vad_score: result.vad_score,
+            status: 0,
+        }
+    }
+}
+
 /// Borrowed native 48 kHz mono F32 callback pair for the private initial-alpha POC.
 /// Each callback processes exactly `frame_count` mutable samples and returns zero
 /// on success. Context ownership stays with the attaching controller.
@@ -27,12 +82,14 @@ use crate::{
 pub struct DirectCallbacks {
     /// Exact byte size of this descriptor.
     pub struct_size: u32,
-    /// Exact direct-callback contract version, currently five.
+    /// Exact direct-callback contract version, currently six.
     pub abi_version: u32,
     /// Borrowed receive context, valid until synchronous stream shutdown.
     pub receive_context: *mut c_void,
-    /// Process USB receive DSP output and its qualified receiver key.
-    pub receive: Option<unsafe extern "C" fn(*mut c_void, u32, *mut f32, u32) -> c_int>,
+    /// Process USB receive DSP output and its source-associated qualification.
+    pub receive: Option<
+        unsafe extern "C" fn(*mut c_void, *const DirectReceiveMetadata, *mut f32, u32) -> c_int,
+    >,
     /// Borrowed transmit context, valid until synchronous stream shutdown.
     pub transmit_context: *mut c_void,
     /// Fill PCM and write zero/one transmitter-key and CTCSS-enable results.
@@ -55,7 +112,7 @@ unsafe impl Sync for DirectCallbacks {}
 
 impl DirectCallbacks {
     /// Exact direct-callback contract including separate PTT and CTCSS outputs.
-    pub const ABI_VERSION: u32 = 5;
+    pub const ABI_VERSION: u32 = 6;
 
     /// Validate the exact initial-alpha boundary before copying callback pointers.
     #[must_use]

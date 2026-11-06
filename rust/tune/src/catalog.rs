@@ -23,6 +23,11 @@ const SIGNALING_METHODS: [(&str, &str); 3] = [
     ("ctcss", "CTCSS"),
     ("dcs", "DCS"),
 ];
+const VAD_MODES: [(&str, &str); 3] = [
+    ("off", "Off"),
+    ("kerchunk", "Kerchunk suppression"),
+    ("on", "Continuous speech qualification"),
+];
 const RECEIVE_AUDIO_SOURCES: [(&str, &str); 3] = [
     ("no", "No receiver audio"),
     ("speaker", "De-emphasized speaker audio"),
@@ -1182,6 +1187,22 @@ fn receive_section(station: &StationConfig) -> SectionSpec {
                 "ms",
                 ApplyMode::Reload,
             ),
+            enumeration(
+                "vad_mode",
+                "Voice activity detection",
+                value.vad_mode.to_string(),
+                &VAD_MODES,
+                ApplyMode::Reload,
+            ),
+            integer(
+                "vad_hang_ms",
+                "VAD hang time",
+                value.vad_hang_ms.into(),
+                0,
+                32_767,
+                "ms",
+                ApplyMode::Reload,
+            ),
             integer(
                 "vox_threshold",
                 "VOX threshold",
@@ -1975,6 +1996,45 @@ mod tests {
             }
         }
         found
+    }
+
+    #[test]
+    fn vad_controls_exist_for_both_backends_without_exposing_a_second_delay() {
+        for catalog in [configuration_catalog(), standalone_configuration_catalog()] {
+            let found = sections(&catalog);
+            let mode = found
+                .iter()
+                .flat_map(|s| &s.settings)
+                .find(|s| s.key == "vad_mode")
+                .unwrap();
+            assert_eq!(mode.default_value, "off");
+            assert_eq!(mode.apply_mode, ApplyMode::Reload);
+            let SettingKind::Enumeration(items) = &mode.kind else {
+                panic!("VAD mode must be an enum")
+            };
+            assert_eq!(
+                items.iter().map(|i| i.value.as_str()).collect::<Vec<_>>(),
+                vec!["off", "kerchunk", "on"]
+            );
+            let hang = found
+                .iter()
+                .flat_map(|s| &s.settings)
+                .find(|s| s.key == "vad_hang_ms")
+                .unwrap();
+            assert_eq!(hang.default_value, "1000");
+            assert_eq!(hang.apply_mode, ApplyMode::Reload);
+            let SettingKind::Integer(editor) = &hang.kind else {
+                panic!("VAD hang must be an integer")
+            };
+            assert_eq!((editor.minimum, editor.maximum), (Some(0), Some(32767)));
+            assert_eq!(editor.units, "ms");
+            assert!(
+                !found
+                    .iter()
+                    .flat_map(|s| &s.settings)
+                    .any(|s| s.key == "vad_external_delay")
+            );
+        }
     }
 
     #[test]

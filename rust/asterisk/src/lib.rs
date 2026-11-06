@@ -52,6 +52,8 @@ impl Default for UrpAstDtmfResult {
 }
 /// Private positive Asterisk setoption ID (ASCII RPAD), passed with block zero.
 pub const URP_AST_OPTION_DIRECT_CALLBACKS: c_int = 0x5250_4144;
+/// Query resolved VAD mode and minimum preroll before starting the reserved channel.
+pub const URP_AST_OPTION_RECEIVE_POLICY: c_int = 0x5250_5250;
 /// Bind a peer to the selected radio's incoming link graph, using block zero.
 pub const URP_AST_OPTION_LINK_ATTACH: c_int = 0x5250_4C41;
 /// Exact peer-binding payload, synchronously borrowed by the channel option.
@@ -70,7 +72,7 @@ pub struct UrpAstLinkAttach {
 
 impl UrpAstDirectCallbacks {
     /// Exact borrowed direct PCM endpoint ABI.
-    pub const ABI_VERSION: u32 = 5;
+    pub const ABI_VERSION: u32 = 6;
 
     /// Check the complete two-endpoint attachment before retaining its contexts.
     pub fn is_valid(&self) -> bool {

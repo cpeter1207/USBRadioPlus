@@ -309,3 +309,49 @@ fn native_processing_uses_only_the_local_and_transmit_chains() {
     input.station.receive.audio_source = ReceiveAudioSource::Speaker;
     assert!(!native_processing_plan(&input).deemphasis_enabled);
 }
+
+#[test]
+fn vad_translation_preserves_vox_and_has_exactly_one_receive_delay_owner() {
+    let mut config = channel();
+    config.station.receive.squelch_delay_ms = 17;
+    config.station.receive.vox_hang_ms = 4321;
+    config.station.receive.vox_threshold = 123;
+    for mode in [
+        ConfigVadMode::Off,
+        ConfigVadMode::Kerchunk,
+        ConfigVadMode::On,
+    ] {
+        config.station.receive.vad_mode = mode;
+        config.station.receive.vad_hang_ms = 777;
+        for transport in [
+            ControllerTransport::AppRpt,
+            ControllerTransport::RptAdvanced,
+        ] {
+            let got = radio_session_config(&config, transport, 9, 960).unwrap();
+            assert_eq!(
+                got.receive.vad_mode as u32,
+                match mode {
+                    ConfigVadMode::Off => 0,
+                    ConfigVadMode::Kerchunk => 1,
+                    ConfigVadMode::On => 2,
+                }
+            );
+            assert_eq!(got.receive.vad_hang_ms, 777);
+            assert_eq!(got.receive.vox_hang_milliseconds, 4321);
+            assert_eq!(got.receive.vox_threshold, 123);
+            assert_eq!(
+                got.receive.vad_external_delay,
+                transport == ControllerTransport::RptAdvanced
+            );
+            let external_active =
+                transport == ControllerTransport::RptAdvanced && mode != ConfigVadMode::Off;
+            assert_eq!(
+                got.receive.native_squelch_delay_frames,
+                if external_active { 0 } else { 17 * 48 }
+            );
+        }
+        let native = native_radio_session_config(&config, 9, 960).unwrap();
+        assert!(native.receive.vad_external_delay);
+        assert_eq!(native.receive.native_squelch_delay_frames, 0);
+    }
+}

@@ -34,11 +34,11 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha2)" in control
     assert "librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1)" in control
     assert "libsamplerate" not in control
-    assert "librptadvradio-dev (>= 0.1.0~alpha9)" in control
-    assert "--variable=abi_version rptadvradio),4" in makefile
+    assert "librptadvradio-dev (>= 0.1.0~alpha10)" in control
+    assert "--variable=abi_version rptadvradio),5" in makefile
     for soname in (
         "librate_adjusting_pcm_ring3.so.3",
-        "librptadvradio.so.4",
+        "librptadvradio.so.5",
         "librptadv_samplerate_adapter.so.2",
         "librptadv_ffmpeg_adapter.so.1",
         "librptadv_portaudio_alsa_adapter.so.2",
@@ -478,7 +478,7 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
     @param tmp_path Isolated filesystem directory supplied by pytest.
     """
     pkg_config = tmp_path / "pkg-config"
-    for incompatible_abi in ("", "1", "2", "3", "5"):
+    for incompatible_abi in ("", "1", "2", "3", "4", "6"):
         pkg_config.write_text(
             "#!/bin/sh\n"
             'if [ "$*" = "--variable=abi_version rptadvradio" ]; then\n'
@@ -496,7 +496,7 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
             check=False,
         )
         assert result.returncode != 0
-        assert "requires librptadvradio descriptor ABI 4" in result.stderr
+        assert "requires librptadvradio descriptor ABI 5" in result.stderr
 
 
 def test_ring_minimum_accepts_source_and_debian_alpha2_but_not_alpha1(tmp_path):
@@ -506,7 +506,7 @@ def test_ring_minimum_accepts_source_and_debian_alpha2_but_not_alpha1(tmp_path):
         "#!/bin/sh\n"
         'case "$*" in\n'
         '  *" rate_adjusting_pcm_ring3") exec /usr/bin/pkg-config "$@";;\n'
-        '  "--variable=abi_version rptadvradio") echo 4;;\n'
+        '  "--variable=abi_version rptadvradio") echo 5;;\n'
         '  "--variable=abi_version rptadv_samplerate_adapter") echo 2;;\n'
         "esac\n",
         encoding="utf-8",
@@ -543,7 +543,7 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
         "#!/bin/sh\n"
         'case "$1" in\n'
         '  --variable=abi_version) case "$2" in\n'
-        "    rptadv_samplerate_adapter) echo 2;; *) echo 4;; esac;;\n"
+        "    rptadv_samplerate_adapter) echo 2;; rptadvradio) echo 5;; *) echo 4;; esac;;\n"
         '  --variable=libdir) echo /selected/"$2";;\n'
         '  --libs-only-other) printf "%s " -pthread -Wl,--as-needed;;\n'
         '  --libs) shift; printf "%s " -L/stale/lib; for pkg do printf -- "-l%s " "$pkg"; done;;\n'
@@ -566,7 +566,7 @@ def test_module_link_uses_selected_provider_paths(tmp_path):
     )
     for provider, soname in (
         ("rate_adjusting_pcm_ring3", "librate_adjusting_pcm_ring3.so.3"),
-        ("rptadvradio", "librptadvradio.so.4"),
+        ("rptadvradio", "librptadvradio.so.5"),
         ("rptadv_samplerate_adapter", "librptadv_samplerate_adapter.so.2"),
         ("rptadv_ffmpeg_adapter", "librptadv_ffmpeg_adapter.so.1"),
         ("rptadv_portaudio_alsa_adapter", "librptadv_portaudio_alsa_adapter.so.2"),

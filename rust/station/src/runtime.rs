@@ -829,6 +829,50 @@ impl Drop for StationRuntime {
     }
 }
 
+fn fail_receive(context: &mut ReceiveContext, frames: usize) -> c_int {
+    let frames = frames.min(context.mono.len());
+    context.mono[..frames].fill(0.0);
+    context.hardware.publish_receiver_keyed(false);
+    let qualification = ReceiveQualification {
+        carrier_active: false,
+        subaudible_active: false,
+        receiver_keyed: false,
+        ctcss_decoded: None,
+        dcs_valid: false,
+    };
+    context.station.publish_qualification(qualification);
+    if let Some(direct) = context.station.direct {
+        let metadata = crate::DirectReceiveMetadata {
+            struct_size: std::mem::size_of::<crate::DirectReceiveMetadata>() as u32,
+            abi_version: 1,
+            frame_count: frames as u32,
+            vad_voice_sample_index: u64::MAX,
+            status: CALLBACK_FAILED,
+            ..crate::DirectReceiveMetadata::default()
+        };
+        // SAFETY: the retained direct endpoint accepts cancellation without source identity.
+        unsafe {
+            (direct.receive.expect("validated direct receive"))(
+                direct.receive_context,
+                &metadata,
+                context.mono.as_mut_ptr(),
+                frames as u32,
+            );
+        }
+    } else {
+        let _ = context.station.controller().publish(
+            &context.mono[..frames],
+            ReceiveMetadata {
+                qualification,
+                controller_ctcss: None,
+                statuses: [None, None],
+            },
+        );
+    }
+    context.hardware.note_receive(true);
+    CALLBACK_FAILED
+}
+
 unsafe extern "C" fn receive_callback(
     context: *mut c_void,
     input: *const f32,
@@ -841,9 +885,7 @@ unsafe extern "C" fn receive_callback(
     let context = unsafe { context.as_mut() };
     let frames = frame_count as usize;
     if input.is_null() || frames == 0 || frames > context.mono.len() {
-        context.hardware.publish_receiver_keyed(false);
-        context.hardware.note_receive(true);
-        return CALLBACK_FAILED;
+        return fail_receive(context, frames);
     }
     // SAFETY: the audio adapter supplies canonical stereo input for each frame.
     let input = unsafe { std::slice::from_raw_parts(input, frames * 2) };
@@ -860,9 +902,7 @@ unsafe extern "C" fn receive_callback(
     ) {
         Ok(result) => result,
         Err(_) => {
-            context.hardware.publish_receiver_keyed(false);
-            context.hardware.note_receive(true);
-            return CALLBACK_FAILED;
+            return fail_receive(context, frames);
         }
     };
     context
@@ -876,6 +916,7 @@ unsafe extern "C" fn receive_callback(
     if remote.enabled && !remote.receive_permitted {
         context.mono[..frames].fill(0.0);
         result.receiver_keyed = false;
+        result.raw_receiver_keyed = false;
     }
     let metadata = receive_metadata(
         result,
@@ -885,12 +926,13 @@ unsafe extern "C" fn receive_callback(
     );
     if let Some(direct) = station.direct {
         station.publish_qualification(metadata.qualification);
+        let direct_metadata = crate::DirectReceiveMetadata::from_result(result);
         // SAFETY: attachment validated and retained these endpoints until stream
         // shutdown; mono is the exact processed span owned by this callback.
         let status = unsafe {
             (direct.receive.expect("validated direct receive"))(
                 direct.receive_context,
-                u32::from(result.receiver_keyed),
+                &direct_metadata,
                 context.mono.as_mut_ptr(),
                 frame_count,
             )

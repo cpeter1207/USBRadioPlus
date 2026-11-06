@@ -204,6 +204,7 @@ unsafe extern "C" fn fake_receive(
             output_rms: 0.25,
             output_rail_samples: 0,
             periodic_status_due: 0,
+            ..RawReceiveResult::default()
         });
     }
     RESULT_OK
@@ -451,7 +452,7 @@ fn prepare(
 fn descriptor_without_prepared_updates_is_rejected_before_session_creation() {
     let mut descriptor = valid_descriptor();
     descriptor.struct_size = 80;
-    // SAFETY: the prefix is readable and deliberately advertises the old ABI-4 size.
+    // SAFETY: the prefix is readable and deliberately advertises the old ABI-5 size.
     let result = unsafe { RadioProvider::from_raw_descriptor(ptr::from_ref(&descriptor).cast()) };
     assert_eq!(result.err(), Some(RadioError::IncompatibleAdapter));
 }
@@ -571,7 +572,7 @@ fn prepared_update_creation_cleans_partial_handles_and_rejects_ring_replacement(
 }
 
 #[test]
-fn descriptor_validation_requires_the_complete_abi4_table() {
+fn descriptor_validation_requires_the_complete_abi5_table() {
     // SAFETY: null is explicitly accepted as an incompatible descriptor.
     let null_result = unsafe { RadioProvider::from_raw_descriptor(ptr::null()) };
     assert_eq!(null_result.err(), Some(RadioError::IncompatibleAdapter));
@@ -647,9 +648,9 @@ fn high_level_configuration_maps_to_the_flat_abi() {
     };
 
     let raw = config.as_raw();
-    // SAFETY: this complete, aligned ABI-4 value lives through the import.
+    // SAFETY: this complete, aligned ABI-5 value lives through the import.
     assert_eq!(
-        // SAFETY: this complete, aligned ABI-4 value lives through the import.
+        // SAFETY: this complete, aligned ABI-5 value lives through the import.
         unsafe { SessionConfig::from_abi(ptr::from_ref(&raw).cast()) },
         Ok(config)
     );
@@ -709,13 +710,13 @@ fn importing_native_session_rejects_malformed_abi_before_reading_payload() {
 }
 
 #[test]
-fn rust_layout_matches_the_abi4_c_header() {
+fn rust_layout_matches_the_abi5_c_header() {
     assert_eq!(
         (
             size_of::<RawReceiveConfig>(),
             align_of::<RawReceiveConfig>()
         ),
-        (64, 8)
+        (80, 8)
     );
     assert_eq!(offset_of!(RawReceiveConfig, ctcss_tone_mask), 32);
     assert_eq!(
@@ -741,11 +742,11 @@ fn rust_layout_matches_the_abi4_c_header() {
             size_of::<RawSessionConfig>(),
             align_of::<RawSessionConfig>()
         ),
-        (392, 8)
+        (408, 8)
     );
     assert_eq!(offset_of!(RawSessionConfig, receive), 48);
-    assert_eq!(offset_of!(RawSessionConfig, qualification), 112);
-    assert_eq!(offset_of!(RawSessionConfig, transmit), 144);
+    assert_eq!(offset_of!(RawSessionConfig, qualification), 128);
+    assert_eq!(offset_of!(RawSessionConfig, transmit), 160);
     assert_eq!(size_of::<RawSessionPorts>(), 1_504);
     assert_eq!(offset_of!(RawSessionPorts, receive_ctcss_notch), 72);
     assert_eq!(offset_of!(RawSessionPorts, receive_noise_reduction), 1_288);
@@ -763,10 +764,10 @@ fn rust_layout_matches_the_abi4_c_header() {
     assert_eq!(size_of::<RawDescriptor>(), 112);
     assert_eq!(size_of::<RawReceiveInput>(), 20);
     assert_eq!(size_of::<RawTransmitInput>(), 24);
-    assert_eq!(size_of::<RawReceiveResult>(), 96);
+    assert_eq!(size_of::<RawReceiveResult>(), 136);
     assert_eq!(size_of::<RawTransmitResult>(), 120);
     assert_eq!(size_of::<RawEvent>(), 24);
-    assert_eq!(size_of::<RawSnapshot>(), 192);
+    assert_eq!(size_of::<RawSnapshot>(), 240);
     assert_eq!(size_of::<RingObservation>(), 48);
     assert_eq!(size_of::<ProgramRingResult>(), 64);
 }
@@ -1550,4 +1551,129 @@ fn dcs_configuration_and_remaining_adapter_failure_paths_are_typed() {
         Err(RadioError::AdapterFailure)
     );
     drop((receive, transmit, observer));
+}
+
+#[test]
+fn vad_config_roundtrips_and_rejects_out_of_range_wire_values() {
+    for mode in [VadMode::Off, VadMode::Kerchunk, VadMode::On] {
+        let mut config = SessionConfig::new(7, 960, 960);
+        config.receive.vad_mode = mode;
+        config.receive.vad_hang_ms = 32767;
+        config.receive.vad_external_delay = true;
+        let raw = config.as_raw();
+        assert_eq!(raw.receive.vad_mode, mode as u32);
+        assert_eq!(raw.receive.vad_hang_ms, 32767);
+        assert_eq!(raw.receive.vad_external_delay, 1);
+        assert_eq!(
+            // SAFETY: the complete generated ABI record lives through this import.
+            unsafe { SessionConfig::from_abi(ptr::from_ref(&raw).cast()) },
+            Ok(config)
+        );
+    }
+    for defect in 0..3 {
+        let mut raw = SessionConfig::new(7, 960, 960).as_raw();
+        match defect {
+            0 => raw.receive.vad_mode = 3,
+            1 => raw.receive.vad_hang_ms = 32768,
+            _ => raw.receive.vad_external_delay = 2,
+        }
+        assert_eq!(
+            // SAFETY: the complete ABI record is readable for validation.
+            unsafe { SessionConfig::from_abi(ptr::from_ref(&raw).cast()) },
+            Err(RadioError::InvalidArgument)
+        );
+    }
+    let mut config = SessionConfig::new(7, 960, 960);
+    config.receive.vad_hang_ms = 32768;
+    assert_eq!(validate_config(&config), Err(RadioError::InvalidArgument));
+    config.receive.vad_hang_ms = 1000;
+    config.maximum_receive_frame_count = 4097;
+    assert_eq!(validate_config(&config), Ok(()));
+    config.receive.vad_mode = VadMode::On;
+    assert_eq!(validate_config(&config), Err(RadioError::InvalidArgument));
+    config.maximum_receive_frame_count = 4096;
+    config.qualification.carrier_source = CarrierSource::Open;
+    assert_eq!(validate_config(&config), Ok(()));
+    let imported = config
+        .with_abi(|p| {
+            // SAFETY: with_abi lends the full current configuration for this callback.
+            unsafe { SessionConfig::from_abi(p) }
+        })
+        .unwrap();
+    assert_eq!(imported.qualification.carrier_source, CarrierSource::Open);
+}
+
+#[test]
+fn vad_receive_metadata_validates_probability_and_sample_timeline() {
+    let valid = RawReceiveResult {
+        generation_id: 7,
+        first_sample_index: 100,
+        frame_count: 20,
+        raw_receiver_keyed: 1,
+        rf_burst_id: 3,
+        vad_mode: 1,
+        vad_voice_active: 1,
+        vad_score: 0.75,
+        vad_voice_sample_index: 120,
+        vad_preroll_frames: 7680,
+        ctcss_decoded_index: -1,
+        ..RawReceiveResult::default()
+    };
+    let got = receive_result(valid, 7, 20).unwrap();
+    assert!(got.raw_receiver_keyed && got.vad_voice_active);
+    assert_eq!(got.rf_burst_id, 3);
+    assert_eq!(got.vad_mode, VadMode::Kerchunk);
+    assert_eq!(got.vad_score, 0.75);
+    assert_eq!(got.vad_voice_sample_index, 120);
+    assert_eq!(got.vad_preroll_frames, 7680);
+    let absent = RawReceiveResult {
+        vad_voice_sample_index: u64::MAX,
+        ..valid
+    };
+    assert_eq!(
+        receive_result(absent, 7, 20)
+            .unwrap()
+            .vad_voice_sample_index,
+        u64::MAX
+    );
+    for defect in 0..8 {
+        let mut raw = valid;
+        match defect {
+            0 => raw.vad_mode = 3,
+            1 => raw.vad_score = f32::NAN,
+            2 => raw.vad_score = -0.1,
+            3 => raw.vad_score = 1.01,
+            4 => raw.vad_voice_sample_index = 121,
+            5 => raw.first_sample_index = u64::MAX,
+            6 => raw.raw_receiver_keyed = 2,
+            _ => raw.vad_voice_active = 2,
+        }
+        assert_eq!(receive_result(raw, 7, 20), Err(RadioError::AdapterFailure));
+    }
+    let snapshot = RawSnapshot {
+        generation_id: 7,
+        receive_frames: 120,
+        raw_receiver_keyed: 1,
+        rf_burst_id: 3,
+        vad_mode: 2,
+        vad_voice_active: 1,
+        vad_score: 0.75,
+        vad_voice_sample_index: 120,
+        vad_preroll_frames: 7680,
+        ctcss_decoded_index: -1,
+        ..RawSnapshot::default()
+    };
+    let got = session_snapshot(snapshot, 7).unwrap();
+    assert_eq!(got.vad_mode, VadMode::On);
+    assert_eq!(got.vad_voice_sample_index, 120);
+    for defect in 0..4 {
+        let mut raw = snapshot;
+        match defect {
+            0 => raw.vad_voice_sample_index = 121,
+            1 => raw.vad_score = f32::INFINITY,
+            2 => raw.vad_score = -1.0,
+            _ => raw.vad_score = 1.1,
+        }
+        assert_eq!(session_snapshot(raw, 7), Err(RadioError::AdapterFailure));
+    }
 }

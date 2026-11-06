@@ -123,6 +123,13 @@ and
 .B [transmit]
 configuration. The CTCSS and DCS submenus edit their separate signaling
 sections. Select one signaling method per direction: carrier, CTCSS, or DCS.
+The receiver menu also offers VAD Off, Kerchunk suppression, and continuous
+speech qualification, with a separate 0--32767 ms VAD hang setting (default
+1000 ms). These edits reload the radio policy; they do not change the existing
+VOX threshold or hang. Kerchunk requires fresh speech once per RF-qualified
+burst. With no closing RF qualification it reports a fallback to continuous
+speech qualification. Active VAD uses a minimum 160 ms reserve in the existing
+receive delay owner. Standalone delay remains a controller setting.
 Receive CTCSS is independent of transmit signaling: it requires a CTCSS
 receive method, a CTCSS source other than no indication, and a supported
 receive-frequency list. Transmit CTCSS is likewise independent of receive

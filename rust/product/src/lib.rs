@@ -52,6 +52,7 @@ use usbradioplus_rnnoise::DenoiseProvider;
 use usbradioplus_samplerate::SampleRateAdapter;
 /// Private initial-alpha direct callback descriptor; contexts remain caller-owned.
 pub use usbradioplus_station::DirectCallbacks as UrpAstDirectCallbacks;
+pub use usbradioplus_station::DirectReceiveMetadata as UrpNativeReceiveMetadata;
 use usbradioplus_station::{StationMedia, StationPlan, StationUpdate, StationUpdateError};
 
 const ABI_VERSION: u32 = 1;
@@ -125,11 +126,12 @@ pub const URP_AST_LOG_WARNING: u32 = 2;
 pub const URP_AST_LOG_ERROR: u32 = 3;
 
 pub use usbradioplus_core::radio_control::{
-    URP_AST_COMMAND_GET_MIXER, URP_AST_COMMAND_READ_EEPROM, URP_AST_COMMAND_SAVE_TUNING_EEPROM,
-    URP_AST_COMMAND_SET_CTCSS_INHIBIT, URP_AST_COMMAND_SET_MIXER,
-    URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE, URP_AST_COMMAND_SET_TEST_TONE,
-    URP_AST_COMMAND_WRITE_EEPROM, URP_AST_EEPROM_CHECKSUM_VALID, URP_AST_EEPROM_MAGIC_VALID,
-    URP_AST_MIXER_RECEIVE, URP_AST_MIXER_TRANSMIT_A, URP_AST_MIXER_TRANSMIT_B,
+    URP_AST_COMMAND_GET_MIXER, URP_AST_COMMAND_GET_RECEIVE_POLICY, URP_AST_COMMAND_READ_EEPROM,
+    URP_AST_COMMAND_SAVE_TUNING_EEPROM, URP_AST_COMMAND_SET_CTCSS_INHIBIT,
+    URP_AST_COMMAND_SET_MIXER, URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE,
+    URP_AST_COMMAND_SET_TEST_TONE, URP_AST_COMMAND_WRITE_EEPROM, URP_AST_EEPROM_CHECKSUM_VALID,
+    URP_AST_EEPROM_MAGIC_VALID, URP_AST_MIXER_RECEIVE, URP_AST_MIXER_TRANSMIT_A,
+    URP_AST_MIXER_TRANSMIT_B,
 };
 
 /// Normalized CTCSS decoder peak used by the established 2,400-code calibration.
@@ -2732,6 +2734,34 @@ unsafe extern "C" fn channel_command(
         let (channel, control) = unsafe { channel_control(channel)? };
         // SAFETY: the caller supplies initialized writable ABI storage.
         let mut command_value = unsafe { copy_abi(command.cast_const())? };
+        if command_value.command == URP_AST_COMMAND_GET_RECEIVE_POLICY {
+            if command_value.target != 0 {
+                return Err(Status::InvalidArgument);
+            }
+            let configuration = if let Some(hardware) = control.hardware.as_ref() {
+                hardware.configuration()
+            } else {
+                control
+                    .media
+                    .as_ref()
+                    .ok_or(Status::NotReady)?
+                    .plan
+                    .configuration()
+            };
+            let mode = configuration.station.receive.vad_mode;
+            command_value.value = match mode {
+                usbradioplus_core::VadMode::Off => 0,
+                usbradioplus_core::VadMode::Kerchunk => 1,
+                usbradioplus_core::VadMode::On => 2,
+            };
+            command_value.flags = if mode == usbradioplus_core::VadMode::Off {
+                0
+            } else {
+                7_680
+            };
+            // SAFETY: the complete command was validated before dispatch.
+            return unsafe { write_abi(command, command_value) };
+        }
         let hardware = control.hardware.as_mut().ok_or(Status::NotReady)?;
         let configuration = hardware.configuration().clone();
         maintenance::execute(

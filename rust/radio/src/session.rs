@@ -1,6 +1,6 @@
 use super::*;
 
-/// Validated process-lifetime ABI-4 radio capability.
+/// Validated process-lifetime ABI-5 radio capability.
 #[derive(Clone, Copy)]
 pub struct RadioProvider {
     functions: Functions,
@@ -37,7 +37,7 @@ impl RadioProvider {
         if unsafe { CStr::from_ptr(header.capability_name) } != CAPABILITY {
             return Err(RadioError::IncompatibleAdapter);
         }
-        // SAFETY: the validated size covers the complete ABI-4 prefix.
+        // SAFETY: the validated size covers the complete ABI-5 prefix.
         let descriptor = unsafe { ptr::read(raw_descriptor.cast::<RawDescriptor>()) };
         let (
             Some(create),
@@ -234,7 +234,7 @@ impl Drop for SessionInner<'_> {
 // SAFETY: the ABI permits the complete session ownership group to move between
 // threads; borrowed-port Send requirements are part of their unsafe binding.
 unsafe impl Send for SessionInner<'_> {}
-// SAFETY: ABI 4 explicitly permits one receive owner, one transmit owner, and
+// SAFETY: ABI 5 explicitly permits one receive owner, one transmit owner, and
 // lock-free control observation concurrently; safe construction creates only
 // those owners, and their mutable operations require exclusive endpoint access.
 unsafe impl Sync for SessionInner<'_> {}
@@ -487,6 +487,8 @@ pub(super) fn validate_config(config: &SessionConfig) -> Result<(), RadioError> 
         TransmitSignaling::Dcs(value) => (CtcssTransmitConfig::default(), value),
     };
     if config.maximum_receive_frame_count == 0
+        || config.receive.vad_hang_ms > 32_767
+        || (config.receive.vad_mode != VadMode::Off && config.maximum_receive_frame_count > 4_096)
         || config.maximum_transmit_frame_count == 0
         || config.publication_interval_milliseconds == 0
         || !config.receive_input_gain.is_finite()
@@ -567,7 +569,12 @@ pub(super) fn receive_result(
     generation_id: u64,
     frames: u32,
 ) -> Result<ReceiveResult, RadioError> {
+    let frame_end = raw
+        .first_sample_index
+        .checked_add(u64::from(raw.frame_count))
+        .ok_or(RadioError::AdapterFailure)?;
     if raw.generation_id != generation_id
+        || !valid_vad_observation(raw.vad_score, raw.vad_voice_sample_index, frame_end)
         || raw.frame_count != frames
         || ![
             raw.input_peak,
@@ -600,6 +607,13 @@ pub(super) fn receive_result(
         output_rms: raw.output_rms,
         output_rail_samples: raw.output_rail_samples,
         periodic_status_due: bool_from_raw(raw.periodic_status_due)?,
+        raw_receiver_keyed: bool_from_raw(raw.raw_receiver_keyed)?,
+        rf_burst_id: raw.rf_burst_id,
+        vad_mode: vad_mode_from_raw(raw.vad_mode)?,
+        vad_voice_active: bool_from_raw(raw.vad_voice_active)?,
+        vad_score: raw.vad_score,
+        vad_voice_sample_index: raw.vad_voice_sample_index,
+        vad_preroll_frames: raw.vad_preroll_frames,
     })
 }
 
@@ -693,6 +707,11 @@ pub(super) fn session_snapshot(
     generation_id: u64,
 ) -> Result<SessionSnapshot, RadioError> {
     if raw.generation_id != generation_id
+        || !valid_vad_observation(
+            raw.vad_score,
+            raw.vad_voice_sample_index,
+            raw.receive_frames,
+        )
         || ![
             raw.receive_input_peak,
             raw.receive_input_rms,
@@ -737,6 +756,13 @@ pub(super) fn session_snapshot(
         ctcss_decoded: ctcss_from_raw(raw.ctcss_decoded_index)?,
         dcs_valid: bool_from_raw(raw.dcs_valid)?,
         program_ring: raw.program_ring,
+        raw_receiver_keyed: bool_from_raw(raw.raw_receiver_keyed)?,
+        rf_burst_id: raw.rf_burst_id,
+        vad_mode: vad_mode_from_raw(raw.vad_mode)?,
+        vad_voice_active: bool_from_raw(raw.vad_voice_active)?,
+        vad_score: raw.vad_score,
+        vad_voice_sample_index: raw.vad_voice_sample_index,
+        vad_preroll_frames: raw.vad_preroll_frames,
     })
 }
 
@@ -758,4 +784,19 @@ pub(super) fn error_from_result(result: c_int) -> RadioError {
         RESULT_BUSY => RadioError::Busy,
         _ => RadioError::AdapterFailure,
     }
+}
+
+fn vad_mode_from_raw(value: u32) -> Result<VadMode, RadioError> {
+    match value {
+        0 => Ok(VadMode::Off),
+        1 => Ok(VadMode::Kerchunk),
+        2 => Ok(VadMode::On),
+        _ => Err(RadioError::AdapterFailure),
+    }
+}
+
+fn valid_vad_observation(score: f32, last_voice: u64, frame_end: u64) -> bool {
+    score.is_finite()
+        && (0.0..=1.0).contains(&score)
+        && (last_voice == u64::MAX || last_voice <= frame_end)
 }

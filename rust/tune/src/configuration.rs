@@ -349,6 +349,61 @@ mod tests {
     use super::*;
 
     #[test]
+    fn vad_edit_destinations_and_fallbacks_match_each_composition() {
+        for (resolver, text, node, target) in [
+            (
+                &AslConfiguration as &dyn ConfigurationResolver,
+                "[usb]\n[receive usb]\ncos_assignment=no\nvad_mode=kerchunk\nvad_hang_ms=32768\n",
+                "usb",
+                "receive usb",
+            ),
+            (
+                &NativeConfiguration as &dyn ConfigurationResolver,
+                "[1000]\n[radio 1000]\ncarrier_source=disabled\nvad_mode=kerchunk\nvad_hang_ms=32768\n",
+                "1000",
+                "radio 1000",
+            ),
+        ] {
+            let document = ConfigDocument::new(text);
+            for key in ["vad_mode", "vad_hang_ms"] {
+                let destination = resolver
+                    .setting_destination(
+                        &document,
+                        "vad.conf",
+                        Some(node),
+                        "receive",
+                        key,
+                        &mut Vec::new(),
+                    )
+                    .unwrap();
+                assert_eq!(destination.section, target);
+                assert_eq!(destination.key, key);
+                assert!(
+                    resolver
+                        .validate_candidate(&document, "vad.conf", Some(node), target, key)
+                        .unwrap_err()
+                        .contains(key)
+                );
+                assert_eq!(
+                    resolver.setting_value("receive", key, &destination, "on"),
+                    "on"
+                );
+            }
+            let (_, values) = resolver
+                .section_values(
+                    &document,
+                    "vad.conf",
+                    Some(node),
+                    "receive",
+                    &mut Vec::new(),
+                )
+                .unwrap();
+            assert_eq!(values["vad_mode"], "on");
+            assert_eq!(values["vad_hang_ms"], "1000");
+        }
+    }
+
+    #[test]
     fn native_menu_values_use_native_defaults_and_shared_invalid_value_fallbacks() {
         let document = ConfigDocument::new(
             "[1000]\n[radio]\nsquelch_level=650\n[radio 1000]\nsquelch_level=1000\n",

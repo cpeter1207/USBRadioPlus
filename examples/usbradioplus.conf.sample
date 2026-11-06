@@ -119,6 +119,14 @@ signaling_method = carrier
 ; Nonnegative VOX hold time in milliseconds and detector threshold (0--32767).
 ;vox_hang_ms = 2000
 ;vox_threshold = 0
+; Neural speech qualification is independent of VOX: off, kerchunk, or on.
+; Kerchunk needs fresh speech once per RF-qualified burst; on also closes after
+; speech and its hang. Without a closing carrier/tone gate kerchunk warns and
+; uses on. Active VAD retains enabled RF qualifications and receive guards.
+;vad_mode = off
+; Separate speech hang (0--32767 ms). Active VAD uses at least 160 ms of the
+; existing receive delay; larger configured delay is retained.
+;vad_hang_ms = 1000
 ; Nonnegative DSP noise-squelch open-state margin (0--32767) and detector
 ; filter selector (0 or 1).
 ;noise_squelch_hysteresis = 3000

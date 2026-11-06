@@ -56,6 +56,7 @@ pub use station_config::{
     JitterBufferImplementation, ParallelInputAssignment, ParallelOutputAssignment,
     ParallelPortConfig, RadioDuplexMode, ReceiveAudioSource, ReceiveConfig, ResolvedStationConfig,
     SignalingMethod, StationConfig, StationConfigError, StationValidationError, TransmitConfig,
+    VadMode,
 };
 
 #[cfg(test)]

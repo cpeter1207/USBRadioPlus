@@ -231,6 +231,24 @@ Select the receiver audio connection. Default is \fBflat\fR.
 Select the carrier-operated-squelch source. Default is \fBdsp\fR.
 .SS Receiver and squelch
 .TP
+.B vad_mode = off|kerchunk|on
+Select neural speech qualification independently of the audio-level VOX
+carrier detector. Default is \fBoff\fR, preserving existing receive behavior.
+\fBkerchunk\fR requires fresh speech once per RF-qualified burst, then admits
+that burst until its carrier or required tone qualification closes.
+\fBon\fR requires speech or its configured hang while retaining every enabled
+carrier and tone requirement. Without a carrier or required tone capable of
+ending the burst, \fBkerchunk\fR warns and uses \fBon\fR.
+Active VAD treats an ignored carrier source as continuously open; disabled
+receive audio, duplex restrictions and receive guards still apply.
+.TP
+.B vad_hang_ms = 0..32767
+Set the speech release hold in milliseconds. Default is 1000 ms. This does not
+change \fBvox_hang_ms\fR. Active VAD uses at least 160 ms of the existing
+receive delay, preserving a larger configured value. The standalone and
+app_rpt_advanced controllers own that same delay in their local PCM ring;
+legacy app_rpt uses the radio receive delay. No second delay is added.
+.TP
 .B vox_hang_ms = 0..32767
 Set nonnegative VOX hang time in milliseconds. Default is 2000 ms.
 .TP

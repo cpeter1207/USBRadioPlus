@@ -384,6 +384,28 @@ impl fmt::Display for CarrierSource {
     }
 }
 
+/// Speech admission policy, independent of the audio-level VOX carrier detector.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum VadMode {
+    /// Preserve configured RF qualification without speech detection.
+    #[default]
+    Off,
+    /// Require fresh speech once per qualified RF burst.
+    Kerchunk,
+    /// Require speech or its configured release hold throughout reception.
+    On,
+}
+
+impl fmt::Display for VadMode {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::Off => "off",
+            Self::Kerchunk => "kerchunk",
+            Self::On => "on",
+        })
+    }
+}
+
 /// Effective receiver controls.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReceiveConfig {
@@ -397,6 +419,10 @@ pub struct ReceiveConfig {
     pub vox_hang_ms: u16,
     /// VOX detector threshold.
     pub vox_threshold: u16,
+    /// Neural speech admission mode.
+    pub vad_mode: VadMode,
+    /// Speech release hold in milliseconds, independent of VOX hang.
+    pub vad_hang_ms: u32,
     /// Noise-squelch open-state margin.
     pub noise_squelch_hysteresis: u16,
     /// Native noise-detector filter, `0` or `1`.
@@ -419,6 +445,8 @@ impl Default for ReceiveConfig {
             cos_assignment: CarrierSource::Dsp,
             vox_hang_ms: 2_000,
             vox_threshold: 0,
+            vad_mode: VadMode::Off,
+            vad_hang_ms: 1_000,
             noise_squelch_hysteresis: 3_000,
             noise_filter_type: 0,
             squelch_delay_ms: 0,
@@ -990,9 +1018,13 @@ impl ResolvedStationConfig {
             &mut warnings,
         )?;
 
+        let mut receive_section = "receive".to_owned();
         for (kind, apply) in PROFILE_KINDS {
             let resolved_section =
                 document.resolved_section(channel, kind, &source, &mut warnings)?;
+            if kind == "receive" {
+                receive_section.clone_from(&resolved_section);
+            }
             apply_overlay(
                 &mut config,
                 apply,
@@ -1012,6 +1044,13 @@ impl ResolvedStationConfig {
                 )?;
             }
         }
+        normalize_vad(
+            &mut config,
+            document,
+            &source,
+            &receive_section,
+            &mut warnings,
+        );
         config.validate()?;
         Ok(Self {
             channel: channel.to_owned(),
@@ -1368,6 +1407,8 @@ fn apply_receive(
 ) {
     let target = &mut config.receive;
     match name {
+        "vad_mode" => assign_display(&mut target.vad_mode, setting, warnings, parse_vad_mode),
+        "vad_hang_ms" => assign_u32(&mut target.vad_hang_ms, 0, 32_767, setting, warnings),
         "signaling_method" => assign_display(
             &mut target.signaling_method,
             setting,
@@ -1430,6 +1471,72 @@ fn apply_receive(
         ),
         _ => unknown_warning(warnings, setting),
     }
+}
+
+fn parse_vad_mode(value: &str) -> Result<VadMode, String> {
+    if value.eq_ignore_ascii_case("off") {
+        Ok(VadMode::Off)
+    } else if value.eq_ignore_ascii_case("kerchunk") {
+        Ok(VadMode::Kerchunk)
+    } else if value.eq_ignore_ascii_case("on") {
+        Ok(VadMode::On)
+    } else {
+        Err("requires off, kerchunk, or on".to_owned())
+    }
+}
+
+fn normalize_vad(
+    config: &mut StationConfig,
+    document: &ConfigDocument,
+    source: &str,
+    receive_section: &str,
+    warnings: &mut Vec<ResolutionWarning>,
+) {
+    if config.receive.vad_mode == VadMode::Off {
+        return;
+    }
+    let carrier_gate = !matches!(
+        config.receive.cos_assignment,
+        CarrierSource::Disabled | CarrierSource::Open
+    );
+    let tone_gate = !config.ctcss.receive_override_enabled
+        && match config.receive.signaling_method {
+            SignalingMethod::Carrier => false,
+            SignalingMethod::Ctcss => config.ctcss.receive_source != CtcssSource::Disabled,
+            SignalingMethod::Dcs => true,
+        };
+    if config.receive.cos_assignment == CarrierSource::Disabled {
+        config.receive.cos_assignment = CarrierSource::Open;
+    }
+    if config.receive.vad_mode != VadMode::Kerchunk || carrier_gate || tone_gate {
+        return;
+    }
+    let mut origin = (
+        "receive".to_owned(),
+        "vad_mode".to_owned(),
+        "kerchunk".to_owned(),
+    );
+    for section in ["receive", receive_section] {
+        for (name, value) in document.explicit_values(section) {
+            if name.eq_ignore_ascii_case("vad_mode")
+                && parse_vad_mode(value.trim()) == Ok(VadMode::Kerchunk)
+            {
+                origin = (section.to_owned(), name, value);
+            }
+        }
+    }
+    invalid_warning(
+        warnings,
+        Setting {
+            source,
+            section: &origin.0,
+            name: &origin.1,
+            value: &origin.2,
+        },
+        "on".to_owned(),
+        "requires a carrier or tone qualification capable of ending the RF burst".to_owned(),
+    );
+    config.receive.vad_mode = VadMode::On;
 }
 
 fn apply_transmit(
