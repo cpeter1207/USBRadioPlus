@@ -100,8 +100,8 @@ fn owned_resolution_visits_common_radio_policy_and_preserves_original_profile_pr
         0
     );
     let radio = output.radio.as_ref().unwrap();
-    assert!(radio.receive.cpu_saver_enabled);
-    assert!(radio.transmit.cpu_saver_enabled);
+    assert!(!radio.receive.cpu_saver_enabled);
+    assert!(!radio.transmit.cpu_saver_enabled);
     assert_eq!(radio.receive.native_squelch_delay_frames, 0);
     assert_eq!(radio.receive_input_gain, 10.0_f32.powf(-2.0 / 20.0));
     let TransmitSignaling::Ctcss(ctcss) = radio.transmit.signaling else {

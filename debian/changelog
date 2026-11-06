@@ -1,3 +1,12 @@
+usbradioplus (0.1.0~alpha30-1+bs1770.20261106) unstable; urgency=medium
+
+  * Share the fixed Peak Limiter across local, link, and transmit profiles.
+  * Make output integrated loudness and true-peak metering mandatory.
+  * Advance legacy Asterisk incoming-link graphs through idle silence.
+  * Require matching sized link observations and continuous processing clocks.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 06 Nov 2026 15:30:00 -0600
+
 usbradioplus (0.1.0~alpha29-1+bs1770.20261106) unstable; urgency=medium
 
   * Replace RMS with LUFS in the AGC.

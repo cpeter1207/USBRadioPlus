@@ -31,6 +31,7 @@ fn processing_text_formats_measured_and_unmeasured_epochs() {
     };
     let measured = maintenance::processing_status_text(
         observation,
+        None,
         Some(OutputLoudnessSnapshot {
             epoch: 7,
             sample_count: 48000,
@@ -43,6 +44,9 @@ fn processing_text_formats_measured_and_unmeasured_epochs() {
         "radio_transmit_calls=3\n",
         "radio_receive_failures=4\n",
         "radio_transmit_failures=5\n",
+        "receive_loudness_meter_enabled=0\n",
+        "receive_integrated_lufs=unavailable\n",
+        "transmit_true_peak_valid=1\n",
         "transmit_loudness_meter_enabled=1\n",
         "transmit_loudness_epoch=7\n",
         "transmit_loudness_sample_count=48000\n",
@@ -54,6 +58,7 @@ fn processing_text_formats_measured_and_unmeasured_epochs() {
     }
     let warmup = maintenance::processing_status_text(
         observation,
+        None,
         Some(OutputLoudnessSnapshot {
             epoch: 8,
             sample_count: 1,
@@ -1148,24 +1153,26 @@ fn incoming_link_boundary_prepares_processes_observes_and_destroys() {
     let disabled = b"[usb]\n[link]\nenabled = no\n";
     let driver = create_driver(&context, disabled);
     link = 1_usize as *mut c_void;
-    // SAFETY: complete arguments are live; disabled and missing profiles are explicit cases.
+    // SAFETY: complete arguments are live; bypassed and missing profiles are explicit cases.
     assert_eq!(
         // SAFETY: complete arguments remain live for this setup call.
         unsafe { link_prepare(driver, c"usb".as_ptr().cast(), 3, 8_000, 160, &mut link) },
-        URP_AST_NOT_READY
+        URP_AST_OK
     );
-    assert!(link.is_null());
+    assert!(!link.is_null());
+    // SAFETY: even a bypassed profile owns its mandatory output meter.
+    unsafe { link_destroy(link) };
     assert_eq!(
         // SAFETY: complete arguments remain live for this setup call.
         unsafe { link_prepare(driver, c"other".as_ptr().cast(), 5, 8_000, 160, &mut link) },
         URP_AST_CHANNEL_NOT_FOUND
     );
-    // Disabled processing is rejected before graph construction.
+    // Bypassed optional stages still require the final graph and meter.
     provider_support::set_failure(provider_support::FAIL_GRAPH);
     assert_eq!(
         // SAFETY: complete arguments remain live for this setup call.
         unsafe { link_prepare(driver, c"usb".as_ptr().cast(), 3, 8_000, 160, &mut link) },
-        URP_AST_NOT_READY
+        URP_AST_SETUP_FAILED
     );
     provider_support::clear_failure();
     // SAFETY: null destruction is explicitly harmless and driver is consumed once.

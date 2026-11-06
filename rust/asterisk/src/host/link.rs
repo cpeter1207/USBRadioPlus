@@ -6,14 +6,16 @@
 
 use super::super::{
     ABI_VERSION, URP_AST_ASTERISK_FAILURE, URP_AST_LINK_DIRECTION_READ,
-    URP_AST_LINK_DIRECTION_WRITE, URP_AST_NOT_READY, URP_AST_OK, UrpAstDescriptor,
-    UrpAstLinkObservation, ffi,
+    URP_AST_LINK_DIRECTION_SILENCE, URP_AST_LINK_DIRECTION_WRITE, URP_AST_NOT_READY, URP_AST_OK,
+    UrpAstDescriptor, UrpAstLinkObservation, ffi,
 };
 use super::channel;
 
+use std::cell::UnsafeCell;
 use std::ffi::{CStr, c_char, c_int, c_void};
+use std::mem::ManuallyDrop;
 use std::ptr;
-use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU8, AtomicU32, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, OnceLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -61,6 +63,29 @@ pub(super) struct AsteriskOperations {
     pub(super) audiohook_destroy: unsafe fn(*mut ffi::ast_audiohook),
     pub(super) audiohook_lock: unsafe fn(*mut ffi::ast_audiohook),
     pub(super) audiohook_unlock: unsafe fn(*mut ffi::ast_audiohook),
+    pub(super) timer_open: unsafe extern "C" fn() -> *mut ffi::ast_timer,
+    pub(super) timer_close: unsafe extern "C" fn(*mut ffi::ast_timer),
+    pub(super) timer_fd: unsafe extern "C" fn(*const ffi::ast_timer) -> c_int,
+    pub(super) timer_set_rate: unsafe extern "C" fn(*const ffi::ast_timer, u32) -> c_int,
+    pub(super) timer_ack: unsafe extern "C" fn(*const ffi::ast_timer, u32) -> c_int,
+    pub(super) timer_get_event: unsafe extern "C" fn(*const ffi::ast_timer) -> ffi::ast_timer_event,
+    pub(super) framehook_attach:
+        unsafe extern "C" fn(*mut ffi::ast_channel, *mut ffi::ast_framehook_interface) -> c_int,
+    pub(super) framehook_detach: unsafe extern "C" fn(*mut ffi::ast_channel, c_int) -> c_int,
+    pub(super) channel_fd_add: unsafe extern "C" fn(*mut ffi::ast_channel, c_int) -> c_int,
+    pub(super) channel_fd: unsafe extern "C" fn(*const ffi::ast_channel, c_int) -> c_int,
+    pub(super) channel_fdno: unsafe extern "C" fn(*const ffi::ast_channel) -> c_int,
+    pub(super) channel_fdno_set: unsafe extern "C" fn(*mut ffi::ast_channel, c_int),
+    pub(super) channel_set_fd: unsafe extern "C" fn(*mut ffi::ast_channel, c_int, c_int),
+    pub(super) channel_wake: unsafe fn(*mut ffi::ast_channel),
+    pub(super) module_ref: unsafe extern "C" fn(
+        *mut ffi::ast_module,
+        *const c_char,
+        c_int,
+        *const c_char,
+    ) -> *mut ffi::ast_module,
+    pub(super) module_unref:
+        unsafe extern "C" fn(*mut ffi::ast_module, *const c_char, c_int, *const c_char),
     pub(super) datastore_alloc:
         unsafe fn(*const ffi::ast_datastore_info, *mut ffi::ast_module) -> *mut ffi::ast_datastore,
     pub(super) datastore_free: unsafe fn(*mut ffi::ast_datastore),
@@ -439,6 +464,14 @@ impl LinkHost {
         // SAFETY: channel is locked and the info pointer has process lifetime.
         let datastore = unsafe { (self.asterisk.datastore_find)(channel, datastore_info()) };
         if !datastore.is_null() {
+            // SAFETY: the locked datastore retains its hook and current framehook lease.
+            if let Some(hook) = unsafe { (*datastore).data.cast::<LinkHook>().as_ref() } {
+                let idle = hook.idle.load(Ordering::Acquire);
+                if !idle.is_null() {
+                    // SAFETY: this channel lock prevents the current lease's destruction.
+                    unsafe { (*idle).detach(channel) };
+                }
+            }
             // SAFETY: the located datastore belongs to this locked channel.
             unsafe { (self.asterisk.datastore_remove)(channel, datastore) };
         }
@@ -597,6 +630,7 @@ impl LinkHost {
             self.asterisk,
             profile,
             channel_name,
+            sample_rate_hz,
             graph.unwrap_or(ptr::null_mut()),
             mode,
         ));
@@ -682,6 +716,16 @@ impl LinkHost {
             unsafe { LinkHook::release(raw) };
             return Err(LinkHostError::Asterisk);
         }
+        if let Err(error) =
+            // SAFETY: builder and datastore references retain the successfully attached hook.
+            unsafe { IdleLease::install(raw, channel, self.module_self, sample_rate_hz) }
+        {
+            // SAFETY: the caller retains this channel while publication is unwound.
+            unsafe { self.detach_channel(channel) };
+            // SAFETY: consumes the remaining builder reference.
+            unsafe { LinkHook::release(raw) };
+            return Err(error);
+        }
         (self.asterisk.log_notice)(&link_attached_diagnostic(channel_name, staged));
         // SAFETY: the builder reference transfers to this RAII owner. Active
         // callers drop it immediately; staged callers retain it through commit.
@@ -761,7 +805,10 @@ impl LinkReload {
                 && unsafe { (*raw).attachment.load(Ordering::Acquire) } == LINK_ATTACHED
             {
                 // SAFETY: callback is quiesced by the audiohook lock.
-                unsafe { (*raw).active.swap(candidate, Ordering::AcqRel) }
+                unsafe {
+                    (*(*raw).clock.get()).set_rate((*raw).staged_rate.load(Ordering::Acquire));
+                    (*raw).active.swap(candidate, Ordering::AcqRel)
+                }
             } else {
                 candidate
             };
@@ -783,6 +830,345 @@ impl Drop for LinkReload {
     }
 }
 
+struct IdleClock {
+    rate: u32,
+    hz: u32,
+    remainder: u64,
+    credit: u32,
+}
+
+impl IdleClock {
+    fn new(rate: u32) -> Self {
+        Self {
+            rate,
+            hz: rate.div_ceil(MAXIMUM_LINK_FRAME_COUNT).max(50),
+            remainder: 0,
+            credit: 0,
+        }
+    }
+
+    fn set_rate(&mut self, rate: u32) {
+        if self.rate != rate {
+            *self = Self::new(rate);
+        }
+    }
+
+    fn credit(&mut self, rate: u32, count: u32) {
+        if rate == self.rate && count <= MAXIMUM_LINK_FRAME_COUNT {
+            self.credit = self
+                .credit
+                .saturating_add(count)
+                .min(MAXIMUM_LINK_FRAME_COUNT);
+        }
+    }
+
+    fn tick(&mut self) -> u32 {
+        self.remainder += u64::from(self.rate);
+        let count = (self.remainder / u64::from(self.hz)) as u32;
+        self.remainder %= u64::from(self.hz);
+        let covered = self.credit.min(count);
+        self.credit -= covered;
+        count - covered
+    }
+}
+
+struct IdleLease {
+    hook: ManuallyDrop<LinkHookRef>,
+    module: *mut ffi::ast_module,
+    current_channel: *mut ffi::ast_channel,
+    moving_to: *mut ffi::ast_channel,
+    detaching: bool,
+    id: c_int,
+    slot: c_int,
+    timer: *mut ffi::ast_timer,
+    fd: c_int,
+    timer_hz: u32,
+    scratch: [i16; MAXIMUM_LINK_FRAME_COUNT as usize],
+}
+
+impl IdleLease {
+    fn hook(&self) -> &LinkHook {
+        // SAFETY: this lease owns one retained hook reference until Drop.
+        unsafe { self.hook.raw.as_ref() }
+    }
+
+    unsafe fn install(
+        raw: *mut LinkHook,
+        channel: *mut ffi::ast_channel,
+        module: *mut ffi::ast_module,
+        rate: u32,
+    ) -> Result<(), LinkHostError> {
+        // SAFETY: the builder retains this pinned hook during setup.
+        let operations = unsafe { (*raw).asterisk };
+        // SAFETY: the Asterisk timer provider owns the returned handle.
+        let timer = unsafe { (operations.timer_open)() };
+        if timer.is_null() {
+            return Err(LinkHostError::Asterisk);
+        }
+        // SAFETY: timer_open succeeded and setup has exclusive ownership.
+        let fd = unsafe { (operations.timer_fd)(timer) };
+        let hz = IdleClock::new(rate).hz;
+        // SAFETY: the unpublished timer remains exclusively owned during cadence setup.
+        if fd < 0 || unsafe { (operations.timer_set_rate)(timer, hz) } != 0 {
+            // SAFETY: this unpublished timer has exactly one owner.
+            unsafe { (operations.timer_close)(timer) };
+            return Err(LinkHostError::Asterisk);
+        }
+        // SAFETY: the builder owns a live reference while acquiring this independent lease.
+        let hook = unsafe { LinkHookRef::retain(raw) };
+        // SAFETY: the module remains live through setup and this lease's paired unref.
+        let module = unsafe {
+            (operations.module_ref)(module, c"link".as_ptr(), line!() as c_int, c"idle".as_ptr())
+        };
+        let mut lease = Box::new(Self {
+            hook: ManuallyDrop::new(hook),
+            module,
+            current_channel: channel,
+            moving_to: ptr::null_mut(),
+            detaching: false,
+            id: -1,
+            slot: -1,
+            timer,
+            fd,
+            timer_hz: hz,
+            scratch: [0; MAXIMUM_LINK_FRAME_COUNT as usize],
+        });
+        // SAFETY: the caller retains channel through setup and publication.
+        unsafe { (operations.channel_lock)(channel) };
+        if lease.hook().attachment.load(Ordering::Acquire) != LINK_ATTACHED {
+            // SAFETY: concurrent datastore teardown won; no framehook was published.
+            unsafe { (operations.channel_unlock)(channel) };
+            return Err(LinkHostError::Asterisk);
+        }
+        // SAFETY: this channel is locked; registration precedes framehook publication.
+        lease.slot = unsafe { (operations.channel_fd_add)(channel, fd) };
+        if lease.slot < 0 {
+            // SAFETY: balances channel_lock before the unpublished lease is dropped.
+            unsafe { (operations.channel_unlock)(channel) };
+            return Err(LinkHostError::Asterisk);
+        }
+        // SAFETY: null optional callback pointers are valid in this C aggregate.
+        let mut interface: ffi::ast_framehook_interface = unsafe { std::mem::zeroed() };
+        interface.version = ffi::AST_FRAMEHOOK_INTERFACE_VERSION as u16;
+        interface.event_cb = Some(idle_event);
+        interface.destroy_cb = Some(idle_destroy);
+        interface.chan_fixup_cb = Some(idle_fixup);
+        interface.chan_breakdown_cb = Some(idle_breakdown);
+        interface.data = ptr::from_mut(lease.as_mut()).cast();
+        // SAFETY: channel is locked; Asterisk copies the interface and calls ATTACHED immediately.
+        lease.id = unsafe { (operations.framehook_attach)(channel, &raw mut interface) };
+        if lease.id < 0 {
+            // SAFETY: setup still owns the registered slot under the channel lock.
+            unsafe { lease.unregister(channel) };
+            // SAFETY: balances channel_lock before reclaiming the unpublished lease.
+            unsafe { (operations.channel_unlock)(channel) };
+            return Err(LinkHostError::Asterisk);
+        }
+        let lease = Box::into_raw(lease);
+        // SAFETY: the framehook now owns this lease, protected by the channel lock.
+        unsafe { (*raw).idle.store(lease, Ordering::Release) };
+        // SAFETY: refresh an already-blocked nonbridged reader's FD wait set after publication.
+        unsafe { (operations.channel_wake)(channel) };
+        // SAFETY: balances setup's channel lock after ownership transfer.
+        unsafe { (operations.channel_unlock)(channel) };
+        Ok(())
+    }
+
+    unsafe fn unregister(&mut self, channel: *mut ffi::ast_channel) {
+        let operations = self.hook().asterisk;
+        if self.slot >= 0
+            // SAFETY: the callback/setup caller holds this live channel's lock.
+            && unsafe { (operations.channel_fd)(channel, self.slot) } == self.fd
+        {
+            // SAFETY: only the still-matching registration is removed.
+            unsafe { (operations.channel_set_fd)(channel, self.slot, -1) };
+        }
+        self.slot = -1;
+    }
+
+    unsafe fn detach(&mut self, channel: *mut ffi::ast_channel) {
+        self.detaching = true;
+        let operations = self.hook().asterisk;
+        // SAFETY: the caller holds the current channel lock; detach is asynchronous.
+        let _ = unsafe { (operations.framehook_detach)(channel, self.id) };
+        // SAFETY: a null wake ensures pending detachment is serviced without media injection.
+        unsafe { (operations.channel_wake)(channel) };
+    }
+
+    unsafe fn fail(&mut self, channel: *mut ffi::ast_channel) {
+        let operations = self.hook().asterisk;
+        // SAFETY: this lease owns the timer; disarming prevents a failed FD from spinning.
+        let _ = unsafe { (operations.timer_set_rate)(self.timer, 0) };
+        // SAFETY: callback owns the current channel lock and retains this lease.
+        unsafe { self.detach(channel) };
+    }
+}
+
+impl Drop for IdleLease {
+    fn drop(&mut self) {
+        let operations = self.hook().asterisk;
+        // SAFETY: setup failed before publication or DETACHED already removed the FD.
+        unsafe { (operations.timer_close)(self.timer) };
+        // SAFETY: destroy_cb/setup failure consumes this lease's single hook reference.
+        unsafe { ManuallyDrop::drop(&mut self.hook) };
+        // SAFETY: the module lease stays live through graph/hook destruction above.
+        unsafe {
+            (operations.module_unref)(
+                self.module,
+                c"link".as_ptr(),
+                line!() as c_int,
+                c"idle".as_ptr(),
+            )
+        };
+    }
+}
+
+unsafe extern "C" fn idle_event(
+    channel: *mut ffi::ast_channel,
+    frame: *mut ffi::ast_frame,
+    event: ffi::ast_framehook_event,
+    data: *mut c_void,
+) -> *mut ffi::ast_frame {
+    // SAFETY: Asterisk retains our callback data and holds the channel lock.
+    let lease = unsafe { &mut *data.cast::<IdleLease>() };
+    let operations = lease.hook().asterisk;
+    if event == ffi::AST_FRAMEHOOK_EVENT_DETACHED && channel == lease.current_channel {
+        let slot = lease.slot;
+        // SAFETY: terminal detachment owns this channel's registered timer slot.
+        unsafe { lease.unregister(channel) };
+        if !lease.moving_to.is_null() {
+            lease.slot = slot;
+            // SAFETY: datastore fixup recorded the locked destination before failed framehook copying.
+            unsafe { lease.unregister(lease.moving_to) };
+            lease.moving_to = ptr::null_mut();
+        }
+        lease.current_channel = ptr::null_mut();
+        lease.hook().idle.store(ptr::null_mut(), Ordering::Release);
+    } else if event == ffi::AST_FRAMEHOOK_EVENT_READ
+        && channel == lease.current_channel
+        && lease.slot >= 0
+        && !lease.detaching
+        // SAFETY: Asterisk holds the current channel lock during this event.
+        && unsafe { (operations.channel_fdno)(channel) } == lease.slot
+    {
+        // SAFETY: this lease owns the timer until its eventual destroy callback.
+        if unsafe { (operations.timer_get_event)(lease.timer) } != ffi::AST_TIMING_EVENT_EXPIRED {
+            return frame;
+        }
+        // SAFETY: only an expired, selected timer is acknowledged, once per wake.
+        if unsafe { (operations.timer_ack)(lease.timer, 1) } != 0 {
+            // SAFETY: channel remains locked during failure cleanup scheduling.
+            unsafe { lease.fail(channel) };
+            return frame;
+        }
+        // SAFETY: consume only our selected FD; restarted framehook traversal must not ACK it twice.
+        unsafe { (operations.channel_fdno_set)(channel, -1) };
+        // SAFETY: the independent hook reference remains retained throughout this event.
+        let hook = unsafe { lease.hook.raw.as_ref() };
+        let audiohook = ptr::from_ref(&hook.audiohook).cast_mut();
+        // SAFETY: the existing audiohook mutex serializes graph and clock access.
+        unsafe { (operations.audiohook_lock)(audiohook) };
+        // SAFETY: this callback holds the graph's existing serial-owner mutex.
+        let clock = unsafe { &mut *hook.clock.get() };
+        let graph = hook.active.load(Ordering::Acquire);
+        let rate = clock.rate;
+        let hz = clock.hz;
+        let attached = hook.attachment.load(Ordering::Acquire) == LINK_ATTACHED;
+        if lease.timer_hz != hz
+            // SAFETY: the timer remains owned; only negotiated-rate changes reconfigure cadence.
+            && unsafe { (operations.timer_set_rate)(lease.timer, hz) } != 0
+        {
+            // SAFETY: balances the serial-owner mutex before failure cleanup.
+            unsafe { (operations.audiohook_unlock)(audiohook) };
+            // SAFETY: current channel remains locked and the lease remains retained.
+            unsafe { lease.fail(channel) };
+            return frame;
+        }
+        lease.timer_hz = hz;
+        if attached && !graph.is_null() {
+            let count = clock.tick();
+            if count != 0 {
+                lease.scratch.fill(0);
+                // SAFETY: count is at most960 and SILENCE consumes/discards this private workspace.
+                let _ = unsafe {
+                    (hook.product.process)(
+                        graph,
+                        URP_AST_LINK_DIRECTION_SILENCE,
+                        rate,
+                        lease.scratch.as_mut_ptr(),
+                        count,
+                    )
+                };
+                lease.scratch.fill(0);
+            }
+        }
+        // SAFETY: balances the graph/clock serial-owner mutex above.
+        unsafe { (operations.audiohook_unlock)(audiohook) };
+        if !attached {
+            // SAFETY: a datastore teardown invalidated DSP; schedule the lease's final destruction.
+            unsafe { lease.detach(channel) };
+        }
+    }
+    frame
+}
+
+unsafe extern "C" fn idle_fixup(
+    data: *mut c_void,
+    id: c_int,
+    old: *mut ffi::ast_channel,
+    new: *mut ffi::ast_channel,
+) {
+    // SAFETY: Asterisk holds both channel locks and preserves this data across the move.
+    let lease = unsafe { &mut *data.cast::<IdleLease>() };
+    let slot = lease.slot;
+    // SAFETY: remove only this timer's old registration while both channels are locked.
+    unsafe { lease.unregister(old) };
+    lease.current_channel = new;
+    lease.moving_to = ptr::null_mut();
+    lease.id = id;
+    // Asterisk copied every old FD slot before invoking framehook fixup.
+    lease.slot = slot;
+    if lease.detaching {
+        // SAFETY: Asterisk reattachment does not carry its old pending-detach flag.
+        unsafe { lease.detach(new) };
+    } else {
+        // SAFETY: both channel locks remain held while the new reader is notified.
+        unsafe { (lease.hook().asterisk.channel_wake)(new) };
+    }
+}
+
+unsafe extern "C" fn idle_breakdown(
+    data: *mut c_void,
+    id: c_int,
+    _old: *mut ffi::ast_channel,
+    new: *mut ffi::ast_channel,
+) {
+    // SAFETY: Asterisk holds both channel locks while preserving this recipient hook.
+    let lease = unsafe { &mut *data.cast::<IdleLease>() };
+    let operations = lease.hook().asterisk;
+    lease.current_channel = new;
+    lease.id = id;
+    if lease.detaching {
+        // SAFETY: preserve recipient cleanup intent after its FD array was replaced.
+        unsafe { lease.detach(new) };
+        return;
+    }
+    // SAFETY: incoming channel FD slots may have replaced this timer's old slot.
+    lease.slot = unsafe { (operations.channel_fd_add)(new, lease.fd) };
+    if lease.slot < 0 {
+        // SAFETY: recipient channel remains locked during asynchronous cleanup scheduling.
+        unsafe { lease.fail(new) };
+    } else {
+        // SAFETY: refresh the recipient reader after registering its surviving timer.
+        unsafe { (operations.channel_wake)(new) };
+    }
+}
+
+unsafe extern "C" fn idle_destroy(data: *mut c_void) {
+    // SAFETY: Asterisk calls destroy once, after terminal DETACHED and never for preserved old data.
+    drop(unsafe { Box::from_raw(data.cast::<IdleLease>()) });
+}
+
 /// Pinned Asterisk audiohook followed by Rust-owned lifecycle state.
 #[repr(C)]
 struct LinkHook {
@@ -791,6 +1177,9 @@ struct LinkHook {
     asterisk: AsteriskOperations,
     active: AtomicPtr<c_void>,
     staged: AtomicPtr<c_void>,
+    staged_rate: AtomicU32,
+    clock: UnsafeCell<IdleClock>,
+    idle: AtomicPtr<IdleLease>,
     references: AtomicUsize,
     attachment: AtomicU8,
     reload_pending: AtomicBool,
@@ -805,6 +1194,7 @@ impl LinkHook {
         asterisk: AsteriskOperations,
         profile: &str,
         asterisk_channel: &str,
+        sample_rate_hz: u32,
         graph: *mut c_void,
         mode: InstallMode,
     ) -> Self {
@@ -818,6 +1208,9 @@ impl LinkHook {
             asterisk,
             active: AtomicPtr::new(if staged { ptr::null_mut() } else { graph }),
             staged: AtomicPtr::new(if staged { graph } else { ptr::null_mut() }),
+            staged_rate: AtomicU32::new(sample_rate_hz),
+            clock: UnsafeCell::new(IdleClock::new(sample_rate_hz)),
+            idle: AtomicPtr::new(ptr::null_mut()),
             references: AtomicUsize::new(1),
             attachment: AtomicU8::new(LINK_BUILDING),
             reload_pending: AtomicBool::new(staged),
@@ -868,6 +1261,8 @@ impl LinkHook {
         // LINK_CONTROL keeps active/pending unchanged during preparation, but
         // external datastore destruction may have detached the retained hook.
         if self.attachment.load(Ordering::Acquire) == LINK_ATTACHED {
+            // SAFETY: the audiohook lock serializes clock and graph replacement.
+            unsafe { (*self.clock.get()).set_rate(sample_rate_hz) };
             self.active.store(candidate, Ordering::Release);
             candidate = ptr::null_mut();
         }
@@ -947,6 +1342,7 @@ impl LinkHook {
             return Err(LinkHostError::Asterisk);
         }
         self.staged.store(candidate, Ordering::Release);
+        self.staged_rate.store(sample_rate_hz, Ordering::Release);
         // SAFETY: balances audiohook_lock above.
         unsafe { (self.asterisk.audiohook_unlock)(audiohook) };
         Ok(true)
@@ -967,13 +1363,20 @@ impl LinkHook {
             };
             // SAFETY: callback is quiesced and output has the complete current ABI size.
             let status = unsafe { (self.product.observe)(graph, ptr::from_mut(&mut observation)) };
-            if status == URP_AST_OK {
+            if status != URP_AST_OK {
+                Err(LinkHostError::Product(status))
+            } else if observation.struct_size as usize
+                == std::mem::size_of::<UrpAstLinkObservation>()
+                && observation.abi_version == ABI_VERSION
+            {
                 Ok(Some(LinkStatistics {
                     asterisk_channel: self.asterisk_channel.clone(),
                     observation,
                 }))
             } else {
-                Err(LinkHostError::Product(status))
+                Err(LinkHostError::Product(
+                    super::super::URP_AST_INCOMPATIBLE_ABI,
+                ))
             }
         };
         // SAFETY: balances audiohook_lock above.
@@ -1085,6 +1488,21 @@ unsafe extern "C" fn link_datastore_destroy(data: *mut c_void) {
     unsafe { LinkHook::release(raw) };
 }
 
+unsafe extern "C" fn link_datastore_fixup(
+    data: *mut c_void,
+    _old: *mut ffi::ast_channel,
+    new: *mut ffi::ast_channel,
+) {
+    // SAFETY: Asterisk retains its datastore payload and holds both channel locks during fixup.
+    if let Some(hook) = unsafe { data.cast::<LinkHook>().as_ref() } {
+        let idle = hook.idle.load(Ordering::Acquire);
+        if !idle.is_null() {
+            // SAFETY: both channel locks retain the lease until the ensuing framehook move completes.
+            unsafe { (*idle).moving_to = new };
+        }
+    }
+}
+
 unsafe extern "C" fn link_audiohook_callback(
     audiohook: *mut ffi::ast_audiohook,
     _channel: *mut ffi::ast_channel,
@@ -1102,7 +1520,8 @@ unsafe extern "C" fn link_audiohook_callback(
     let frame_type = unsafe { (*frame).frametype };
     // SAFETY: frame remains live and immutable except for its PCM payload.
     let sample_count = unsafe { (*frame).samples };
-    if status == ffi::AST_AUDIOHOOK_STATUS_DONE
+    if hook.attachment.load(Ordering::Acquire) != LINK_ATTACHED
+        || status == ffi::AST_AUDIOHOOK_STATUS_DONE
         || frame_type != ffi::AST_FRAME_VOICE
         || sample_count <= 0
     {
@@ -1131,6 +1550,8 @@ unsafe extern "C" fn link_audiohook_callback(
         sample_rate_hz
     };
     let product_direction = if direction == ffi::AST_AUDIOHOOK_DIRECTION_READ {
+        // SAFETY: Asterisk serializes this manipulate callback with the audiohook mutex.
+        unsafe { (*hook.clock.get()).credit(sample_rate_hz, sample_count as u32) };
         URP_AST_LINK_DIRECTION_READ
     } else {
         URP_AST_LINK_DIRECTION_WRITE
@@ -1157,7 +1578,7 @@ static LINK_DATASTORE_INFO: SharedDatastoreInfo = SharedDatastoreInfo(ffi::ast_d
     type_: c"usbradioplus-link".as_ptr(),
     duplicate: None,
     destroy: Some(link_datastore_destroy),
-    chan_fixup: None,
+    chan_fixup: Some(link_datastore_fixup),
     chan_breakdown: None,
 });
 
@@ -1208,6 +1629,22 @@ fn production_asterisk_operations() -> AsteriskOperations {
         audiohook_destroy: production_audiohook_destroy,
         audiohook_lock: production_audiohook_lock,
         audiohook_unlock: production_audiohook_unlock,
+        timer_open: ffi::ast_timer_open,
+        timer_close: ffi::ast_timer_close,
+        timer_fd: ffi::ast_timer_fd,
+        timer_set_rate: ffi::ast_timer_set_rate,
+        timer_ack: ffi::ast_timer_ack,
+        timer_get_event: ffi::ast_timer_get_event,
+        framehook_attach: ffi::ast_framehook_attach,
+        framehook_detach: ffi::ast_framehook_detach,
+        channel_fd_add: ffi::ast_channel_fd_add,
+        channel_fd: ffi::ast_channel_fd,
+        channel_fdno: ffi::ast_channel_fdno,
+        channel_fdno_set: ffi::ast_channel_fdno_set,
+        channel_set_fd: ffi::ast_channel_set_fd,
+        channel_wake: production_channel_wake,
+        module_ref: ffi::__ast_module_ref,
+        module_unref: ffi::__ast_module_unref,
         datastore_alloc: production_datastore_alloc,
         datastore_free: production_datastore_free,
         channel_lock: production_channel_lock,
@@ -1298,6 +1735,11 @@ unsafe fn production_audiohook_init(audiohook: *mut ffi::ast_audiohook) -> c_int
             ffi::AST_AUDIOHOOK_MANIPULATE_ALL_RATES,
         )
     }
+}
+
+unsafe fn production_channel_wake(channel: *mut ffi::ast_channel) {
+    // SAFETY: the caller holds this live channel's lock; Asterisk copies the null frame.
+    let _ = unsafe { ffi::ast_queue_frame(channel, &raw mut ffi::ast_null_frame) };
 }
 
 unsafe fn production_audiohook_attach(

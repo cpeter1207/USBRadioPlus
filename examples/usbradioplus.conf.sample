@@ -112,9 +112,6 @@ channel_enabled = yes
 [receive]
 ; Select exactly one receive qualification method: carrier, ctcss, or dcs.
 signaling_method = carrier
-; Run enabled local RNNoise and dynamics continuously when no qualified signal is
-; present. Set yes to bypass those optional stages while the receiver is idle.
-;cpu_saver_enabled = no
 ; Select no receiver audio, de-emphasized speaker audio, or flat discriminator.
 ;audio_source = flat
 ; Select the COS source used by carrier qualification.
@@ -138,8 +135,6 @@ signaling_method = carrier
 [transmit]
 ; Select exactly one transmitted signaling method: carrier, ctcss, or dcs.
 signaling_method = carrier
-; Reduce optional transmitter DSP activity while no transmitter audio is active.
-;cpu_saver_enabled = no
 ; Enable pre-emphasis for a direct modulator connection; disable it when the
 ; radio supplies pre-emphasis.
 ;preemphasis_enabled = yes
@@ -447,6 +442,18 @@ limiter_high_attack_ms = 1.0
 ; High-band limiter release time in milliseconds.
 limiter_high_release_ms = 50.0
 
+; Peak Limiter is fixed after dynamics, output gain, and source-specific filtering.
+; Its defaults are disabled and -3 dBFS. Output I/TP metering is always active.
+lookahead_limiter_enabled = no
+; Oversampling: 1, 2, or 4; return to the negotiated source rate after limiting.
+lookahead_limiter_oversample = 4
+; Internal sample ceiling, -30 through -0.1 dBFS.
+lookahead_limiter_ceiling_dbfs = -3.0
+; Lookahead, attack, and release in milliseconds.
+lookahead_limiter_lookahead_ms = 5.0
+lookahead_limiter_attack_ms = 1.0
+lookahead_limiter_release_ms = 100.0
+
 [link]
 ; Enable processing for audio received from connected nodes.
 enabled = no
@@ -649,12 +656,24 @@ limiter_high_attack_ms = 1.0
 ; High-band limiter release time in milliseconds.
 limiter_high_release_ms = 50.0
 
+; Peak Limiter is fixed after dynamics, output gain, and source-specific filtering.
+; Its defaults are disabled and -3 dBFS. Output I/TP metering is always active.
+lookahead_limiter_enabled = no
+; Oversampling: 1, 2, or 4; return to the negotiated source rate after limiting.
+lookahead_limiter_oversample = 4
+; Internal sample ceiling, -30 through -0.1 dBFS.
+lookahead_limiter_ceiling_dbfs = -3.0
+; Lookahead, attack, and release in milliseconds.
+lookahead_limiter_lookahead_ms = 5.0
+lookahead_limiter_attack_ms = 1.0
+lookahead_limiter_release_ms = 100.0
+
 [voice_telemetry]
 ; Enable the final transmitter chain for mixed voice and telemetry.
 enabled = yes
 ; Gain ahead of dynamics. The 6 dB default supplies normal composite-path gain.
 input_gain_db = 6.0
-; Reorder the equalizer and dynamics stages. The fixed final limiter and
+; Reorder the equalizer and dynamics stages. The fixed Peak Limiter and
 ; fixed transmitter band-pass are not listed here. The de-esser runs immediately before
 ; the compressor by default.
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
@@ -701,23 +720,20 @@ expander_enabled = no
 agc_enabled = no
 ; Enable or disable transmitter compression.
 compressor_enabled = no
-; Enable or disable transmitter peak limiting.
+; Enable or disable the reorderable Multiband Limiter.
 limiter_enabled = no
-; Enable or disable the fixed final limiter explicitly.
+; Peak Limiter is fixed after dynamics, output gain, and source-specific filtering.
+; Its defaults are disabled and -3 dBFS. Output I/TP metering is always active.
 lookahead_limiter_enabled = no
-; Final program integrated loudness and maximum true-peak diagnostics.
-loudness_meter_enabled = no
-; Final limiter oversampling: 1, 2, or 4; 4 gives 192 kHz at native 48 kHz.
+; Oversampling: 1, 2, or 4; return to the negotiated source rate after limiting.
 lookahead_limiter_oversample = 4
-; Explicit final-limiter ceiling, -30 through -0.1 dBFS.
+; Internal sample ceiling, -30 through -0.1 dBFS.
 lookahead_limiter_ceiling_dbfs = -3.0
-; Lookahead, attack, and release times in milliseconds.
+; Lookahead, attack, and release in milliseconds.
 lookahead_limiter_lookahead_ms = 5.0
-; Final limiter attack time in milliseconds.
 lookahead_limiter_attack_ms = 1.0
-; Final limiter release time in milliseconds.
 lookahead_limiter_release_ms = 100.0
-; Band-pass after main dynamics and before final oversampled limiting.
+; Band-pass after main dynamics and before oversampled Peak Limiter.
 post_limiter_bandpass_enabled = no
 ; Lower band-pass cutoff, 0 through 300 Hz; 0 disables the lower edge.
 post_limiter_bandpass_highpass_hz = 0.0

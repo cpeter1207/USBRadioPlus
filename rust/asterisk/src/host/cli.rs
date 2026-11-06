@@ -172,7 +172,7 @@ impl CliResult {
 }
 
 /// One attached incoming-link observation rendered by processing statistics.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(super) struct LinkStatus {
     /// Asterisk channel name.
     pub(super) name: String,
@@ -182,6 +182,14 @@ pub(super) struct LinkStatus {
     pub(super) bypassed_blocks: u64,
     /// Failed blocks.
     pub(super) failed_blocks: u64,
+    /// Mandatory post-limiter output measurement.
+    pub(super) loudness_epoch: u64,
+    /// Samples observed in the output epoch, including idle silence.
+    pub(super) loudness_sample_count: u64,
+    /// Measured gated integrated output LUFS.
+    pub(super) integrated_lufs: Option<f64>,
+    /// Measured maximum output true peak in dBTP.
+    pub(super) true_peak_dbtp: Option<f64>,
 }
 
 /// Operations supplied by the Rust Asterisk host.
@@ -464,6 +472,25 @@ fn processing_stats(backend: &mut impl CliBackend, args: &[&str]) -> CliResult {
                 link.name, link.processed_blocks, link.bypassed_blocks, link.failed_blocks
             )
             .expect("writing to String cannot fail");
+            for (key, value) in [
+                ("loudness_epoch", link.loudness_epoch),
+                ("loudness_sample_count", link.loudness_sample_count),
+                ("loudness_valid", u64::from(link.integrated_lufs.is_some())),
+                ("true_peak_valid", u64::from(link.true_peak_dbtp.is_some())),
+            ] {
+                writeln!(output, "{}/link: {key}={value}", link.name)
+                    .expect("writing to String cannot fail");
+            }
+            for (key, value) in [
+                ("integrated_lufs", link.integrated_lufs),
+                ("true_peak_dbtp", link.true_peak_dbtp),
+            ] {
+                match value {
+                    Some(value) => writeln!(output, "{}/link: {key}={value:.2}", link.name),
+                    None => writeln!(output, "{}/link: {key}=unmeasured", link.name),
+                }
+                .expect("writing to String cannot fail");
+            }
         }
     }
     CliResult::success(output)
@@ -796,6 +823,14 @@ impl CliBackend for ProductionBackend {
                 processed_blocks: status.observation.processed_blocks,
                 bypassed_blocks: status.observation.bypassed_blocks,
                 failed_blocks: status.observation.failed_blocks,
+                loudness_epoch: status.observation.loudness_epoch,
+                loudness_sample_count: status.observation.loudness_sample_count,
+                integrated_lufs: (status.observation.loudness_valid != 0
+                    && status.observation.integrated_lufs.is_finite())
+                .then_some(status.observation.integrated_lufs),
+                true_peak_dbtp: (status.observation.true_peak_valid != 0
+                    && status.observation.true_peak_dbtp.is_finite())
+                .then_some(status.observation.true_peak_dbtp),
             })
             .collect()
     }

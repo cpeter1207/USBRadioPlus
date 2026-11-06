@@ -355,13 +355,11 @@ impl Default for ReceiveConditioning {
     }
 }
 
-/// Fixed final transmitter limiter and band-pass.
+/// Fixed final limiter.
 #[derive(Clone, Debug, PartialEq)]
-pub struct TransmitTail {
-    /// Enable integrated loudness and maximum true-peak output measurements.
-    pub loudness_meter_enabled: bool,
+pub struct PeakLimiter {
     /// Whether the final limiter is enabled.
-    pub limiter_enabled: bool,
+    pub enabled: bool,
     /// Final-limiter ceiling in dBFS.
     pub ceiling_dbfs: f64,
     /// Final-limiter oversampling factor: 1, 2, or 4.
@@ -372,6 +370,24 @@ pub struct TransmitTail {
     pub attack_ms: f64,
     /// Release time in milliseconds.
     pub release_ms: f64,
+}
+
+impl Default for PeakLimiter {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            ceiling_dbfs: -3.0,
+            oversample: 4,
+            lookahead_ms: 5.0,
+            attack_ms: 1.0,
+            release_ms: 100.0,
+        }
+    }
+}
+
+/// Fixed final transmitter band-pass.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TransmitTail {
     /// Whether the band-pass before the final limiter is enabled.
     pub bandpass_enabled: bool,
     /// Lower band-pass edge in Hz; zero disables the lower edge.
@@ -383,13 +399,6 @@ pub struct TransmitTail {
 impl Default for TransmitTail {
     fn default() -> Self {
         Self {
-            loudness_meter_enabled: false,
-            limiter_enabled: false,
-            ceiling_dbfs: -3.0,
-            oversample: 4,
-            lookahead_ms: 5.0,
-            attack_ms: 1.0,
-            release_ms: 100.0,
             bandpass_enabled: false,
             bandpass_highpass_hz: 0.0,
             bandpass_lowpass_hz: 8_000.0,
@@ -426,7 +435,9 @@ pub struct ProcessingChain {
     pub compressor: Compressor,
     /// Multiband limiter controls.
     pub limiter: Limiter,
-    /// Fixed final transmitter stages.
+    /// Fixed final limiter.
+    pub peak_limiter: PeakLimiter,
+    /// Fixed transmitter band-pass.
     pub transmit_tail: TransmitTail,
 }
 
@@ -447,6 +458,7 @@ impl ProcessingChain {
             expander: Expander::default(),
             compressor: Compressor::default(),
             limiter: Limiter::default(),
+            peak_limiter: PeakLimiter::default(),
             transmit_tail: TransmitTail::default(),
         };
         match role {
@@ -475,11 +487,7 @@ impl ProcessingChain {
         {
             return Err(ProcessingConfigError::StageNotAllowed(self.role));
         }
-        if self.role != ChainRole::VoiceTelemetry
-            && (self.transmit_tail.loudness_meter_enabled
-                || self.transmit_tail.limiter_enabled
-                || self.transmit_tail.bandpass_enabled)
-        {
+        if self.role != ChainRole::VoiceTelemetry && self.transmit_tail.bandpass_enabled {
             return Err(ProcessingConfigError::StageNotAllowed(self.role));
         }
 
@@ -492,6 +500,7 @@ impl ProcessingChain {
         self.validate_expander()?;
         self.validate_compressor()?;
         self.validate_limiter()?;
+        self.validate_peak_limiter()?;
         self.validate_transmit_tail()
     }
 
@@ -748,30 +757,34 @@ impl ProcessingChain {
         validate_limiter_band("limiter_high", &limiter.high, -30.0, 100.0, 1_000.0)
     }
 
-    fn validate_transmit_tail(&self) -> Result<(), ProcessingConfigError> {
-        let tail = &self.transmit_tail;
-        if !matches!(tail.oversample, 1 | 2 | 4) {
+    fn validate_peak_limiter(&self) -> Result<(), ProcessingConfigError> {
+        let peak = &self.peak_limiter;
+        if !matches!(peak.oversample, 1 | 2 | 4) {
             return Err(ProcessingConfigError::InvalidOversample);
         }
         finite_range(
             "lookahead_limiter_ceiling_dbfs",
-            tail.ceiling_dbfs,
+            peak.ceiling_dbfs,
             -30.0,
             -0.1,
         )?;
         finite_range(
             "lookahead_limiter_lookahead_ms",
-            tail.lookahead_ms,
+            peak.lookahead_ms,
             0.1,
             20.0,
         )?;
-        finite_range("lookahead_limiter_attack_ms", tail.attack_ms, 0.1, 20.0)?;
+        finite_range("lookahead_limiter_attack_ms", peak.attack_ms, 0.1, 20.0)?;
         finite_range(
             "lookahead_limiter_release_ms",
-            tail.release_ms,
+            peak.release_ms,
             1.0,
             5_000.0,
-        )?;
+        )
+    }
+
+    fn validate_transmit_tail(&self) -> Result<(), ProcessingConfigError> {
+        let tail = &self.transmit_tail;
         finite_range(
             "post_limiter_bandpass_highpass_hz",
             tail.bandpass_highpass_hz,

@@ -1,4 +1,4 @@
-.TH USBRADIOPLUS.CONF 5 "September 2026" "USBRadioPlus alpha" "File Formats Manual"
+.TH USBRADIOPLUS.CONF 5 "November 2026" "USBRadioPlus alpha" "File Formats Manual"
 .SH NAME
 usbradioplus.conf \- USBRadioPlus channel, hardware, and audio-processing configuration
 .SH SYNOPSIS
@@ -229,11 +229,6 @@ Select the receiver audio connection. Default is \fBflat\fR.
 .TP
 .B cos_assignment = no|usb|usbinvert|dsp|vox|pp|ppinvert
 Select the carrier-operated-squelch source. Default is \fBdsp\fR.
-.TP
-.B cpu_saver_enabled = yes|no
-Reduce optional local receive processing while the receiver is unqualified.
-When disabled, enabled local RNNoise and dynamics run on every native interval.
-This control does not stop sound-device reads or writes. Default is \fBno\fR.
 .SS Receiver and squelch
 .TP
 .B vox_hang_ms = 0..32767
@@ -279,10 +274,6 @@ squelch code. CTCSS requires one supported \fB[ctcss]\fR
 code. A reload rejects a selected signaling method whose required inputs are
 absent or invalid, including a CTCSS or DCS method without a hardware output
 assigned to carry transmit signaling. Default is \fBcarrier\fR.
-.TP
-.B cpu_saver_enabled = yes|no
-Reduce optional transmit signaling DSP activity while the transmitter is idle.
-This control does not stop sound-device writes. Default is \fBno\fR.
 .TP
 .B preemphasis_enabled = yes|no
 Enable transmitter pre-emphasis for a direct modulator connection. Disable it
@@ -862,44 +853,53 @@ Set high-band attack. Default is 0.5 ms.
 .TP
 .B limiter_high_release_ms = 1..1000
 Set high-band release. Default is 25 ms.
-.SH FIXED TRANSMITTER PROCESSING
-These options apply only to [voice_telemetry]. They do not belong in
-stage_order and run in a fixed transmitter-tail order.
-.TP
-.B loudness_meter_enabled = yes|no
-Measure final mono program output with gated integrated LUFS and maximum
-true peak. Default is no. The meter follows the audible graph handoff mix,
-before calibration signals, access tones, and hardware mixer scaling.
-Processing statistics report the meter epoch, sample count, validity,
-transmit_integrated_lufs, and transmit_true_peak_dbtp. Initial readings need
-at least 400 ms; silence retains history. Unchanged transmitter graphs retain
-history across reloads; graph changes or meter re-enabling start a new epoch.
+.SH PEAK LIMITER AND OUTPUT METERS
+Peak Limiter is available in [local], [link], and [voice_telemetry]. It runs
+after optional dynamics, software gain, and source-specific filtering or
+preemphasis. It does not belong in stage_order. The reorderable Multiband
+Limiter is a separate stage.
+.PP
+Each chain has a separate, always-active gated integrated loudness and
+maximum true-peak meter after Peak Limiter, including audible graph handoffs.
+The transmit meter precedes calibration signals, access tones, and hardware
+mixer scaling. Processing statistics expose receive_* and transmit_* meter
+fields, plus per-link observations: loudness_epoch, loudness_sample_count,
+loudness_valid, true_peak_valid, integrated_lufs, and true_peak_dbtp.
+Initial readings need at least 400 ms; silence advances analysis and retains
+history. An unchanged complete path retains its epoch across reloads;
+a changed path starts a new epoch. Setup warmup is excluded.
+.PP
+Remove loudness_meter_enabled and receive/transmit CPU-saver settings.
+These retired keys produce normal unknown-option warnings and are ignored.
+Output analysis cannot be disabled by CPU saving.
 .TP
 .B lookahead_limiter_enabled = yes|no
-Enable or explicitly disable the final limiter. When omitted, the channel
-transmit limiter settings determine whether it runs and its ceiling.
+Enable or explicitly disable Peak Limiter. Default is no.
 .TP
 .B lookahead_limiter_ceiling_dbfs = -30..-0.1
-Set the final-limiter ceiling. Default is -3 dBFS.
+Set the Peak Limiter ceiling. Default is -3 dBFS.
 .TP
 .B lookahead_limiter_oversample = 1|2|4
-Set final-limiter oversampling. Default is 4, giving 192 kHz limiting followed
-by a return to 48 kHz on the native path. One disables oversampling. The
+Set Peak Limiter oversampling. Default is 4, giving four times the source
+rate and then a return to that rate (192 kHz then 48 kHz on the native path).
+One disables oversampling. The
 ceiling remains the internal sample ceiling; -2 dBFS provides reconstruction
 headroom for the -1 dBTP reference. Check true peak after downsampling.
 .TP
 .B lookahead_limiter_lookahead_ms = 0.1..20
-Set final-limiter lookahead. Default is 5 ms.
+Set Peak Limiter lookahead. Default is 5 ms.
 .TP
 .B lookahead_limiter_attack_ms = 0.1..20
 Set limiter attack. Default is 1 ms.
 .TP
 .B lookahead_limiter_release_ms = 1..5000
 Set limiter release. Default is 100 ms.
+.SS Voice/telemetry band-pass
+These band-pass options apply only to [voice_telemetry].
 .TP
 .B post_limiter_bandpass_enabled = yes|no
 Enable the fixed band-pass after the main dynamics stages and before the
-final oversampled lookahead limiter. Default is no.
+oversampled Peak Limiter. Default is no.
 .TP
 .B post_limiter_bandpass_highpass_hz = 0..300
 Set the post-limiter band-pass low-frequency cutoff. Zero disables the lower
@@ -910,7 +910,9 @@ Set the post-limiter band-pass high-frequency cutoff. Default is 8000 Hz.
 .SH ORDER OF PROCESSING
 Local receiver audio is de-emphasized and squelch-gated, passed through the
 receive band-pass and one selected PL filter, optionally passed through RNNoise,
-and then passed through the selected dynamics order. Link audio uses only its dynamics graph;
+and then passed through the selected dynamics order, software output gain,
+Peak Limiter, and mandatory output meter. Link audio uses its dynamics graph,
+output gain, Peak Limiter, and mandatory output meter;
 source-specific brick-wall filtering is not available. RNNoise and PL removal
 are not available on link or transmitter sources.
 .PP
@@ -922,12 +924,15 @@ preparation and reload occur outside the callback. A format or capacity
 mismatch, unavailable graph, or graph-processing error leaves the current
 frame unchanged rather than rebuilding the graph or replaying older audio.
 .B radioplus processing stats
-reports processed, bypassed, and failed link blocks. Link processing never
+reports processed, bypassed, and failed link blocks and their output-meter
+observations. Normal idle intervals advance analysis with silence. A stalled
+Asterisk channel reader resumes with one current interval rather than replaying
+elapsed silence. Link processing never
 asserts or releases PTT.
 .PP
 The transmitter combines voice and telemetry, applies the voice/telemetry
-dynamics graph, preemphasis and output gain, optional band-pass, final
-oversampled lookahead limiter, and optional output meter.
+dynamics graph, preemphasis and output gain, optional band-pass,
+oversampled Peak Limiter, and mandatory output meter.
 .SH EXAMPLE
 .nf
 [usb]
@@ -940,12 +945,16 @@ stage_order = equalizer,expander,agc,deesser,compressor,limiter
 expander_enabled = yes
 agc_enabled = yes
 ctcss_filter_mode = notch
+lookahead_limiter_enabled = yes
+lookahead_limiter_ceiling_dbfs = -2
 
 [link]
 enabled = yes
 stage_order = equalizer,agc,deesser,compressor
 agc_enabled = yes
 compressor_enabled = yes
+lookahead_limiter_enabled = yes
+lookahead_limiter_ceiling_dbfs = -2
 
 [voice_telemetry]
 enabled = yes
@@ -953,6 +962,8 @@ input_gain_db = 6.0
 stage_order = equalizer,deesser,compressor,limiter
 compressor_enabled = yes
 limiter_enabled = yes
+lookahead_limiter_enabled = yes
+lookahead_limiter_ceiling_dbfs = -2
 post_limiter_bandpass_enabled = yes
 post_limiter_bandpass_highpass_hz = 0
 post_limiter_bandpass_lowpass_hz = 5000

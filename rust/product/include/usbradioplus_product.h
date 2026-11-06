@@ -197,6 +197,8 @@ typedef void (*UrpNativeProcessingDiagnostic)(void *context, const uint8_t *text
  * Audio written toward an Asterisk link; intentionally bypassed by link processing.
  */
 #define URP_AST_LINK_DIRECTION_WRITE 2
+/** Advance one bounded idle interval with silence and discard graph output. */
+#define URP_AST_LINK_DIRECTION_SILENCE 3
 
 /**
  * Fixed Asterisk jitter-buffer implementation.
@@ -510,6 +512,18 @@ typedef struct UrpAstLinkObservation {
 	 * Graph failures which retained the original PCM.
 	 */
 	uint64_t failed_blocks;
+	/** Mandatory output-meter epoch; silence does not reset it. */
+	uint64_t loudness_epoch;
+	/** Observed samples in the epoch, including idle silence. */
+	uint64_t loudness_sample_count;
+	/** Nonzero when integrated_lufs is measured. */
+	uint32_t loudness_valid;
+	/** Nonzero when true_peak_dbtp is measured. */
+	uint32_t true_peak_valid;
+	/** Gated integrated output LUFS, meaningful only when loudness_valid is set. */
+	double integrated_lufs;
+	/** Maximum output dBTP, meaningful only when true_peak_valid is set. */
+	double true_peak_dbtp;
 } UrpAstLinkObservation;
 
 /**

@@ -63,6 +63,20 @@ fn shipped_station_defaults_are_concrete_and_safe() {
 }
 
 #[test]
+fn retired_cpu_saver_keys_warn_at_every_station_overlay() {
+    for value in ["yes", "no", "invalid"] {
+        let resolved = resolve(&format!(
+            "[usb]\n[receive]\ncpu_saver_enabled={value}\n[transmit]\ncpu_saver_enabled={value}\n[receive usb]\ncpu_saver_enabled={value}\n[transmit usb]\ncpu_saver_enabled={value}\n"
+        )).unwrap();
+        assert_eq!(resolved.config(), &StationConfig::default());
+        assert_eq!(resolved.warnings().len(), 4);
+        assert!(resolved.warnings().iter().all(|warning| warning.kind
+            == ResolutionWarningKind::UnknownOption
+            && warning.name == "cpu_saver_enabled"));
+    }
+}
+
+#[test]
 fn every_current_non_processing_option_is_typed() {
     let resolved = resolve(
         "[usb]\n\
@@ -119,7 +133,6 @@ fn every_current_non_processing_option_is_typed() {
              \n\
              [receive]\n\
              signaling_method = ctcss\n\
-             cpu_saver_enabled = yes\n\
              audio_source = speaker\n\
              cos_assignment = usb\n\
              vox_hang_ms = 100\n\
@@ -133,7 +146,6 @@ fn every_current_non_processing_option_is_typed() {
              \n\
              [transmit]\n\
              signaling_method = ctcss\n\
-             cpu_saver_enabled = yes\n\
              preemphasis_enabled = no\n\
              settle_ms = 600\n\
              rx_blanking_ms = 700\n\
@@ -433,7 +445,6 @@ fn malformed_scalars_warn_and_fall_back_at_their_overlay_layer() {
     let resolved = resolve(
         "[usb]\n\
              [receive]\n\
-             cpu_saver_enabled = true\n\
              vox_threshold = -1\n\
              noise_filter_type = 2\n\
              squelch_delay_ms = 512\n\
@@ -452,7 +463,7 @@ fn malformed_scalars_warn_and_fall_back_at_their_overlay_layer() {
     )
     .unwrap();
     assert_eq!(resolved.config(), &StationConfig::default());
-    assert_eq!(resolved.warnings().len(), 12);
+    assert_eq!(resolved.warnings().len(), 11);
     assert!(
         resolved
             .warnings()

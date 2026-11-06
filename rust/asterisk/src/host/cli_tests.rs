@@ -84,6 +84,40 @@ pub(in crate::host) fn assert_link_snapshot(
     assert_eq!(snapshot[0].failed_blocks, failed);
 }
 
+#[test]
+fn concrete_link_measurements_respect_raw_readiness_and_finite_values() {
+    let _fixture = HostFixture::new();
+    let links = crate::host::link::tests::RunningFixture::new(true);
+    crate::host::link::reload_prepare(Some("alpha"))
+        .unwrap()
+        .finish(true);
+    for (valid, peak_valid, integrated, peak, expected_integrated, expected_peak) in [
+        (1, 1, -23.0, -2.0, Some(-23.0), Some(-2.0)),
+        (7, 2, -23.0, -2.0, Some(-23.0), Some(-2.0)),
+        (1, 1, f64::NAN, -2.0, None, Some(-2.0)),
+        (1, 1, -23.0, f64::INFINITY, Some(-23.0), None),
+        (0, 0, -23.0, -2.0, None, None),
+    ] {
+        links.set_observation(crate::UrpAstLinkObservation {
+            struct_size: std::mem::size_of::<crate::UrpAstLinkObservation>() as u32,
+            abi_version: crate::ABI_VERSION,
+            loudness_epoch: 11,
+            loudness_sample_count: 48_000,
+            loudness_valid: valid,
+            true_peak_valid: peak_valid,
+            integrated_lufs: integrated,
+            true_peak_dbtp: peak,
+            ..crate::UrpAstLinkObservation::default()
+        });
+        let status = ProductionBackend { fd: -1 }.link_status();
+        assert_eq!(status.len(), 1);
+        assert_eq!(status[0].loudness_epoch, 11);
+        assert_eq!(status[0].loudness_sample_count, 48_000);
+        assert_eq!(status[0].integrated_lufs, expected_integrated);
+        assert_eq!(status[0].true_peak_dbtp, expected_peak);
+    }
+}
+
 unsafe extern "C" fn active_name(
     _: *mut c_void,
     output: *mut u8,
@@ -938,6 +972,20 @@ fn reload_statistics_and_failures_preserve_operator_output() {
         processed_blocks: 7,
         bypassed_blocks: 2,
         failed_blocks: 1,
+        loudness_epoch: 11,
+        loudness_sample_count: 48000,
+        integrated_lufs: Some(-23.0),
+        true_peak_dbtp: Some(-2.0),
+    });
+    fixture.links.push(LinkStatus {
+        name: "IAX2/unmeasured".into(),
+        processed_blocks: 0,
+        bypassed_blocks: 0,
+        failed_blocks: 0,
+        loudness_epoch: 12,
+        loudness_sample_count: 0,
+        integrated_lufs: None,
+        true_peak_dbtp: None,
     });
     let result = run(
         &mut fixture,
@@ -946,6 +994,34 @@ fn reload_statistics_and_failures_preserve_operator_output() {
     );
     assert!(result.output.contains("transmit_integrated_lufs=-23.05\n"));
     assert!(result.output.contains("transmit_true_peak_dbtp=-1.10\n"));
+    for expected in [
+        "IAX2/unmeasured/link: loudness_valid=0\n",
+        "IAX2/unmeasured/link: true_peak_valid=0\n",
+        "IAX2/unmeasured/link: integrated_lufs=unmeasured\n",
+        "IAX2/unmeasured/link: true_peak_dbtp=unmeasured\n",
+    ] {
+        assert!(result.output.contains(expected));
+    }
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: loudness_epoch=11\n")
+    );
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: loudness_sample_count=48000\n")
+    );
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: integrated_lufs=-23.00\n")
+    );
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: true_peak_dbtp=-2.00\n")
+    );
     fixture.processing_result = URP_AST_SETUP_FAILED;
     assert_eq!(
         run(

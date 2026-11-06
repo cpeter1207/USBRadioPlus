@@ -465,6 +465,7 @@ pub(crate) unsafe extern "C" fn processing_status_text(
         let observation = station.runtime.hardware_state().callback_statistics();
         let text = crate::maintenance::processing_status_text(
             observation,
+            station.control.receive_loudness(),
             station.control.transmit_loudness(),
         );
         // SAFETY: the synchronous sink borrows this complete UTF-8 span only.
@@ -980,6 +981,7 @@ unsafe fn resolve(
         ExplicitNativeProcessingPlan {
             local: None,
             voice_telemetry: None,
+            receive_input_gain: radio.receive_input_gain,
             receive_graph,
             transmit_graph,
             receive_deemphasis: config.receive_deemphasis != 0,

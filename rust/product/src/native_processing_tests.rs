@@ -47,6 +47,7 @@ fn native_profile_gains_replace_the_raw_path_without_double_application() {
     let mut processing = ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "volume=-6dB".to_owned(),
         transmit_graph: "volume=6dB".to_owned(),
         receive_deemphasis: true,
@@ -61,12 +62,14 @@ fn native_profile_gains_replace_the_raw_path_without_double_application() {
         .unwrap()
         .apply(&mut radio, &mut processing);
     assert_eq!(radio.receive_input_gain, 0.125);
+    assert_eq!(processing.receive_input_gain, radio.receive_input_gain);
     assert!(processing.local.is_none());
     let configuration = "[524950]\n[local]\ninput_gain_db=-6\noutput_gain_db=-3\nlimiter_enabled=invalid\n[voice_telemetry]\ninput_gain_db=2\n";
     Profiles::resolve(configuration, "524950")
         .unwrap()
         .apply(&mut radio, &mut processing);
     assert!((radio.receive_input_gain - 10.0_f32.powf(-6.0 / 20.0)).abs() < 1e-6);
+    assert_eq!(processing.receive_input_gain, radio.receive_input_gain);
     assert_eq!(processing.local.as_ref().unwrap().output_gain_db, -3.0);
     assert_eq!(
         processing.voice_telemetry.as_ref().unwrap().input_gain_db,
@@ -80,6 +83,7 @@ fn native_profile_gains_replace_the_raw_path_without_double_application() {
         radio.receive_input_gain, 0.0,
         "disabled receive must stay muted"
     );
+    assert_eq!(processing.receive_input_gain, 0.0);
 }
 
 #[test]
@@ -174,7 +178,7 @@ fn native_f32_link_uses_shared_preparation_counters_and_direction_rules() {
         assert_eq!(observation.processed_blocks, 1);
         assert_eq!(observation.bypassed_blocks, 1);
         assert_ne!(
-            link_process_f32(output, 3, 48_000, samples.as_mut_ptr(), 2),
+            link_process_f32(output, 99, 48_000, samples.as_mut_ptr(), 2),
             URP_AST_OK
         );
         assert_ne!(
@@ -206,10 +210,45 @@ fn native_f32_link_uses_shared_preparation_counters_and_direction_rules() {
         api.link_destroy.unwrap()(output);
         output = std::ptr::dangling_mut();
         assert_eq!(
-            link_prepare(&args("[524950]\n"), std::ptr::null(), 960, &mut output),
+            link_prepare(&args("[524950]\n"), providers.ffmpeg, 960, &mut output),
             URP_AST_OK
         );
-        assert!(output.is_null());
+        assert!(!output.is_null());
+        samples = [0.125, -0.25];
+        assert_eq!(
+            link_process_f32(
+                output,
+                URP_AST_LINK_DIRECTION_READ,
+                48_000,
+                samples.as_mut_ptr(),
+                2
+            ),
+            URP_AST_OK
+        );
+        assert_eq!(samples, [0.125, -0.25]);
+        assert_eq!(
+            api.link_observe.unwrap()(output, &mut observation),
+            URP_AST_OK
+        );
+        assert_ne!(observation.loudness_epoch, 0);
+        assert_eq!(observation.loudness_sample_count, 2);
+        assert_eq!(
+            link_process_f32(
+                output,
+                crate::URP_AST_LINK_DIRECTION_SILENCE,
+                48_000,
+                samples.as_mut_ptr(),
+                2
+            ),
+            URP_AST_OK
+        );
+        assert_eq!(samples, [0.0, 0.0]);
+        assert_eq!(
+            api.link_observe.unwrap()(output, &mut observation),
+            URP_AST_OK
+        );
+        assert_eq!(observation.loudness_sample_count, 4);
+        api.link_destroy.unwrap()(output);
     }
 }
 

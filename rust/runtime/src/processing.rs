@@ -45,7 +45,7 @@ pub enum ProcessingRuntimeError {
     DenoiseAdapter(DenoiseError),
     /// The fixed native stream specification is invalid.
     Stream(StreamSpecError),
-    /// The optional final-programme meter rejected setup.
+    /// A mandatory output meter rejected setup.
     Loudness(OutputLoudnessError),
 }
 
@@ -124,6 +124,8 @@ pub struct ExplicitNativeProcessingPlan {
     pub local: Option<ProcessingChain>,
     /// Shared voice/telemetry profile; replaces the raw transmit graph when present.
     pub voice_telemetry: Option<ProcessingChain>,
+    /// Effective linear receiver input gain applied by the radio session.
+    pub receive_input_gain: f32,
     /// Exact configured mono receive graph when no local profile is selected.
     pub receive_graph: String,
     /// Exact configured mono transmit graph when no voice/telemetry profile is selected.
@@ -149,6 +151,7 @@ impl From<&NativeProcessingPlan> for ExplicitNativeProcessingPlan {
         Self {
             local: Some(plan.local.clone()),
             voice_telemetry: Some(plan.voice_telemetry.clone()),
+            receive_input_gain: 10.0_f32.powf(plan.local.input_gain_db as f32 / 20.0),
             receive_graph: String::new(),
             transmit_graph: String::new(),
             receive_deemphasis: plan.deemphasis_enabled,
@@ -311,11 +314,13 @@ impl NativeProcessingFactory {
             },
             receive_dynamics: prepare(plan.receive_dynamics(descriptions)?)?,
             transmit_program: prepare(plan.transmitter(descriptions)?)?,
+            receive_loudness: None,
+            receive_input_gain: 0.0,
             transmit_loudness: None,
             transmit_dcs_normal_filter: prepare(plan.dcs_filter(descriptions, false))?,
             transmit_dcs_turnoff_filter: prepare(plan.dcs_filter(descriptions, true))?,
         }
-        .with_transmit_meter(plan, maximum_frame_count, None)
+        .with_output_meters(plan, maximum_frame_count, None)
     }
 
     /// Construct a factory from process-lifetime adapter capabilities.
@@ -451,7 +456,7 @@ impl NativeProcessingFactory {
                 plan.receive_dynamics(&self.descriptions)?,
                 previous_plan.receive_dynamics(&self.descriptions)?,
                 &previous.receive_dynamics,
-                0,
+                limiter_lookahead_frames(plan.local.as_ref()),
             )?,
             transmit_program: self.replacement_graph(
                 plan.transmitter(&self.descriptions)?,
@@ -459,6 +464,8 @@ impl NativeProcessingFactory {
                 &previous.transmit_program,
                 transmit_lookahead_frames(&plan),
             )?,
+            receive_loudness: None,
+            receive_input_gain: 0.0,
             transmit_loudness: None,
             transmit_dcs_normal_filter: self.replacement_graph(
                 plan.dcs_filter(&self.descriptions, false),
@@ -473,7 +480,7 @@ impl NativeProcessingFactory {
                 0,
             )?,
         }
-        .with_transmit_meter(&plan, maximum, Some(previous))
+        .with_output_meters(&plan, maximum, Some(previous))
     }
 
     /// Prepare an inverse handoff to retained original processors without
@@ -533,12 +540,18 @@ impl NativeProcessingFactory {
                     target.clone()
                 }
             }),
-            receive_dynamics: restore(&target.receive_dynamics, &current.receive_dynamics, 0)?,
+            receive_dynamics: restore(
+                &target.receive_dynamics,
+                &current.receive_dynamics,
+                limiter_lookahead_frames(target_plan.local.as_ref()),
+            )?,
             transmit_program: restore(
                 &target.transmit_program,
                 &current.transmit_program,
                 transmit_lookahead_frames(&target_plan),
             )?,
+            receive_loudness: None,
+            receive_input_gain: 0.0,
             transmit_loudness: None,
             transmit_dcs_normal_filter: restore(
                 &target.transmit_dcs_normal_filter,
@@ -551,7 +564,7 @@ impl NativeProcessingFactory {
                 0,
             )?,
         }
-        .with_transmit_meter(
+        .with_output_meters(
             &target_plan,
             self.stream.maximum_frame_count(),
             Some(current),
@@ -809,50 +822,107 @@ pub struct ProcessingGeneration {
     receive_noise_reduction: Option<SharedDenoise>,
     receive_dynamics: SharedGraph,
     transmit_program: SharedGraph,
+    receive_loudness: Option<Arc<OutputLoudnessStage>>,
+    receive_input_gain: f32,
     transmit_loudness: Option<Arc<OutputLoudnessStage>>,
     transmit_dcs_normal_filter: SharedGraph,
     transmit_dcs_turnoff_filter: SharedGraph,
 }
 
 impl ProcessingGeneration {
-    fn with_transmit_meter(
+    fn with_output_meters(
         mut self,
         plan: &ExplicitNativeProcessingPlan,
         maximum: u32,
         previous: Option<&Self>,
     ) -> Result<Self, ProcessingRuntimeError> {
-        if plan
-            .voice_telemetry
-            .as_ref()
-            .is_some_and(|chain| chain.transmit_tail.loudness_meter_enabled)
-        {
-            self.transmit_loudness = if let Some(previous) = previous.filter(|previous| {
-                Arc::ptr_eq(&self.transmit_program.0, &previous.transmit_program.0)
-            }) {
-                previous.transmit_loudness.clone()
-            } else {
-                None
-            };
-            if self.transmit_loudness.is_none() {
-                let meter = OutputLoudnessMeter::new(48_000, maximum as usize)
-                    .map_err(ProcessingRuntimeError::Loudness)?;
-                let observer = meter.observer();
-                self.transmit_loudness = Some(Arc::new(OutputLoudnessStage {
-                    graph: self.transmit_program.clone(),
-                    meter: UnsafeCell::new(meter),
-                    observer,
-                }));
-            }
-        }
+        self.receive_input_gain = plan.receive_input_gain;
+        let old_receive = previous.filter(|old| self.same_receive_path(old));
+        self.receive_loudness = Some(match old_receive {
+            Some(old) => old
+                .receive_loudness
+                .as_ref()
+                .expect("prepared RX meter")
+                .clone(),
+            None => Self::new_output_meter(self.receive_dynamics.clone(), maximum)?,
+        });
+        self.transmit_loudness = Some(
+            match previous
+                .filter(|old| Arc::ptr_eq(&self.transmit_program.0, &old.transmit_program.0))
+            {
+                Some(old) => old
+                    .transmit_loudness
+                    .as_ref()
+                    .expect("prepared TX meter")
+                    .clone(),
+                None => Self::new_output_meter(self.transmit_program.clone(), maximum)?,
+            },
+        );
         Ok(self)
+    }
+
+    fn new_output_meter(
+        graph: SharedGraph,
+        maximum: u32,
+    ) -> Result<Arc<OutputLoudnessStage>, ProcessingRuntimeError> {
+        let meter = OutputLoudnessMeter::new(48_000, maximum as usize)
+            .map_err(ProcessingRuntimeError::Loudness)?;
+        let observer = meter.observer();
+        Ok(Arc::new(OutputLoudnessStage {
+            graph,
+            meter: UnsafeCell::new(meter),
+            observer,
+        }))
+    }
+
+    fn same_receive_path(&self, old: &Self) -> bool {
+        let same_optional_graph =
+            |left: &Option<SharedGraph>, right: &Option<SharedGraph>| match (left, right) {
+                (Some(left), Some(right)) => Arc::ptr_eq(&left.0, &right.0),
+                (None, None) => true,
+                _ => false,
+            };
+        self.receive_input_gain == old.receive_input_gain
+            && Arc::ptr_eq(&self.receive_deemphasis.0, &old.receive_deemphasis.0)
+            && Arc::ptr_eq(&self.receive_filter.0, &old.receive_filter.0)
+            && Arc::ptr_eq(&self.receive_dynamics.0, &old.receive_dynamics.0)
+            && self
+                .receive_ctcss_notch
+                .iter()
+                .zip(&old.receive_ctcss_notch)
+                .all(|(left, right)| same_optional_graph(left, right))
+            && same_optional_graph(
+                &self.receive_ctcss_tail_notch,
+                &old.receive_ctcss_tail_notch,
+            )
+            && match (&self.receive_noise_reduction, &old.receive_noise_reduction) {
+                (Some(left), Some(right)) => Arc::ptr_eq(&left.0, &right.0),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+
+    /// Mandatory local output measurement after its final graph and handoff.
+    pub fn receive_loudness(&self) -> Option<OutputLoudnessSnapshot> {
+        Some(
+            self.receive_loudness
+                .as_ref()
+                .expect("prepared RX meter")
+                .observer
+                .snapshot(),
+        )
     }
 
     /// Final transmit programme since this graph's meter epoch began. Preparation
     /// and graph warmup are excluded; pauses retain integrated history.
     pub fn transmit_loudness(&self) -> Option<OutputLoudnessSnapshot> {
-        self.transmit_loudness
-            .as_ref()
-            .map(|stage| stage.observer.snapshot())
+        Some(
+            self.transmit_loudness
+                .as_ref()
+                .expect("prepared TX meter")
+                .observer
+                .snapshot(),
+        )
     }
 
     // Private: safe public Clone would permit two independent audio owners.
@@ -865,6 +935,8 @@ impl ProcessingGeneration {
             receive_noise_reduction: self.receive_noise_reduction.clone(),
             receive_dynamics: self.receive_dynamics.clone(),
             transmit_program: self.transmit_program.clone(),
+            receive_loudness: self.receive_loudness.clone(),
+            receive_input_gain: self.receive_input_gain,
             transmit_loudness: self.transmit_loudness.clone(),
             transmit_dcs_normal_filter: self.transmit_dcs_normal_filter.clone(),
             transmit_dcs_turnoff_filter: self.transmit_dcs_turnoff_filter.clone(),
@@ -882,8 +954,10 @@ impl ProcessingGeneration {
             receive_ctcss_notch,
             receive_ctcss_tail_notch,
             receive_noise_reduction,
-            receive_dynamics,
-            transmit_program,
+            receive_dynamics: _,
+            transmit_program: _,
+            receive_loudness,
+            receive_input_gain: _,
             transmit_loudness,
             transmit_dcs_normal_filter,
             transmit_dcs_turnoff_filter,
@@ -904,21 +978,12 @@ impl ProcessingGeneration {
             receive_noise_reduction: receive_noise_reduction
                 .as_mut()
                 .map_or_else(ProcessorPort::passthrough, denoise_port),
-            receive_dynamics: graph_port(receive_dynamics),
-            transmit_program: match transmit_loudness {
-                Some(stage) => {
-                    // SAFETY: this generation retains the stage for its sole TX owner.
-                    unsafe {
-                        ProcessorPort::from_raw(
-                            NonNull::from(stage.as_ref()).cast(),
-                            metered_graph_process,
-                            None,
-                            None,
-                        )
-                    }
-                }
-                None => graph_port(transmit_program),
-            },
+            receive_dynamics: metered_graph_port(
+                receive_loudness.as_ref().expect("prepared RX meter"),
+            ),
+            transmit_program: metered_graph_port(
+                transmit_loudness.as_ref().expect("prepared TX meter"),
+            ),
             transmit_dcs_normal_filter: graph_port(transmit_dcs_normal_filter),
             transmit_dcs_turnoff_filter: graph_port(transmit_dcs_turnoff_filter),
             program_ring,
@@ -946,12 +1011,27 @@ fn validate_plan(
 }
 
 fn transmit_lookahead_frames(plan: &ExplicitNativeProcessingPlan) -> usize {
-    plan.voice_telemetry
-        .as_ref()
-        .filter(|voice| voice.transmit_tail.limiter_enabled)
-        .map_or(0, |voice| {
-            (voice.transmit_tail.lookahead_ms * 48.0).ceil() as usize
+    limiter_lookahead_frames(plan.voice_telemetry.as_ref())
+}
+
+fn limiter_lookahead_frames(chain: Option<&ProcessingChain>) -> usize {
+    chain
+        .filter(|chain| chain.peak_limiter.enabled)
+        .map_or(0, |chain| {
+            (chain.peak_limiter.lookahead_ms * 48.0).ceil() as usize
         })
+}
+
+fn metered_graph_port(stage: &Arc<OutputLoudnessStage>) -> ProcessorPort<'_> {
+    // SAFETY: the generation retains this stable stage for its sole RX or TX owner.
+    unsafe {
+        ProcessorPort::from_raw(
+            NonNull::from(stage.as_ref()).cast(),
+            metered_graph_process,
+            None,
+            None,
+        )
+    }
 }
 
 fn graph_port(graph: &mut SharedGraph) -> ProcessorPort<'_> {
@@ -982,7 +1062,7 @@ unsafe extern "C" fn metered_graph_process(
     let Some(context) = NonNull::new(context.cast::<OutputLoudnessStage>()) else {
         return PORT_ERROR;
     };
-    // SAFETY: the retained stage is borrowed by its sole TX callback owner.
+    // SAFETY: the retained stage is borrowed by its sole RX or TX callback owner.
     let stage = unsafe { context.as_ref() };
     // SAFETY: the graph validates the caller's complete input/output spans.
     let result = unsafe {
@@ -997,7 +1077,7 @@ unsafe extern "C" fn metered_graph_process(
         return result;
     }
     // SAFETY: successful graph processing validated this exact output span;
-    // its final handoff mix is complete and TX exclusively owns the meter.
+    // its final handoff mix is complete and the corresponding serial callback exclusively owns the meter.
     let (samples, meter) = unsafe {
         (
             slice::from_raw_parts(output, frame_count as usize),

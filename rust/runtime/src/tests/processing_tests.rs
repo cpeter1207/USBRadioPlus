@@ -14,6 +14,7 @@ fn explicit_native_processing_preserves_graphs_gain_and_only_selected_notches() 
     let plan = ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "highpass=f=60,lowpass=f=5500".to_owned(),
         transmit_graph: "volume=-2dB".to_owned(),
         receive_deemphasis: true,
@@ -60,6 +61,7 @@ fn explicit_native_graph_uses_passthrough_for_zero_gain_and_reports_notch_failur
     let mut plan = ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "anull".to_owned(),
         transmit_graph: "anull".to_owned(),
         receive_deemphasis: false,
@@ -103,6 +105,7 @@ fn explicit_native_graph_reports_deemphasis_and_receive_gain_prepare_failures() 
     let plan = ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "anull".to_owned(),
         transmit_graph: "anull".to_owned(),
         receive_deemphasis: true,
@@ -157,6 +160,7 @@ fn explicit_native_profiles_use_the_same_prepared_chains_and_conditioning() {
     let request = ExplicitNativeProcessingPlan {
         local: Some(profile.local),
         voice_telemetry: Some(profile.voice_telemetry),
+        receive_input_gain: 1.0,
         receive_graph: "unused receive graph".to_owned(),
         transmit_graph: "unused transmit graph".to_owned(),
         receive_deemphasis: profile.deemphasis_enabled,
@@ -200,6 +204,7 @@ fn explicit_native_profiles_preserve_unconfigured_roles_and_require_denoise_when
             local: local_present.then_some(local),
             voice_telemetry: (!local_present)
                 .then(|| ProcessingChain::shipped(ChainRole::VoiceTelemetry)),
+            receive_input_gain: 1.0,
             receive_graph: "volume=0.4".to_owned(),
             transmit_graph: "volume=0.5".to_owned(),
             receive_deemphasis: true,
@@ -569,6 +574,7 @@ fn explicit_raw_plan() -> ExplicitNativeProcessingPlan {
     ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "highpass=f=60".to_owned(),
         transmit_graph: "volume=-2dB".to_owned(),
         receive_deemphasis: false,
@@ -625,6 +631,44 @@ fn explicit_replacement_keeps_unchanged_raw_stages_and_restores_exact_graphs() {
     );
     assert_eq!(GRAPH_CREATES.get(), 0);
     assert_eq!(GRAPH_PROCESSES.get(), 0);
+}
+
+#[test]
+fn raw_receive_gain_changes_reset_only_receive_history_and_rollback_epoch() {
+    let factory = factory();
+    for gain in [0.125, 0.0] {
+        let original_plan = explicit_raw_plan();
+        let original = factory.prepare(&original_plan).unwrap();
+        let original_rx = original.receive_loudness().unwrap().epoch;
+        let original_tx = original.transmit_loudness().unwrap().epoch;
+        let unchanged =
+            // SAFETY: the unchanged snapshot retains the original serial owners.
+            unsafe { factory.prepare_replacement(&original_plan, &original_plan, &original) }
+                .unwrap();
+        assert_eq!(unchanged.receive_loudness().unwrap().epoch, original_rx);
+        let mut changed = original_plan.clone();
+        changed.receive_input_gain = gain;
+        GRAPH_CREATES.set(0);
+        let forward =
+            // SAFETY: the gain-only update retains those same RX/TX owners.
+            unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+        let forward_rx = forward.receive_loudness().unwrap().epoch;
+        assert_ne!(forward_rx, original_rx);
+        assert_eq!(forward.transmit_loudness().unwrap().epoch, original_tx);
+        assert_eq!(forward.receive_loudness().unwrap().sample_count, 0);
+        assert_eq!(GRAPH_CREATES.get(), 0);
+        let restored =
+            // SAFETY: rollback immediately follows this matching gain-only update.
+            unsafe { factory.prepare_restore(&original_plan, &original, &forward) }.unwrap();
+        assert_ne!(restored.receive_loudness().unwrap().epoch, forward_rx);
+        assert_ne!(restored.receive_loudness().unwrap().epoch, original_rx);
+        assert_eq!(restored.transmit_loudness().unwrap().epoch, original_tx);
+        assert_eq!(
+            restored.receive_input_gain,
+            original_plan.receive_input_gain
+        );
+        assert_eq!(GRAPH_CREATES.get(), 0);
+    }
 }
 
 #[test]
@@ -821,11 +865,7 @@ fn process_transmit(generation: &mut ProcessingGeneration, input: &[f32]) -> Vec
 
 #[test]
 fn transmit_meter_excludes_warmup_and_measures_final_program_without_changing_it() {
-    let mut settings = plan();
-    settings
-        .voice_telemetry
-        .transmit_tail
-        .loudness_meter_enabled = true;
+    let settings = plan();
     let mut generation = factory().prepare(settings).unwrap();
     assert_eq!(generation.transmit_loudness().unwrap().sample_count, 0);
     let mut expected = Vec::new();
@@ -856,12 +896,8 @@ fn transmit_meter_excludes_warmup_and_measures_final_program_without_changing_it
 }
 
 #[test]
-fn transmit_meter_epoch_follows_transmit_graph_and_enable_state() {
-    let mut original_plan = plan();
-    original_plan
-        .voice_telemetry
-        .transmit_tail
-        .loudness_meter_enabled = true;
+fn transmit_meter_epoch_follows_transmit_graph_and_cannot_be_disabled() {
+    let original_plan = plan();
     let mut original = factory().prepare(original_plan.clone()).unwrap();
     process_transmit(&mut original, &[0.1; 960]);
     let first = original.transmit_loudness().unwrap();
@@ -884,40 +920,19 @@ fn transmit_meter_epoch_follows_transmit_graph_and_enable_state() {
         // SAFETY: this inverse immediately follows its matching forward update.
         unsafe { factory().prepare_restore(&receive_plan, &receive, &transmit) }.unwrap();
     assert_ne!(restored.transmit_loudness().unwrap().epoch, first.epoch);
-    let mut disabled_plan = original_plan.clone();
-    disabled_plan
-        .voice_telemetry
-        .transmit_tail
-        .loudness_meter_enabled = false;
-    let disabled =
-        // SAFETY: toggling the observer preserves the same serial graph owner.
-        unsafe { factory().prepare_replacement(&disabled_plan, &original_plan, &original) }
-            .unwrap();
-    assert!(disabled.transmit_loudness().is_none());
-    assert!(Arc::ptr_eq(
-        &disabled.transmit_program.0,
-        &original.transmit_program.0
-    ));
-    let rollback =
-        // SAFETY: rolling back the disable uses the same retained graph owner.
-        unsafe { factory().prepare_restore(&original_plan, &original, &disabled) }.unwrap();
-    assert_ne!(rollback.transmit_loudness().unwrap().epoch, first.epoch);
-    assert_eq!(rollback.transmit_loudness().unwrap().sample_count, 0);
-    let reenabled =
-        // SAFETY: the original same-owner graph remains retained through the toggle.
-        unsafe { factory().prepare_replacement(&original_plan, &disabled_plan, &disabled) }
-            .unwrap();
-    assert_ne!(reenabled.transmit_loudness().unwrap().epoch, first.epoch);
-    assert_eq!(reenabled.transmit_loudness().unwrap().sample_count, 0);
+    let mut bypass_plan = original_plan.clone();
+    bypass_plan.voice_telemetry.enabled = false;
+    bypass_plan.voice_telemetry.peak_limiter.enabled = false;
+    let bypassed =
+        // SAFETY: the same serial owners retain the corresponding stages.
+        unsafe { factory().prepare_replacement(&bypass_plan, &original_plan, &original) }.unwrap();
+    assert!(bypassed.transmit_loudness().is_some());
+    assert!(bypassed.receive_loudness().is_some());
 }
 
 #[test]
 fn transmit_meter_does_not_count_rejected_blocks_or_setup_samples() {
-    let mut settings = plan();
-    settings
-        .voice_telemetry
-        .transmit_tail
-        .loudness_meter_enabled = true;
+    let settings = plan();
     let mut generation = factory().prepare(&settings).unwrap();
     {
         let _ports = generation.session_ports(ProgramRingPort::silence());
@@ -968,7 +983,7 @@ fn transmit_meter_does_not_count_rejected_blocks_or_setup_samples() {
     let invalid = factory()
         .prepare(plan.clone())
         .unwrap()
-        .with_transmit_meter(&plan, 0, None);
+        .with_output_meters(&plan, 0, None);
     let error = invalid.err().unwrap();
     assert!(matches!(error, ProcessingRuntimeError::Loudness(_)));
     assert!(error.to_string().contains("output meter setup failed"));
@@ -1141,8 +1156,8 @@ fn tiny_limiter_handoff_primes_the_resampled_filter_before_its_48_frame_fade() {
     original_plan.preemphasis_enabled = false;
     original_plan.voice_telemetry.enabled = false;
     original_plan.voice_telemetry.input_gain_db = 0.0;
-    original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
-    original_plan.voice_telemetry.transmit_tail.lookahead_ms = 5.0;
+    original_plan.voice_telemetry.peak_limiter.enabled = true;
+    original_plan.voice_telemetry.peak_limiter.lookahead_ms = 5.0;
     let mut original = factory.prepare(&original_plan).unwrap();
     for _ in 0..300 {
         process_transmit(&mut original, &[0.5]);
@@ -1177,8 +1192,8 @@ fn changed_transmit_graph_covers_real_lookahead_without_silent_samples() {
             original_plan.preemphasis_enabled = false;
             original_plan.voice_telemetry.enabled = false;
             original_plan.voice_telemetry.input_gain_db = 0.0;
-            original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
-            original_plan.voice_telemetry.transmit_tail.lookahead_ms = lookahead_ms;
+            original_plan.voice_telemetry.peak_limiter.enabled = true;
+            original_plan.voice_telemetry.peak_limiter.lookahead_ms = lookahead_ms;
             let mut original = factory.prepare(&original_plan).unwrap();
             for _ in 0..32 {
                 process_transmit(&mut original, &vec![0.5; maximum as usize]);
@@ -1227,7 +1242,7 @@ fn rapid_graph_replacements_keep_one_audible_predecessor_and_bounded_work() {
     active_plan.preemphasis_enabled = false;
     active_plan.voice_telemetry.enabled = false;
     active_plan.voice_telemetry.input_gain_db = 0.0;
-    active_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
+    active_plan.voice_telemetry.peak_limiter.enabled = true;
     let mut active = factory.prepare(&active_plan).unwrap();
     process_transmit(&mut active, &[0.5; 960]);
     for gain in [-3.0, -6.0, -9.0, -12.0] {
@@ -1369,7 +1384,7 @@ fn delayed_publication_selects_the_now_audible_predecessor() {
     original_plan.preemphasis_enabled = false;
     original_plan.voice_telemetry.enabled = false;
     original_plan.voice_telemetry.input_gain_db = 0.0;
-    original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
+    original_plan.voice_telemetry.peak_limiter.enabled = true;
     let mut original = factory.prepare(&original_plan).unwrap();
     process_transmit(&mut original, &[0.5; 960]);
     let mut first_plan = original_plan.clone();
@@ -1471,7 +1486,7 @@ fn inverse_handoff_primes_retained_originals_without_recreation_or_silent_pcm() 
         original_plan.preemphasis_enabled = false;
         original_plan.voice_telemetry.enabled = false;
         original_plan.voice_telemetry.input_gain_db = 0.0;
-        original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
+        original_plan.voice_telemetry.peak_limiter.enabled = true;
         let mut original = factory.prepare(&original_plan).unwrap();
         process_transmit(&mut original, &[0.5; 960]);
         let mut changed = original_plan.clone();
@@ -1934,4 +1949,63 @@ fn setup_errors_remain_specific_and_human_readable() {
         ProcessingRuntimeError::IncorrectChainRole.to_string(),
         "processing chain has the wrong role"
     );
+}
+
+#[test]
+fn mandatory_receive_meter_tracks_complete_path_and_independent_transmit_history() {
+    let mut selected = plan();
+    let mut current = factory().prepare(&selected).unwrap();
+    let rx_epoch = current.receive_loudness().unwrap().epoch;
+    let tx_epoch = current.transmit_loudness().unwrap().epoch;
+    assert_ne!(rx_epoch, tx_epoch);
+    assert_eq!(current.receive_loudness().unwrap().sample_count, 0);
+    let input = [0.1; 960];
+    let mut output = [0.0; 960];
+    for _ in 0..50 {
+        let stage = current.receive_loudness.as_ref().unwrap();
+        assert_eq!(
+            // SAFETY: this test is the sole RX owner and supplies complete spans.
+            unsafe {
+                metered_graph_process(
+                    NonNull::from(stage.as_ref()).cast().as_ptr(),
+                    input.as_ptr(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            PORT_OK,
+        );
+    }
+    assert_eq!(current.receive_loudness().unwrap().sample_count, 48_000);
+    assert_eq!(current.transmit_loudness().unwrap().sample_count, 0);
+    let mut next = selected.clone();
+    next.voice_telemetry.output_gain_db -= 1.0;
+    current =
+        // SAFETY: each replacement retains these original serial owners.
+        unsafe { factory().prepare_replacement(&next, &selected, &current) }.unwrap();
+    assert_eq!(current.receive_loudness().unwrap().epoch, rx_epoch);
+    assert_eq!(current.receive_loudness().unwrap().sample_count, 48_000);
+    let tx_epoch = current.transmit_loudness().unwrap().epoch;
+    selected = next;
+    let changes: [fn(&mut NativeProcessingPlan); 4] = [
+        |p| p.local.input_gain_db += 1.0,
+        |p| p.local.receive.bandpass_lowpass_hz -= 500.0,
+        |p| p.local.rnnoise_enabled = true,
+        |p| p.local.receive.pl_filter = PlFilter::DecodedToneNotch,
+    ];
+    for change in changes {
+        let previous_rx = current.receive_loudness().unwrap().epoch;
+        let mut next = selected.clone();
+        change(&mut next);
+        current =
+            // SAFETY: same factory and same sole RX/TX owners for this test.
+            unsafe { factory().prepare_replacement(&next, &selected, &current) }.unwrap();
+        assert_ne!(current.receive_loudness().unwrap().epoch, previous_rx);
+        assert_eq!(current.receive_loudness().unwrap().sample_count, 0);
+        assert_eq!(current.transmit_loudness().unwrap().epoch, tx_epoch);
+        selected = next;
+    }
+    let raw = factory().prepare(explicit_raw_plan()).unwrap();
+    assert!(raw.receive_loudness().is_some());
+    assert!(raw.transmit_loudness().is_some());
 }

@@ -17,6 +17,19 @@ station library also used by the standalone rpt_advanced controller. The
 `libusbradioplus-product-dev` package supplies the C header and pkg-config
 metadata for consumers; the shared product has no Asterisk dependency.
 
+Local receive, incoming link, and voice/telemetry processing each have a
+configurable Peak Limiter followed by mandatory integrated loudness and true
+peak metering. The existing `lookahead_limiter_*` keys configure Peak Limiter.
+The rolling LUFS AGC retains its three-second window during PTT gaps; legacy
+Asterisk links advance silence through their existing graph using a channel
+timer. See [loudness and gain control](doc/agc.md) for settings and diagnostics.
+
+SDK alpha30 extends the sized link observation record with loudness readings
+and adds the silence direction to the existing processing calls. Consumers
+must use the matching header, verify the returned record size and ABI version,
+and retain the provider while an observer is live. rpt_advanced alpha21 is the
+matching standalone consumer.
+
 This is alpha software. Test it on a non-critical node, retain a working
 `chan_usbradio` installation for rollback, and verify radio levels and deviation
 with suitable test equipment.

@@ -42,7 +42,8 @@ pub use native_configuration::{
 pub use native_stream::{NATIVE_SAMPLE_RATE_HZ, NativeStreamSpec, StreamSpecError};
 pub use processing_profile::{
     Agc, BandLayout, ChainRole, Compressor, Deesser, DynamicsBand, Equalizer, Expander, Limiter,
-    PlFilter, ProcessingChain, ProcessingConfigError, ReceiveConditioning, TransmitTail,
+    PeakLimiter, PlFilter, ProcessingChain, ProcessingConfigError, ReceiveConditioning,
+    TransmitTail,
 };
 pub use profile_resolution::{
     ProfileResolutionError, RawOverlay, ResolutionWarning, ResolutionWarningKind, ResolvedProfile,

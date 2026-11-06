@@ -97,8 +97,9 @@ and radio/profile edits use the shared resolver's actual destinations.
 See [Standalone tuning](standalone-tuner.md) for installation, session cleanup,
 EEPROM opt-in, live measurements and the service-monitor procedure.
 
-The independent receive/transmit CPU savers and configured parallel inputs and
-outputs use the same radio and hardware owners. Parallel hardware is not opened
+Receive and transmit processing remains active during idle intervals so
+mandatory output analysis advances; CPU-saver settings are retired. Configured
+parallel inputs and outputs use the same radio and hardware owners. Parallel hardware is not opened
 when unconfigured. Physical status and shared processing counters come from
 those owners rather than substitute controller-ring measurements. Supported
 same-device edits use prepared updates without a second audio/HID owner.

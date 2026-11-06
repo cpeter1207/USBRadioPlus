@@ -1109,7 +1109,8 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     STOPS.set(0);
     DESTROYS.set(0);
     let (mut runtime, mut control) = runtime(20);
-    assert!(control.transmit_loudness().is_none());
+    let original_rx = control.receive_loudness().unwrap().epoch;
+    let original_tx = control.transmit_loudness().unwrap().epoch;
     let hardware = runtime.hardware_state();
     hardware.publish_inputs(HardwareInputs {
         carrier: true,
@@ -1126,10 +1127,7 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     let before = control.radio().radio().snapshot().unwrap();
     let mut configuration = control.plan().configuration().clone();
     configuration.local.input_gain_db = 3.0;
-    configuration
-        .voice_telemetry
-        .transmit_tail
-        .loudness_meter_enabled = true;
+    configuration.voice_telemetry.output_gain_db = -1.0;
     let plan = StationPlan::new("usb", configuration, control.plan().transport(), 21, 960).unwrap();
     let update = runtime
         .prepare_update(&control, plan, &factory(), radio_provider())
@@ -1141,13 +1139,14 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     ));
     // Explicit ticks let the test observe each owner without a timing-dependent sleep.
     update_tick(&mut runtime, true);
-    assert!(control.transmit_loudness().is_none());
+    assert_ne!(control.receive_loudness().unwrap().epoch, original_rx);
+    assert_eq!(control.transmit_loudness().unwrap().epoch, original_tx);
     assert!(matches!(
         runtime.update_result(),
         Err(crate::StationUpdateError::Pending)
     ));
     update_tick(&mut runtime, false);
-    assert!(control.transmit_loudness().is_some());
+    assert_ne!(control.transmit_loudness().unwrap().epoch, original_tx);
     runtime.accept_update(&mut control).unwrap();
     runtime.finish_update(&mut control, true).unwrap();
     let after = control.radio().radio().snapshot().unwrap();
@@ -1156,6 +1155,65 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     assert!(hardware.outputs().logical_ptt);
     assert_eq!((STARTS.get(), STOPS.get(), DESTROYS.get()), (1, 0, 0));
     assert_eq!(control.plan().configuration().local.input_gain_db, 3.0);
+}
+
+#[test]
+fn disabled_receive_source_starts_a_new_meter_epoch() {
+    STARTS.set(0);
+    STOPS.set(0);
+    DESTROYS.set(0);
+    let (mut runtime, mut control) = runtime(20);
+    let original_rx = control.receive_loudness().unwrap().epoch;
+    let original_tx = control.transmit_loudness().unwrap().epoch;
+    let hardware = runtime.hardware_state();
+    hardware.publish_inputs(HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        physical_ptt: true,
+        ..HardwareInputs::default()
+    });
+    hardware.publish_requests(ControllerRequests {
+        transmit: true,
+        render_admitted: true,
+        ..ControllerRequests::default()
+    });
+    runtime.start().unwrap();
+    let before = control.radio().radio().snapshot().unwrap();
+    let mut configuration = control.plan().configuration().clone();
+    configuration.station.receive.audio_source = usbradioplus_core::ReceiveAudioSource::Disabled;
+    let mut radio = *control.plan().radio();
+    radio.generation_id = 21;
+    radio.receive_input_gain = 0.0;
+    let plan = control
+        .plan()
+        .clone()
+        .with_radio_configuration(configuration, radio);
+    let update = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    assert!(matches!(
+        runtime.update_result(),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    // Explicit ticks let the test observe each owner without a timing-dependent sleep.
+    update_tick(&mut runtime, true);
+    assert_ne!(control.receive_loudness().unwrap().epoch, original_rx);
+    assert_eq!(control.transmit_loudness().unwrap().epoch, original_tx);
+    assert!(matches!(
+        runtime.update_result(),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, false);
+    assert_eq!(control.transmit_loudness().unwrap().epoch, original_tx);
+    runtime.accept_update(&mut control).unwrap();
+    runtime.finish_update(&mut control, true).unwrap();
+    let after = control.radio().radio().snapshot().unwrap();
+    assert!(after.receive_frames > before.receive_frames);
+    assert!(after.transmit_frames > before.transmit_frames);
+    assert!(hardware.outputs().logical_ptt);
+    assert_eq!((STARTS.get(), STOPS.get(), DESTROYS.get()), (1, 0, 0));
+    assert_eq!(control.plan().radio().receive_input_gain, 0.0);
 }
 
 #[test]

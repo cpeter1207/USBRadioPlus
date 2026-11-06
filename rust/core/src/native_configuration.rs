@@ -692,12 +692,6 @@ const ALIASES: &[Alias] = &[
     ),
     alias!("receive_audio", "receive", "audio_source", Audio),
     alias!("receive_signaling", "receive", "signaling_method", Identity),
-    alias!(
-        "receive_cpu_saver_enabled",
-        "receive",
-        "cpu_saver_enabled",
-        Identity
-    ),
     alias!("carrier_source", "receive", "cos_assignment", Carrier),
     alias!("squelch_level", "receive", "squelch_level", Identity),
     alias!(
@@ -796,12 +790,6 @@ const ALIASES: &[Alias] = &[
         "transmit_signaling",
         "transmit",
         "signaling_method",
-        Identity
-    ),
-    alias!(
-        "transmit_cpu_saver_enabled",
-        "transmit",
-        "cpu_saver_enabled",
         Identity
     ),
     alias!(

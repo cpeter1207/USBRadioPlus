@@ -169,7 +169,8 @@ pub(super) struct UpdateMailbox {
     storage: Mutex<UpdateStorage>,
     receive: AtomicPtr<UpdateOwner>,
     transmit: AtomicPtr<UpdateOwner>,
-    // The actual TX adoption can precede the control-plane commit.
+    // Either audio owner can adopt before the control-plane commit.
+    receive_processing: AtomicPtr<ProcessingGeneration>,
     transmit_processing: AtomicPtr<ProcessingGeneration>,
     receive_result: AtomicI32,
     transmit_result: AtomicI32,
@@ -212,6 +213,10 @@ impl UpdateMailbox {
         if result.is_ok() {
             *ctcss = owner.controller_ctcss;
             *voter = owner.voter_reporting;
+            self.receive_processing.store(
+                ptr::from_ref(owner.processing.as_ref()).cast_mut(),
+                Ordering::Release,
+            );
         }
         self.receive_result
             .store(if result.is_ok() { 1 } else { -1 }, Ordering::Release);
@@ -237,19 +242,37 @@ impl UpdateMailbox {
 }
 
 impl StationControlHost {
-    /// Read final-programme loudness from the generation actually adopted by TX,
-    /// including an update awaiting its independent RX acknowledgement.
+    /// Read the mandatory output meter from the generation actually adopted by RX.
+    pub fn receive_loudness(&self) -> Option<usbradioplus_core::OutputLoudnessSnapshot> {
+        self.output_loudness(
+            &self._updates.receive_processing,
+            ProcessingGeneration::receive_loudness,
+        )
+    }
+
+    /// Read the mandatory output meter from the generation actually adopted by TX.
     pub fn transmit_loudness(&self) -> Option<usbradioplus_core::OutputLoudnessSnapshot> {
+        self.output_loudness(
+            &self._updates.transmit_processing,
+            ProcessingGeneration::transmit_loudness,
+        )
+    }
+
+    fn output_loudness(
+        &self,
+        owner: &AtomicPtr<ProcessingGeneration>,
+        read: fn(&ProcessingGeneration) -> Option<usbradioplus_core::OutputLoudnessSnapshot>,
+    ) -> Option<usbradioplus_core::OutputLoudnessSnapshot> {
         let _storage = self
             ._updates
             .storage
             .lock()
             .expect("update storage poisoned");
-        let pointer = self._updates.transmit_processing.load(Ordering::Acquire);
-        // SAFETY: control storage retains every adopted owner until its successor
-        // is acknowledged. This control-plane lock prevents reclamation here.
+        let pointer = owner.load(Ordering::Acquire);
+        // SAFETY: storage retains each adopted owner until its successor is
+        // acknowledged; this control-plane lock prevents reclamation during read.
         let processing = unsafe { pointer.as_ref() }.unwrap_or_else(|| self.control.processing());
-        processing.transmit_loudness()
+        read(processing)
     }
 }
 

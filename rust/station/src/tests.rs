@@ -132,7 +132,7 @@ fn ctcss_session_keeps_tone_map_levels_and_tail_policy() {
 }
 
 #[test]
-fn native_resolver_uses_shared_rx_indexed_ctcss_and_independent_cpu_savers() {
+fn native_resolver_uses_shared_rx_indexed_ctcss_and_rejects_cpu_savers() {
     use usbradioplus_core::{ConfigDocument, ResolvedNativeConfiguration};
 
     for (receive, transmit) in [("yes", "no"), ("no", "yes")] {
@@ -144,8 +144,9 @@ fn native_resolver_uses_shared_rx_indexed_ctcss_and_independent_cpu_savers() {
         let radio =
             radio_session_config(resolved.config(), ControllerTransport::RptAdvanced, 1, 480)
                 .unwrap();
-        assert_eq!(radio.receive.cpu_saver_enabled, receive == "yes");
-        assert_eq!(radio.transmit.cpu_saver_enabled, transmit == "yes");
+        assert!(!radio.receive.cpu_saver_enabled);
+        assert!(!radio.transmit.cpu_saver_enabled);
+        assert_eq!(resolved.warnings().len(), 2);
         let TransmitSignaling::Ctcss(ctcss) = radio.transmit.signaling else {
             panic!("CTCSS expected");
         };

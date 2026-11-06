@@ -112,8 +112,8 @@ def test_radio_product_packages_are_independent_of_asterisk_and_controller():
         assert f"{provider}1 (>= 0.1.0~alpha1)" in runtime
         assert f"{provider}-dev (>= 0.1.0~alpha1)" in paragraphs[0]
     # Native callback ABI5 requires the coordinated controller consumers.
-    assert "rpt-advanced (<< 0.1.0~alpha20-1)" in runtime
-    assert "librptadv-product2 (<< 0.1.0~alpha20-1)" in runtime
+    assert "rpt-advanced (<< 0.1.0~alpha21-1)" in runtime
+    assert "librptadv-product2 (<< 0.1.0~alpha21-1)" in runtime
 
     integration_files = read("debian/usbradioplus.install").splitlines()
     runtime_files = read("debian/libusbradioplus-product1.install").splitlines()

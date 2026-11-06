@@ -91,6 +91,8 @@ pub const URP_AST_TRANSPORT_RPT_ADVANCED: u32 = 2;
 pub const URP_AST_LINK_DIRECTION_READ: u32 = 1;
 /// Audio written toward an Asterisk link; intentionally bypassed by link processing.
 pub const URP_AST_LINK_DIRECTION_WRITE: u32 = 2;
+/// Bounded idle integration without emitting link media.
+pub const URP_AST_LINK_DIRECTION_SILENCE: u32 = 3;
 
 /// Fixed Asterisk jitter-buffer implementation.
 pub const URP_AST_JITTER_FIXED: u32 = 1;
@@ -482,6 +484,18 @@ pub struct UrpAstLinkObservation {
     pub bypassed_blocks: u64,
     /// Graph failures which retained the original PCM.
     pub failed_blocks: u64,
+    /// Output-meter history identifier, retained through silence.
+    pub loudness_epoch: u64,
+    /// Observed output samples, including clocked silence.
+    pub loudness_sample_count: u64,
+    /// Nonzero when gated integrated loudness is measured.
+    pub loudness_valid: u32,
+    /// Nonzero when maximum true peak is measured.
+    pub true_peak_valid: u32,
+    /// Gated integrated output loudness in LUFS; read only when valid.
+    pub integrated_lufs: f64,
+    /// Maximum output true peak in dBTP; read only when valid.
+    pub true_peak_dbtp: f64,
 }
 
 /// Construct a Rust-owned driver from a complete configuration and manifest.
@@ -1670,17 +1684,14 @@ unsafe fn link_reload_unchanged(
         .clone()
         .ok_or(Status::NotReady)?;
     let channel = configuration.channel(name).ok_or(Status::ChannelNotFound)?;
-    if !channel.config().link.enabled
-        || link.sample_rate_hz != sample_rate_hz
-        || link.maximum_frame_count != maximum_frame_count
-    {
+    if link.sample_rate_hz != sample_rate_hz || link.maximum_frame_count != maximum_frame_count {
         return Ok(false);
     }
     let description = driver
         .0
         .factory
         .graph_descriptions()
-        .dynamics(&channel.config().link)
+        .dynamics_at_rate(&channel.config().link, sample_rate_hz)
         .map_err(|_| Status::SetupFailed)?;
     Ok(link.description == description)
 }
@@ -1693,13 +1704,10 @@ fn prepare_link(
     maximum_frame_count: u32,
 ) -> Result<LinkHandle, Status> {
     let channel = configuration.channel(name).ok_or(Status::ChannelNotFound)?;
-    if !channel.config().link.enabled {
-        return Err(Status::NotReady);
-    }
     let description = driver
         .factory
         .graph_descriptions()
-        .dynamics(&channel.config().link)
+        .dynamics_at_rate(&channel.config().link, sample_rate_hz)
         .map_err(|_| Status::SetupFailed)?;
     let processing = driver
         .link_factory
@@ -1729,6 +1737,7 @@ unsafe extern "C" fn link_process(
         let direction = match direction {
             URP_AST_LINK_DIRECTION_READ => LinkDirection::Read,
             URP_AST_LINK_DIRECTION_WRITE => LinkDirection::Write,
+            URP_AST_LINK_DIRECTION_SILENCE => LinkDirection::Silence,
             _ => return Err(Status::InvalidArgument),
         };
         if samples.is_null() {
@@ -2748,17 +2757,26 @@ unsafe extern "C" fn channel_processing_status_text(
         let sink = sink.ok_or(Status::InvalidArgument)?;
         // SAFETY: the taskprocessor owns this live channel control endpoint.
         let (_, control) = unsafe { channel_control(channel)? };
-        let (observation, loudness) = control.hardware.as_mut().map_or_else(
-            || (usbradioplus_station::CallbackStatistics::default(), None),
-            |hardware| {
-                let control = hardware.control();
-                (
-                    control.hardware_state().callback_statistics(),
-                    control.transmit_loudness(),
-                )
-            },
-        );
-        let text = maintenance::processing_status_text(observation, loudness);
+        let (observation, receive_loudness, transmit_loudness) =
+            control.hardware.as_mut().map_or_else(
+                || {
+                    (
+                        usbradioplus_station::CallbackStatistics::default(),
+                        None,
+                        None,
+                    )
+                },
+                |hardware| {
+                    let control = hardware.control();
+                    (
+                        control.hardware_state().callback_statistics(),
+                        control.receive_loudness(),
+                        control.transmit_loudness(),
+                    )
+                },
+            );
+        let text =
+            maintenance::processing_status_text(observation, receive_loudness, transmit_loudness);
         // SAFETY: the synchronous sink borrows this complete UTF-8 span only.
         unsafe { sink(context, text.as_ptr(), text.len() as u32) };
         Ok(())
@@ -3108,6 +3126,12 @@ fn link_observation(observation: LinkObservation) -> UrpAstLinkObservation {
         processed_blocks: observation.processed_blocks,
         bypassed_blocks: observation.bypassed_blocks,
         failed_blocks: observation.failed_blocks,
+        loudness_epoch: observation.loudness.epoch,
+        loudness_sample_count: observation.loudness.sample_count,
+        loudness_valid: u32::from(observation.loudness.integrated_lufs.is_some()),
+        true_peak_valid: u32::from(observation.loudness.true_peak_dbtp.is_some()),
+        integrated_lufs: observation.loudness.integrated_lufs.unwrap_or(0.0),
+        true_peak_dbtp: observation.loudness.true_peak_dbtp.unwrap_or(0.0),
     }
 }
 

@@ -85,6 +85,8 @@ impl StationPlan {
         radio: SessionConfig,
         processing: impl Into<ExplicitNativeProcessingPlan>,
     ) -> Self {
+        let mut processing = processing.into();
+        processing.receive_input_gain = radio.receive_input_gain;
         Self {
             channel: channel.into(),
             transport: ControllerTransport::RptAdvanced,
@@ -92,7 +94,7 @@ impl StationPlan {
             hardware,
             program_ring: program_ring_plan(ControllerTransport::RptAdvanced),
             radio,
-            processing: processing.into(),
+            processing,
             remote: None,
             remote_operating: None,
         }
@@ -114,16 +116,20 @@ impl StationPlan {
         if maximum_frame_count == 0 {
             return Err(RadioError::InvalidArgument.into());
         }
+        let radio = radio_session_config(
+            &configuration,
+            transport,
+            generation_id,
+            maximum_frame_count,
+        )?;
+        let mut processing: ExplicitNativeProcessingPlan =
+            native_processing_plan(&configuration).into();
+        processing.receive_input_gain = radio.receive_input_gain;
         Ok(Self {
             hardware: hardware_plan(&configuration),
             program_ring: program_ring_plan(transport),
-            radio: radio_session_config(
-                &configuration,
-                transport,
-                generation_id,
-                maximum_frame_count,
-            )?,
-            processing: native_processing_plan(&configuration).into(),
+            radio,
+            processing,
             channel: channel.into(),
             transport,
             configuration,
@@ -176,7 +182,11 @@ impl StationPlan {
 
     /// Retain the exact native raw/profile selection for initial and later preparation.
     #[must_use]
-    pub fn with_explicit_processing(mut self, processing: ExplicitNativeProcessingPlan) -> Self {
+    pub fn with_explicit_processing(
+        mut self,
+        mut processing: ExplicitNativeProcessingPlan,
+    ) -> Self {
+        processing.receive_input_gain = self.radio.receive_input_gain;
         self.processing = processing;
         self
     }
@@ -193,6 +203,7 @@ impl StationPlan {
     ) -> Self {
         self.configuration = configuration;
         self.radio = radio;
+        self.processing.receive_input_gain = radio.receive_input_gain;
         self
     }
 

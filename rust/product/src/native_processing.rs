@@ -91,6 +91,7 @@ impl Profiles {
                 radio.receive_input_gain = 10.0_f64.powf(local.input_gain_db / 20.0) as f32;
             }
         }
+        processing.receive_input_gain = radio.receive_input_gain;
         processing.local = self.local;
         processing.voice_telemetry = self.voice_telemetry;
     }
@@ -140,9 +141,14 @@ pub(crate) unsafe extern "C" fn link_prepare(
             return Err(Status::InvalidArgument);
         }
         // SAFETY: the caller retains the request strings throughout preparation.
-        let Some(profile) = (unsafe { from_args(args)? }).link else {
-            return Ok(());
-        };
+        let profile = (unsafe { from_args(args)? }).link.unwrap_or_else(|| {
+            let mut identity =
+                usbradioplus_core::ProcessingChain::shipped(usbradioplus_core::ChainRole::Link);
+            identity.enabled = false;
+            identity.input_gain_db = 0.0;
+            identity.output_gain_db = 0.0;
+            identity
+        });
         // SAFETY: the host retains this released descriptor through graph destruction.
         let provider = unsafe { GraphProvider::from_raw_descriptor(ffmpeg) }
             .map_err(|_| Status::IncompatibleAbi)?;
@@ -179,6 +185,7 @@ pub(crate) unsafe extern "C" fn link_process_f32(
         let direction = match direction {
             crate::URP_AST_LINK_DIRECTION_READ => LinkDirection::Read,
             crate::URP_AST_LINK_DIRECTION_WRITE => LinkDirection::Write,
+            crate::URP_AST_LINK_DIRECTION_SILENCE => LinkDirection::Silence,
             _ => return Err(Status::InvalidArgument),
         };
         if samples.is_null() || (samples as usize) % std::mem::align_of::<f32>() != 0 {

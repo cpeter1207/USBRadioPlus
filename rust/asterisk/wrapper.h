@@ -14,10 +14,12 @@
 #include <asterisk/format_cache.h>
 #include <asterisk/format_cap.h>
 #include <asterisk/frame.h>
+#include <asterisk/framehook.h>
 #include <asterisk/logger.h>
 #include <asterisk/module.h>
 #include <asterisk/musiconhold.h>
 #include <asterisk/paths.h>
 #include <asterisk/sem.h>
 #include <asterisk/taskprocessor.h>
+#include <asterisk/timing.h>
 #include <asterisk/utils.h>

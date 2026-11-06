@@ -34,7 +34,7 @@ impl fmt::Display for OutputLoudnessError {
 }
 impl std::error::Error for OutputLoudnessError {}
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 /// One coherent published measurement epoch; absent values are not measured.
 pub struct OutputLoudnessSnapshot {
     /// Identifier changed only by preparation or an explicit reset.

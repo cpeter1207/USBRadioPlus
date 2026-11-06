@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0~alpha30 - 2026-11-06
+
+- Share Peak Limiter across all three source chains; retain its fixed final position.
+- Always meter integrated loudness and true peak after each chain, without an enable switch.
+- Clock legacy Asterisk link silence with bounded channel timer/framehook integration.
+- Retire CPU-saver bypass switches and require matching link-observation records.
+
 ## 0.1.0~alpha29 - 2026-11-06
 
 - Replace RMS with LUFS in the AGC.

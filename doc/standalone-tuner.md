@@ -60,8 +60,8 @@ maintenance session.
 
 Standalone defaults remain exact device selection, mono playback, output A
 carrying voice, output B carrying tone, transmit pre-emphasis off, and EEPROM
-disabled. Receive and transmit CPU savers are independent settings
-(`receive_cpu_saver_enabled` and `transmit_cpu_saver_enabled`). Configured
+disabled. Receive and transmit processing remains active during idle intervals
+so mandatory output analysis advances. CPU-saver settings are retired. Configured
 parallel inputs/outputs use the same hardware owner as USB GPIO; no parallel
 transport is opened when none is configured. Controller receive delay remains
 controller policy rather than a second hardware delay control.

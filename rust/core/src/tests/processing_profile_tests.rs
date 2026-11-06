@@ -16,7 +16,7 @@ fn shipped_profiles_match_each_source_role() {
     assert_eq!(local.agc.loudness_window_ms, 3_000.0);
     assert_eq!(link.agc.loudness_window_ms, 3_000.0);
     assert_eq!(transmit.agc.loudness_window_ms, 3_000.0);
-    assert_eq!(transmit.transmit_tail.oversample, 4);
+    assert_eq!(transmit.peak_limiter.oversample, 4);
     assert!(local.validate().is_ok());
     assert!(link.validate().is_ok());
     assert!(transmit.validate().is_ok());
@@ -48,13 +48,8 @@ fn source_specific_stages_are_rejected_elsewhere() {
         Err(ProcessingConfigError::StageNotAllowed(ChainRole::Link))
     );
     let mut local = ProcessingChain::shipped(ChainRole::LocalReceive);
-    local.transmit_tail.limiter_enabled = true;
-    assert_eq!(
-        local.validate(),
-        Err(ProcessingConfigError::StageNotAllowed(
-            ChainRole::LocalReceive
-        ))
-    );
+    local.peak_limiter.enabled = true;
+    assert_eq!(local.validate(), Ok(()));
 
     let mut link_bandpass = ProcessingChain::shipped(ChainRole::Link);
     link_bandpass.receive.bandpass_enabled = true;
@@ -74,15 +69,6 @@ fn source_specific_stages_are_rejected_elsewhere() {
     local_bandpass.transmit_tail.bandpass_enabled = true;
     assert_eq!(
         local_bandpass.validate(),
-        Err(ProcessingConfigError::StageNotAllowed(
-            ChainRole::LocalReceive
-        ))
-    );
-
-    let mut local_meter = ProcessingChain::shipped(ChainRole::LocalReceive);
-    local_meter.transmit_tail.loudness_meter_enabled = true;
-    assert_eq!(
-        local_meter.validate(),
         Err(ProcessingConfigError::StageNotAllowed(
             ChainRole::LocalReceive
         ))
@@ -113,8 +99,8 @@ fn every_numeric_family_rejects_invalid_and_non_finite_values() {
         |c| c.expander.sidechain_lowpass_hz = c.expander.sidechain_highpass_hz,
         |c| c.compressor.high_crossover_hz = c.compressor.low_crossover_hz,
         |c| c.limiter.high.attack_ms = 101.0,
-        |c| c.transmit_tail.ceiling_dbfs = 0.0,
-        |c| c.transmit_tail.oversample = 3,
+        |c| c.peak_limiter.ceiling_dbfs = 0.0,
+        |c| c.peak_limiter.oversample = 3,
     ];
     for mutate in cases {
         let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);

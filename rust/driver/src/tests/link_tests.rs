@@ -64,6 +64,12 @@ fn preparation_reports_role_description_and_adapter_failures() {
         factory.prepare(&profile, 8_000, 160).err(),
         Some(LinkPreparationError::Graph(GraphError::AdapterFailure))
     );
+    for (rate, maximum) in [(8_000, 4_097), (7_999, 160), (384_001, 160)] {
+        assert_eq!(
+            factory.prepare(&profile, rate, maximum).err(),
+            Some(LinkPreparationError::Link(LinkError::InvalidConfiguration))
+        );
+    }
     assert_eq!(
         LinkProcessingFactory::new(
             graph_provider(),

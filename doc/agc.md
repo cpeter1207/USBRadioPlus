@@ -48,36 +48,48 @@ gain bounds and rates, silence, reacquisition, malformed controls, in-place
 processing, block boundaries, and callback allocations. Listening, hardware
 checks, and final RF-path measurements remain necessary.
 
-## Integrated output meter and final limiter
+## Peak Limiter and mandatory output meters
 
-The `[voice_telemetry]` profile controls the full mixed transmitter program.
-These options add an independent output meter and oversampling around its
-existing final limiter:
+Each `[local]`, `[link]`, and `[voice_telemetry]` chain has its own integrated
+loudness and true-peak meter after the Peak Limiter. Peak Limiter remains
+configurable; metering is always active. These example profiles enable
+Peak Limiter with a -2 dBFS ceiling:
 
 ```ini
-[voice_telemetry]
-loudness_meter_enabled = yes
+[local]
 lookahead_limiter_enabled = yes
-lookahead_limiter_oversample = 4
+lookahead_limiter_ceiling_dbfs = -2
+
+[link]
+lookahead_limiter_enabled = yes
+lookahead_limiter_ceiling_dbfs = -2
+
+[voice_telemetry]
+lookahead_limiter_enabled = yes
 lookahead_limiter_ceiling_dbfs = -2
 ```
 
-The meter observes final graph output, including the audible handoff mix,
-before calibration/test signals, CTCSS/DCS, and hardware mixer scaling. It
+Each meter observes final chain output, including audible graph handoffs. The
+transmit meter precedes calibration/test signals, CTCSS/DCS, and hardware mixer scaling. It
 reports gated integrated loudness and maximum true peak without controlling
 the AGC or changing audio. Silence advances the measurement; pauses retain
-its history. Read `transmit_integrated_lufs`, `transmit_true_peak_dbtp`,
-`transmit_loudness_epoch`, `transmit_loudness_sample_count`, and
-`transmit_loudness_valid` in processing statistics. Values remain unmeasured
-until at least 400 ms of output have been observed. An unchanged transmitter
-graph retains its epoch on reload; changing that graph or toggling the meter
-starts a new epoch. Setup warmup is excluded.
+its history. Processing statistics expose independent `receive_*` and
+`transmit_*` fields: `integrated_lufs`, `true_peak_dbtp`, `loudness_epoch`,
+`loudness_sample_count`, `loudness_valid`, and `true_peak_valid`. Per-link
+observations expose the same meter fields beside their processing counters.
+The tuner uses its existing **Show processing measurement snapshot** entry.
+Values remain unmeasured until at least 400 ms of output have been observed.
+An unchanged complete processing path retains its epoch on reload; a changed
+path starts a new epoch. Setup warmup is excluded.
 
-The optional bandpass follows the main dynamics stages and precedes final
-lookahead limiting. All graph gain and preemphasis also precede that limiter.
-Oversampling accepts 1, 2, or 4; the default 4 processes the native 48 kHz
-program at 192 kHz and returns it to 48 kHz. The ceiling remains an internal
-sample ceiling in dBFS, with a general default of -3 dBFS. The example's
+Peak Limiter has a fixed position after optional dynamics, software gain,
+and source-specific filtering or preemphasis; it is not in `stage_order`.
+The reorderable Multiband Limiter is a separate stage. The optional transmitter
+bandpass precedes Peak Limiter and remains voice/telemetry-only.
+Oversampling accepts 1, 2, or 4; the default 4 processes at four times the
+source rate and returns to that rate (192 kHz then 48 kHz on the native path).
+Peak Limiter defaults to disabled, with an internal sample ceiling of -3 dBFS.
+The example's
 -2 dBFS setting leaves headroom for reconstruction after downsampling.
 Independent final-output tests cover intersample peaks, square waves, and
 noise against the -1 dBTP reference. Measure the actual output when changing
@@ -88,6 +100,11 @@ gating blocks. This is independent of the AGC's three-second rolling window.
 The meter and limiter reference the digital program, not the final RF waveform.
 
 ## Migration
+
+Remove `loudness_meter_enabled` and CPU-saver settings (`cpu_saver_enabled`
+in receive/transmit sections, or native `receive_cpu_saver_enabled` and
+`transmit_cpu_saver_enabled`). These retired keys produce normal unknown-option
+warnings and are ignored. Output analysis cannot be disabled by CPU saving.
 
 Replace `agc_target_dbfs` with `agc_target_lufs` and
 `agc_rms_averaging_ms` with `agc_loudness_window_ms`; these are different

@@ -102,11 +102,16 @@ impl LinkProcessingFactory {
         if profile.role != ChainRole::Link {
             return Err(LinkPreparationError::IncorrectRole);
         }
-        if sample_rate_hz == 0 || maximum_frame_count == 0 {
+        if !(8_000..=384_000).contains(&sample_rate_hz)
+            || !(1..=4096).contains(&maximum_frame_count)
+        {
             return Err(LinkError::InvalidConfiguration.into());
         }
-        let description = CString::new(self.descriptions.dynamics(profile)?)
-            .map_err(|_| LinkPreparationError::InvalidDescription)?;
+        let description = CString::new(
+            self.descriptions
+                .dynamics_at_rate(profile, sample_rate_hz)?,
+        )
+        .map_err(|_| LinkPreparationError::InvalidDescription)?;
         let mut graph =
             self.provider
                 .prepare_at_rate(&description, sample_rate_hz, maximum_frame_count)?;
@@ -118,10 +123,11 @@ impl LinkProcessingFactory {
             &mut output,
             GRAPH_WARMUP_BLOCKS.max(64_usize.div_ceil(maximum)),
         )?;
-        Ok(
-            PreparedLink::new(sample_rate_hz, maximum, Box::new(LinkGraph(graph)))
-                .expect("nonzero link rate and frame bound were validated"),
-        )
+        Ok(PreparedLink::new(
+            sample_rate_hz,
+            maximum,
+            Box::new(LinkGraph(graph)),
+        )?)
     }
 }
 

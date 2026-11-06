@@ -10,11 +10,12 @@ use usbradioplus_driver::{HardwareMaintenance, HardwareStationDiagnostics, Hardw
 use usbradioplus_gpio::EepromImage;
 use usbradioplus_radio::SessionSnapshot;
 
-/// Render control-plane diagnostics for the final mono transmit programme.
-/// `valid` describes gated integrated loudness; true peak can be available sooner.
+/// Render mandatory output measurements for the actual RX and TX generations.
+/// Integrated loudness and true peak have independent validity.
 pub(crate) fn processing_status_text(
     observation: usbradioplus_station::CallbackStatistics,
-    loudness: Option<usbradioplus_core::OutputLoudnessSnapshot>,
+    receive: Option<usbradioplus_core::OutputLoudnessSnapshot>,
+    transmit: Option<usbradioplus_core::OutputLoudnessSnapshot>,
 ) -> String {
     let mut output = format!(
         "radio_receive_calls={}\nradio_transmit_calls={}\nradio_receive_failures={}\nradio_transmit_failures={}\n",
@@ -23,47 +24,42 @@ pub(crate) fn processing_status_text(
         observation.receive_failures,
         observation.transmit_failures,
     );
-    writeln!(
-        output,
-        "transmit_loudness_meter_enabled={}",
-        u8::from(loudness.is_some())
-    )
-    .expect("writing to String cannot fail");
-    writeln!(
-        output,
-        "transmit_loudness_epoch={}",
-        loudness.map_or(0, |value| value.epoch)
-    )
-    .expect("writing to String cannot fail");
-    writeln!(
-        output,
-        "transmit_loudness_sample_count={}",
-        loudness.map_or(0, |value| value.sample_count)
-    )
-    .expect("writing to String cannot fail");
-    writeln!(
-        output,
-        "transmit_loudness_valid={}",
-        u8::from(loudness.is_some_and(|value| value.integrated_lufs.is_some()))
-    )
-    .expect("writing to String cannot fail");
-    for (key, value) in [
+    append_output_loudness(&mut output, "receive", receive);
+    append_output_loudness(&mut output, "transmit", transmit);
+    output
+}
+
+fn append_output_loudness(
+    output: &mut String,
+    role: &str,
+    measurement: Option<usbradioplus_core::OutputLoudnessSnapshot>,
+) {
+    let snapshot = measurement.unwrap_or_default();
+    for (name, value) in [
+        ("loudness_meter_enabled", u64::from(measurement.is_some())),
+        ("loudness_epoch", snapshot.epoch),
+        ("loudness_sample_count", snapshot.sample_count),
         (
-            "transmit_integrated_lufs",
-            loudness.and_then(|value| value.integrated_lufs),
+            "loudness_valid",
+            u64::from(snapshot.integrated_lufs.is_some()),
         ),
         (
-            "transmit_true_peak_dbtp",
-            loudness.and_then(|value| value.true_peak_dbtp),
+            "true_peak_valid",
+            u64::from(snapshot.true_peak_dbtp.is_some()),
         ),
     ] {
+        writeln!(output, "{role}_{name}={value}").expect("writing to String cannot fail");
+    }
+    for (name, value) in [
+        ("integrated_lufs", snapshot.integrated_lufs),
+        ("true_peak_dbtp", snapshot.true_peak_dbtp),
+    ] {
         match value {
-            Some(value) => writeln!(output, "{key}={value:.2}"),
-            None => writeln!(output, "{key}=unavailable"),
+            Some(value) => writeln!(output, "{role}_{name}={value:.2}"),
+            None => writeln!(output, "{role}_{name}=unavailable"),
         }
         .expect("writing to String cannot fail");
     }
-    output
 }
 
 /// Physical-only native station measurements; controller rings remain with the controller.

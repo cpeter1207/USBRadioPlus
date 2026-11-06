@@ -55,7 +55,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  librptadvremote1 (>= 0.1.0~alpha1),
  librptadv-hamlib-adapter1 (>= 0.1.0~alpha1)
 Breaks: usbradioplus (<< ${binary:Version}),
- rpt-advanced (<< 0.1.0~alpha20-1), librptadv-product2 (<< 0.1.0~alpha20-1),
+ rpt-advanced (<< 0.1.0~alpha21-1), librptadv-product2 (<< 0.1.0~alpha21-1),
  librptadv-product1 (<< 0.1.0~alpha16-1)
 Replaces: usbradioplus (<< ${binary:Version})
 Description: shared USBRadioPlus radio product

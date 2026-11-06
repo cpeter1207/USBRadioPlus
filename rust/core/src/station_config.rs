@@ -389,8 +389,6 @@ impl fmt::Display for CarrierSource {
 pub struct ReceiveConfig {
     /// Selected receive signaling method.
     pub signaling_method: SignalingMethod,
-    /// Whether idle optional receive processing is bypassed.
-    pub cpu_saver_enabled: bool,
     /// Receiver audio connection.
     pub audio_source: ReceiveAudioSource,
     /// Carrier qualification source.
@@ -417,7 +415,6 @@ impl Default for ReceiveConfig {
     fn default() -> Self {
         Self {
             signaling_method: SignalingMethod::Carrier,
-            cpu_saver_enabled: false,
             audio_source: ReceiveAudioSource::Flat,
             cos_assignment: CarrierSource::Dsp,
             vox_hang_ms: 2_000,
@@ -437,8 +434,6 @@ impl Default for ReceiveConfig {
 pub struct TransmitConfig {
     /// Selected transmit signaling method.
     pub signaling_method: SignalingMethod,
-    /// Whether idle optional transmit work is bypassed.
-    pub cpu_saver_enabled: bool,
     /// Whether transmitter pre-emphasis is enabled.
     pub preemphasis_enabled: bool,
     /// Delay after PTT assertion in milliseconds.
@@ -455,7 +450,6 @@ impl Default for TransmitConfig {
     fn default() -> Self {
         Self {
             signaling_method: SignalingMethod::Carrier,
-            cpu_saver_enabled: false,
             preemphasis_enabled: true,
             settle_ms: 500,
             rx_blanking_ms: 0,
@@ -1380,7 +1374,6 @@ fn apply_receive(
             warnings,
             parse_signaling_method,
         ),
-        "cpu_saver_enabled" => assign_bool(&mut target.cpu_saver_enabled, setting, warnings),
         "audio_source" => assign_display(
             &mut target.audio_source,
             setting,
@@ -1453,7 +1446,6 @@ fn apply_transmit(
             warnings,
             parse_signaling_method,
         ),
-        "cpu_saver_enabled" => assign_bool(&mut target.cpu_saver_enabled, setting, warnings),
         "preemphasis_enabled" => assign_bool(&mut target.preemphasis_enabled, setting, warnings),
         "settle_ms" => assign_u32(&mut target.settle_ms, 0, i32::MAX as u32, setting, warnings),
         "rx_blanking_ms" => assign_u16(

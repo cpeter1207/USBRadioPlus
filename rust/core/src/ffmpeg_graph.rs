@@ -8,7 +8,9 @@ use crate::{BandLayout, DynamicsBand, PlFilter, ProcessingChain, ProcessingStage
 /// Failure while constructing one FFmpeg graph description.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum GraphDescriptionError {
-    /// The selected crossover is not below the fixed 48 kHz Nyquist frequency.
+    /// The sample rate is outside the supported 8 through 384 kHz range.
+    InvalidSampleRate,
+    /// The selected crossover is not below the graph sample rate's Nyquist frequency.
     CrossoverAboveNyquist,
     /// A decoded-tone notch frequency is outside the supported PL band.
     InvalidNotchFrequency,
@@ -21,6 +23,9 @@ pub enum GraphDescriptionError {
 impl fmt::Display for GraphDescriptionError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::InvalidSampleRate => {
+                formatter.write_str("graph sample rate must be between 8000 and 384000 Hz")
+            }
             Self::CrossoverAboveNyquist => {
                 formatter.write_str("dynamics crossover must be below Nyquist")
             }
@@ -140,9 +145,21 @@ impl GraphDescriptionFactory {
         )
     }
 
-    /// Build the optional local/link dynamics graph without fixed RX or TX stages.
+    /// Build local/link dynamics and the fixed Peak Limiter at the native rate.
     pub fn dynamics(&self, chain: &ProcessingChain) -> Result<String, GraphDescriptionError> {
-        self.ordered_chain(chain, false, false, 0.0)
+        self.dynamics_at_rate(chain, 48_000)
+    }
+
+    /// Build local/link dynamics at an external boundary's established sample rate.
+    pub fn dynamics_at_rate(
+        &self,
+        chain: &ProcessingChain,
+        sample_rate_hz: u32,
+    ) -> Result<String, GraphDescriptionError> {
+        if !(8_000..=384_000).contains(&sample_rate_hz) {
+            return Err(GraphDescriptionError::InvalidSampleRate);
+        }
+        self.ordered_chain(chain, false, false, 0.0, sample_rate_hz)
     }
 
     /// Build the voice/telemetry graph and fixed transmitter tail.
@@ -152,7 +169,13 @@ impl GraphDescriptionFactory {
         preemphasis_enabled: bool,
         preemphasis_corner_hz: f64,
     ) -> Result<String, GraphDescriptionError> {
-        self.ordered_chain(chain, true, preemphasis_enabled, preemphasis_corner_hz)
+        self.ordered_chain(
+            chain,
+            true,
+            preemphasis_enabled,
+            preemphasis_corner_hz,
+            48_000,
+        )
     }
 
     fn ordered_chain(
@@ -161,14 +184,16 @@ impl GraphDescriptionFactory {
         include_transmit_tail: bool,
         preemphasis_enabled: bool,
         preemphasis_corner_hz: f64,
+        sample_rate_hz: u32,
     ) -> Result<String, GraphDescriptionError> {
-        const NYQUIST_HZ: f64 = 24_000.0;
-        if (chain.compressor.enabled
-            && chain.compressor.layout == BandLayout::ThreeBand
-            && chain.compressor.high_crossover_hz >= NYQUIST_HZ)
-            || (chain.limiter.enabled
-                && chain.limiter.layout == BandLayout::ThreeBand
-                && chain.limiter.high_crossover_hz >= NYQUIST_HZ)
+        let nyquist_hz = f64::from(sample_rate_hz) / 2.0;
+        if chain.enabled
+            && ((chain.compressor.enabled
+                && chain.compressor.layout == BandLayout::ThreeBand
+                && chain.compressor.high_crossover_hz >= nyquist_hz)
+                || (chain.limiter.enabled
+                    && chain.limiter.layout == BandLayout::ThreeBand
+                    && chain.limiter.high_crossover_hz >= nyquist_hz))
         {
             return Err(GraphDescriptionError::CrossoverAboveNyquist);
         }
@@ -229,25 +254,25 @@ impl GraphDescriptionFactory {
             )?;
             current = next;
         }
-        if include_transmit_tail && chain.transmit_tail.limiter_enabled {
+        if chain.peak_limiter.enabled {
             let next = next_label(&mut serial);
             write!(graph, "[{current}]")?;
-            if chain.transmit_tail.oversample > 1 {
+            if chain.peak_limiter.oversample > 1 {
                 write!(
                     graph,
                     "aresample={},",
-                    48_000 * u32::from(chain.transmit_tail.oversample)
+                    sample_rate_hz * u32::from(chain.peak_limiter.oversample)
                 )?;
             }
             write!(
                 graph,
                 "alimiter=limit={:.12}:attack={:.9}:release={:.9}:level=0:latency=0",
-                db_to_linear(chain.transmit_tail.ceiling_dbfs),
-                chain.transmit_tail.lookahead_ms,
-                chain.transmit_tail.release_ms,
+                db_to_linear(chain.peak_limiter.ceiling_dbfs),
+                chain.peak_limiter.lookahead_ms,
+                chain.peak_limiter.release_ms,
             )?;
-            if chain.transmit_tail.oversample > 1 {
-                graph.push_str(",aresample=48000");
+            if chain.peak_limiter.oversample > 1 {
+                write!(graph, ",aresample={sample_rate_hz}")?;
             }
             write!(graph, "[{next}];")?;
             current = next;
