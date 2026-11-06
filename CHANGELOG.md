@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0~alpha29 - 2026-11-06
+
+- Replace RMS with LUFS in the AGC.
+- Target -23 LUFS with BS.1770 metering in the existing FFmpeg graph.
+- Use agc_target_lufs and agc_loudness_window_ms in shared profiles.
+- Require the matching usbradioplus_agc_lufs effect for changed control units.
+
 ## 0.1.0~alpha26 - 2026-11-03
 
 - Share local receive, incoming-link, and voice/telemetry processing with

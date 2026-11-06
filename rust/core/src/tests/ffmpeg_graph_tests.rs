@@ -63,6 +63,7 @@ fn dynamics_graph_uses_only_enabled_stages_in_requested_order() {
     let graph = factory().dynamics(&chain).unwrap();
     assert!(graph.find("ladspa=").unwrap() < graph.find("sidechaingate=").unwrap());
     assert!(graph.contains("file='/usr/lib/usbradioplus/agc\\'s\\:effect.so'"));
+    assert!(graph.contains("anull,anull"));
     assert!(graph.ends_with("[out]"));
 }
 
@@ -211,8 +212,6 @@ fn equalizer_deesser_zero_sidechains_and_makeup_are_generated() {
     chain.expander.sidechain_highpass_hz = 0.0;
     chain.expander.sidechain_lowpass_hz = 0.0;
     chain.agc.enabled = true;
-    chain.agc.sidechain_highpass_hz = 0.0;
-    chain.agc.sidechain_lowpass_hz = 0.0;
     chain.compressor.enabled = true;
     chain.compressor.low.makeup_gain_db = 1.0;
     chain.stage_order = StageOrder::parse(

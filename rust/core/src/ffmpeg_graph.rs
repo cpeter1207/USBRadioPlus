@@ -285,9 +285,9 @@ impl GraphDescriptionFactory {
             ProcessingStage::Agc => {
                 let plugin = escape_filter_value(&self.agc_plugin_path);
                 let options = format!(
-                    "inputs=2:channel_layout=stereo:map=0.0-FL|1.0-FR,ladspa=file='{plugin}':plugin=usbradioplus_agc:controls=c0={:.12}|c1={:.12}|c2={:.12}|c3={:.12}|c4={:.12}|c5={:.12}|c6={:.12}|c7={:.12}|c8={:.12}|c9={:.12},aformat=channel_layouts=mono",
-                    chain.agc.target_dbfs,
-                    chain.agc.rms_averaging_ms,
+                    "inputs=2:channel_layout=stereo:map=0.0-FL|1.0-FR,ladspa=file='{plugin}':plugin=usbradioplus_agc_lufs:controls=c0={:.12}|c1={:.12}|c2={:.12}|c3={:.12}|c4={:.12}|c5={:.12}|c6={:.12}|c7={:.12}|c8={:.12}|c9={:.12},aformat=channel_layouts=mono",
+                    chain.agc.target_lufs,
+                    chain.agc.loudness_window_ms,
                     chain.agc.gain_increase_db_per_second,
                     chain.agc.gain_decrease_db_per_second,
                     chain.agc.max_gain_db,
@@ -301,8 +301,8 @@ impl GraphDescriptionFactory {
                     graph,
                     GraphEdge::new(input, output, &prefix),
                     "join",
-                    chain.agc.sidechain_highpass_hz,
-                    chain.agc.sidechain_lowpass_hz,
+                    0.0,
+                    0.0,
                     &options,
                 )?;
             }

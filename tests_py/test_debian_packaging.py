@@ -448,7 +448,7 @@ def test_private_agc_build_dependency_and_license_are_shipped():
     for artifact in (
         "rust/rms-agc/*",
         "tests/fixtures/rms_agc_ladspa.h",
-        "tests/fixtures/rms_agc_reference.c",
+        "tests/test_rms_agc_ladspa.c",
     ):
         assert artifact in copyright_text
     assert "License: MIT" in copyright_text

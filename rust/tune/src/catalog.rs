@@ -557,10 +557,6 @@ fn deesser_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
     )
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "keeping one declarative setting list preserves the menu order"
-)]
 fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
     let value = &chain.agc;
     section(
@@ -568,12 +564,12 @@ fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
         format!("{}: AGC", role_title(chain.role)),
         vec![
             number(
-                "agc_target_dbfs",
-                "Detector-band RMS target",
-                value.target_dbfs,
+                "agc_target_lufs",
+                "BS.1770 loudness target",
+                value.target_lufs,
                 -40.0,
                 -3.0,
-                "dBFS",
+                "LUFS",
             ),
             gain(
                 "agc_max_gain_db",
@@ -592,11 +588,11 @@ fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
                 ApplyMode::Reload,
             ),
             number(
-                "agc_rms_averaging_ms",
-                "RMS averaging",
-                value.rms_averaging_ms,
-                10.0,
-                5_000.0,
+                "agc_loudness_window_ms",
+                "Loudness window",
+                value.loudness_window_ms,
+                400.0,
+                3_000.0,
                 "ms",
             ),
             number(
@@ -646,22 +642,6 @@ fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
                 0.0,
                 6.0,
                 ApplyMode::Reload,
-            ),
-            number(
-                "agc_sidechain_highpass_hz",
-                "Detector high-pass; 0 disables",
-                value.sidechain_highpass_hz,
-                0.0,
-                2_000.0,
-                "Hz",
-            ),
-            number(
-                "agc_sidechain_lowpass_hz",
-                "Detector low-pass; 0 disables",
-                value.sidechain_lowpass_hz,
-                0.0,
-                3_500.0,
-                "Hz",
             ),
         ],
     )

@@ -96,7 +96,7 @@ fn every_numeric_family_rejects_invalid_and_non_finite_values() {
         |c| c.receive.bandpass_lowpass_hz = 20.0,
         |c| c.equalizer.low_slope = 0.0,
         |c| c.deesser.ratio = 21.0,
-        |c| c.agc.activity_threshold_dbfs = c.agc.target_dbfs,
+        |c| c.agc.loudness_window_ms = 399.0,
         |c| c.expander.sidechain_lowpass_hz = c.expander.sidechain_highpass_hz,
         |c| c.compressor.high_crossover_hz = c.compressor.low_crossover_hz,
         |c| c.limiter.high.attack_ms = 101.0,
@@ -110,13 +110,13 @@ fn every_numeric_family_rejects_invalid_and_non_finite_values() {
 }
 
 #[test]
-fn disabled_agc_sidechain_edges_are_valid_but_inverted_edges_are_not() {
+fn expander_sidechain_edges_are_valid_but_inverted_edges_are_not() {
     let mut chain = ProcessingChain::shipped(ChainRole::LocalReceive);
-    chain.agc.sidechain_highpass_hz = 0.0;
-    chain.agc.sidechain_lowpass_hz = 0.0;
+    chain.expander.sidechain_highpass_hz = 800.0;
+    chain.expander.sidechain_lowpass_hz = 1_500.0;
     assert!(chain.validate().is_ok());
-    chain.agc.sidechain_highpass_hz = 1_000.0;
-    chain.agc.sidechain_lowpass_hz = 500.0;
+    chain.expander.sidechain_highpass_hz = 1_000.0;
+    chain.expander.sidechain_lowpass_hz = 500.0;
     assert!(matches!(
         chain.validate(),
         Err(ProcessingConfigError::Ordering { .. })

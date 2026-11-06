@@ -25,7 +25,6 @@ ln -sf usbradioplus_agc.so.1 "$plugin_dir/usbradioplus_agc.so"
 # shellcheck disable=SC2086
 cc -std=c11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} \
 	-I"$root/tests/fixtures" "$root/tests/test_rms_agc_ladspa.c" \
-	"$root/tests/fixtures/rms_agc_reference.c" -Wl,--wrap=calloc \
 	-L"$plugin_dir" -Wl,-rpath,"$plugin_dir" -l:usbradioplus_agc.so \
 	-o "$out/rms-agc" -lm
 "$out/rms-agc"

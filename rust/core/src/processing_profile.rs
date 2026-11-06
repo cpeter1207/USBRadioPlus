@@ -109,14 +109,14 @@ impl Default for Deesser {
 pub struct Agc {
     /// Whether AGC participates in the optional graph.
     pub enabled: bool,
-    /// Detector target in dBFS.
-    pub target_dbfs: f64,
+    /// BS.1770 loudness target in LUFS.
+    pub target_lufs: f64,
     /// Maximum positive gain in dB.
     pub max_gain_db: f64,
     /// Maximum attenuation in dB.
     pub max_attenuation_db: f64,
-    /// RMS detector averaging time in milliseconds.
-    pub rms_averaging_ms: f64,
+    /// BS.1770 loudness window in milliseconds.
+    pub loudness_window_ms: f64,
     /// Maximum gain-rise speed in dB per second.
     pub gain_increase_db_per_second: f64,
     /// Maximum gain-reduction speed in dB per second.
@@ -129,28 +129,22 @@ pub struct Agc {
     pub hold_ms: f64,
     /// Target deadband in dB.
     pub deadband_db: f64,
-    /// Detector high-pass edge in Hz; zero disables the edge.
-    pub sidechain_highpass_hz: f64,
-    /// Detector low-pass edge in Hz; zero disables the edge.
-    pub sidechain_lowpass_hz: f64,
 }
 
 impl Default for Agc {
     fn default() -> Self {
         Self {
             enabled: false,
-            target_dbfs: -24.0,
+            target_lufs: -23.0,
             max_gain_db: 6.0,
             max_attenuation_db: 6.0,
-            rms_averaging_ms: 200.0,
+            loudness_window_ms: 400.0,
             gain_increase_db_per_second: 2.0,
             gain_decrease_db_per_second: 6.0,
             activity_threshold_dbfs: -50.0,
             activity_hysteresis_db: 3.0,
             hold_ms: 500.0,
             deadband_db: 1.0,
-            sidechain_highpass_hz: 800.0,
-            sidechain_lowpass_hz: 1_500.0,
         }
     }
 }
@@ -601,10 +595,15 @@ impl ProcessingChain {
 
     fn validate_agc(&self) -> Result<(), ProcessingConfigError> {
         let agc = &self.agc;
-        finite_range("agc_target_dbfs", agc.target_dbfs, -40.0, -3.0)?;
+        finite_range("agc_target_lufs", agc.target_lufs, -40.0, -3.0)?;
         finite_range("agc_max_gain_db", agc.max_gain_db, 0.0, 30.0)?;
         finite_range("agc_max_attenuation_db", agc.max_attenuation_db, 0.0, 60.0)?;
-        finite_range("agc_rms_averaging_ms", agc.rms_averaging_ms, 10.0, 5_000.0)?;
+        finite_range(
+            "agc_loudness_window_ms",
+            agc.loudness_window_ms,
+            400.0,
+            3_000.0,
+        )?;
         finite_range(
             "agc_gain_increase_db_per_second",
             agc.gain_increase_db_per_second,
@@ -623,12 +622,6 @@ impl ProcessingChain {
             -100.0,
             -3.0,
         )?;
-        if agc.activity_threshold_dbfs >= agc.target_dbfs {
-            return Err(ProcessingConfigError::Ordering {
-                upper: "agc_target_dbfs",
-                lower: "agc_activity_threshold_dbfs",
-            });
-        }
         finite_range(
             "agc_activity_hysteresis_db",
             agc.activity_hysteresis_db,
@@ -637,26 +630,6 @@ impl ProcessingChain {
         )?;
         finite_range("agc_hold_ms", agc.hold_ms, 0.0, 10_000.0)?;
         finite_range("agc_deadband_db", agc.deadband_db, 0.0, 6.0)?;
-        disabled_or_range(
-            "agc_sidechain_highpass_hz",
-            agc.sidechain_highpass_hz,
-            50.0,
-            2_000.0,
-        )?;
-        finite_range(
-            "agc_sidechain_lowpass_hz",
-            agc.sidechain_lowpass_hz,
-            0.0,
-            3_500.0,
-        )?;
-        if agc.sidechain_lowpass_hz != 0.0 {
-            require_greater(
-                "agc_sidechain_lowpass_hz",
-                agc.sidechain_lowpass_hz,
-                "agc_sidechain_highpass_hz",
-                agc.sidechain_highpass_hz,
-            )?;
-        }
         Ok(())
     }
 
@@ -872,19 +845,6 @@ fn finite_range(
             minimum,
             maximum,
         })
-    }
-}
-
-fn disabled_or_range(
-    field: &'static str,
-    value: f64,
-    minimum: f64,
-    maximum: f64,
-) -> Result<(), ProcessingConfigError> {
-    if value == 0.0 {
-        Ok(())
-    } else {
-        finite_range(field, value, minimum, maximum)
     }
 }
 

@@ -190,8 +190,8 @@ static PORT_NAMES: PortNames = PortNames([
     c"Program input".as_ptr(),
     c"Detector input".as_ptr(),
     c"Output".as_ptr(),
-    c"Target RMS (dBFS)".as_ptr(),
-    c"Averaging (ms)".as_ptr(),
+    c"Target loudness (LUFS)".as_ptr(),
+    c"Loudness window (ms)".as_ptr(),
     c"Gain increase (dB/s)".as_ptr(),
     c"Gain decrease (dB/s)".as_ptr(),
     c"Maximum boost (dB)".as_ptr(),
@@ -223,9 +223,9 @@ const fn port_hints() -> [PortRangeHint; PORT_COUNT] {
 static PORT_HINTS: [PortRangeHint; PORT_COUNT] = port_hints();
 static DESCRIPTOR: Descriptor = Descriptor {
     unique_id: 524950,
-    label: c"usbradioplus_agc".as_ptr(),
+    label: c"usbradioplus_agc_lufs".as_ptr(),
     properties: 4,
-    name: c"USBRadioPlus gated RMS gain rider".as_ptr(),
+    name: c"USBRadioPlus gated LUFS gain rider".as_ptr(),
     maker: c"USBRadioPlus contributors".as_ptr(),
     copyright: c"MIT".as_ptr(),
     port_count: PORT_COUNT as c_ulong,

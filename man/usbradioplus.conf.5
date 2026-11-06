@@ -580,19 +580,24 @@ rejection at the +/-0.5 percent CTCSS encoder tolerance limits.
 .B ctcss_highpass_hz = 50..500
 Set the cutoff for ctcss_filter_mode=highpass. Default is 300 Hz.
 .SH AUTOMATIC GAIN CONTROL
-AGC levels active speech using detector-band RMS and a smooth gain change.
-Its two-pole FFmpeg detector filters do not filter the program audio. The
-stage adds no lookahead or audio buffering, peak limiter, clipping, or
-hardware gain adjustment. Existing compressor and limiter stages remain
-separate. Inactive audio retains the last gain; it is not muted.
+AGC levels active speech using K-weighted LUFS measured on the full program
+at its position in the shared FFmpeg graph. The stage adds no lookahead or
+audio buffering and does not adjust hardware gains. Inactive audio retains
+the last gain without muting or resetting gain to unity. Existing compressor
+and limiter stages remain separate; AGC is not a true-peak limiter and does
+not itself guarantee a -1 dBTP ceiling.
+.PP
+A fresh complete loudness window is required on activation or renewed
+activity. Short transmissions and configured gain limits can prevent
+convergence to the target; this causal rider does not guarantee exact
+integrated program loudness. Verify representative output independently.
 .TP
 .B agc_enabled = yes|no
 Enable automatic gain control. Default is no.
 .TP
-.B agc_target_dbfs = -40..-3
-Set the filtered detector-band RMS target after applied gain, not a
-full-band RMS or peak target. Default is -24 dBFS. The target must be above
-agc_activity_threshold_dbfs.
+.B agc_target_lufs = -40..-3
+Set the full-program K-weighted loudness target after applied gain.
+Default is -23 LUFS. This is separate from the raw dBFS activity threshold.
 .TP
 .B agc_max_gain_db = 0..30
 Limit gain applied to active weak audio. Default is 6 dB.
@@ -600,44 +605,44 @@ Limit gain applied to active weak audio. Default is 6 dB.
 .B agc_max_attenuation_db = 0..60
 Limit attenuation applied to active strong audio. Default is 6 dB.
 .TP
-.B agc_rms_averaging_ms = 10..5000
-Set RMS detector averaging time. Default is 200 ms. Longer averaging reduces
-gain movement between syllables; it does not delay program audio.
+.B agc_loudness_window_ms = 400..3000
+Set the loudness measurement window. Default is 400 ms. A complete fresh
+window is required before gain changes; this does not delay program audio.
 .TP
 .B agc_gain_increase_db_per_second = 0.1..100
-Limit how quickly gain rises for active weak audio after the hold interval.
+Limit how quickly gain rises after a fresh measurement and the hold interval.
 Default is 2 dB per second.
 .TP
 .B agc_gain_decrease_db_per_second = 0.1..100
-Limit how quickly gain falls for active loud audio. Reduction begins without
-the gain-increase hold. Default is 6 dB per second.
+Limit how quickly gain falls for active loud audio after a fresh measurement.
+Reduction does not wait for the gain-increase hold. Default is 6 dB per second.
 .TP
 .B agc_activity_threshold_dbfs = -100..-3
-Set the input activity threshold, strictly below agc_target_dbfs. Default is
--50 dBFS. A separate 10 ms detector opens at or above this threshold and
-closes below the threshold minus agc_activity_hysteresis_db. Inactivity
-freezes gain without muting audio or resetting gain to unity.
+Set the separate raw 10 ms RMS activity threshold. Default is -50 dBFS.
+The gate opens at or above this threshold and closes below the threshold
+minus agc_activity_hysteresis_db. Inactivity freezes gain without muting
+audio or resetting gain to unity. This gate is not the LUFS target.
 .TP
 .B agc_activity_hysteresis_db = 0..12
 Set the activity detector's closing margin. Default is 3 dB.
 .TP
 .B agc_hold_ms = 0..10000
-Require continuously active audio below target minus deadband for this long
-before increasing gain. Inactivity, gain reduction, or return to the deadband
-restarts the wait. This never delays gain reduction. Default is 500 ms.
+After a complete fresh loudness window, require continuously active audio
+below target minus deadband for this long before increasing gain. Inactivity,
+gain reduction, or return to the deadband restarts the wait. This does not
+add a hold to gain reduction. Default is 500 ms.
 .TP
 .B agc_deadband_db = 0..6
-Hold gain when the detector-band output is within this distance either side
-of target. Default is 1 dB.
-.TP
-.B agc_sidechain_highpass_hz = 0|50..2000
-Set the two-pole detector high-pass cutoff, or 0 to disable it.
-Default is 800 Hz.
-.TP
-.B agc_sidechain_lowpass_hz = 0..3500
-Set the two-pole detector low-pass cutoff, or 0 to disable it.
-Any positive frequency through 3500 Hz is accepted. When both detector
-filters are enabled, low-pass must be above high-pass. Default is 1500 Hz.
+Hold gain when measured loudness after applied gain is within this distance
+either side of target. Default is 1 dB.
+.PP
+Migrate agc_target_dbfs to agc_target_lufs and agc_rms_averaging_ms to
+agc_loudness_window_ms, using the new units and defaults rather than renaming
+old values. Remove agc_sidechain_highpass_hz and agc_sidechain_lowpass_hz;
+there are no compatibility aliases. The effect label is
+usbradioplus_agc_lufs; the packaged usbradioplus_agc.so.1 filename and
+13-port LADSPA interface retain their positions. Install matching application
+and plugin artifacts together.
 .SH DOWNWARD EXPANDER
 .TP
 .B expander_enabled = yes|no

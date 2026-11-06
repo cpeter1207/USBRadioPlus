@@ -394,8 +394,7 @@ lint:
 		rust/asterisk/src/host/tests/variadic.c \
 		tests/test_chan_usbradioplus_shim.c \
 		$(shell find tests/fixtures/shim-host -type f -name '*.h') \
-		tests/test_rms_agc_ladspa.c tests/fixtures/rms_agc_ladspa.h \
-		tests/fixtures/rms_agc_reference.c
+		tests/test_rms_agc_ladspa.c tests/fixtures/rms_agc_ladspa.h
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
 		packaging/repository/install-usbradioplus.sh
 

@@ -155,8 +155,8 @@ prepare the restored generation.
 @section verification Verification
 
 `make lint static-analysis` runs the platform-independent checks. `make check`
-builds the module and Rust artifacts, runs the Rust workspace and the frozen RMS
-AGC parity test, and validates release artifacts. `make docs` requires warning-
+builds the module and Rust artifacts, runs the Rust workspace and the LADSPA
+LUFS host-contract tests, and validates release artifacts. `make docs` requires warning-
 free Rustdoc and Doxygen output. `make platform-verify` adds production coverage,
 real-module startup smoke testing, a deterministic source archive, and staged
 installation. The pull-request workflow runs the complete Debian 13 native

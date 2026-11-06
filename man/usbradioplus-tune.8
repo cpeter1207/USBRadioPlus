@@ -224,8 +224,11 @@ and post-limiter brick-wall band-pass.
 The Compressor and Limiter pages each select single-band or three-band mode.
 Three-band mode uses low, mid, and high controls around configurable
 crossovers. The Equalizer and De-esser pages expose their respective parameters.
-The AGC page exposes its detector-band RMS target, averaging, gain rates,
-limits, activity gate, hold, deadband, and optional detector filters. See
+The AGC page exposes its full-program LUFS target and 400-3000 ms loudness
+window, gain rates and limits, separate raw dBFS activity gate, hold, and
+deadband. A fresh loudness window precedes gain changes; boosts also require
+the configured hold. AGC does not buffer program audio or provide a
+true-peak ceiling. See
 .BR usbradioplus.conf (5)
 for parameter definitions and ranges.
 .TP

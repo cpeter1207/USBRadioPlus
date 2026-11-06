@@ -1,83 +1,64 @@
 # Speech automatic gain control
 
-USBRadioPlus uses a causal RMS gain controller in the shared FFmpeg graph.
-FFmpeg splits the source into program audio and a detector copy, applies the
-optional two-pole high-pass and low-pass filters only to the detector, and
-passes both to the packaged LADSPA stage. The same gain is applied across
-the program's full bandwidth. There is no extra audio queue, lookahead,
-limiter, clipping stage, or hardware gain adjustment.
+USBRadioPlus uses a causal LUFS gain rider inside the shared FFmpeg graph.
+The packaged Rust LADSPA effect meters an unfiltered copy of the program at
+that stage with K-weighted loudness analysis from `ebur128` 0.1.11. It applies
+the resulting smooth gain across the program's full bandwidth. The default
+`agc_target_lufs` is **-23 LUFS**. AGC no longer uses detector-band high-pass
+or low-pass filters, and hardware gain settings are unchanged.
 
-The packaged `usbradioplus_agc.so` effect is implemented in Rust. Its LADSPA
-identity, port order, ranges, defaults, and streaming gain law are unchanged.
-A small host adapter owns buffer pointers; the safe Rust gain-rider object
-owns the existing processing policy. The former C implementation is retained
-only as a test fixture for descriptor and sample-output comparisons, never as
-a second production processing path.
+## Settings and timing
 
-The target is **filtered detector-band RMS after applied gain**, not a peak,
-full-band RMS, or LUFS target. The default detector covers 800–1500 Hz. A
-tone outside that band or a source with little energy in it will not produce
-the same gain response as normal speech. Either cutoff can be set to zero
-to disable that detector filter. Changing detector bandwidth requires
-rechecking target and activity threshold.
+`agc_loudness_window_ms` selects a 400-3000 ms measurement window; its default
+is 400 ms. A fresh complete window is required on activation or renewed
+activity before gain can change. Increasing gain then requires continuously
+active audio below target minus the deadband for `agc_hold_ms`, default
+500 ms. Inactivity, a reduction request, or return to the deadband restarts
+that qualification. Reductions require a fresh measurement but do not wait
+for the gain-increase hold.
 
-## Gain behavior
+The default rates are 2 dB/s for increases and 6 dB/s for reductions, with
+6 dB maximum boost, 6 dB maximum attenuation, and a 1 dB deadband. The gain
+policy updates at a sample-derived 1 kHz cadence and interpolates gain
+between updates. Measurement history delays the response of the gain
+controller; it does not queue or delay program audio. Processing uses
+prepared per-instance analysis state without callback allocation, locks,
+or logging.
 
-A separate 10 ms RMS detector qualifies activity. It opens at or above the
-activity threshold and closes below that threshold minus hysteresis. During
-inactivity, gain freezes; audio is not muted and gain does not return to
-unity. On renewed activity, stale silence is excluded from the level estimate
-so it cannot command an initial gain surge.
-Activity is a level test, not a speech classifier. Set its threshold above
-the source's processed background-noise level.
+A separate 10 ms **raw RMS activity detector** remains in dBFS. Its default
+opening threshold is -50 dBFS, and it closes below that threshold minus
+the default 3 dB hysteresis. This gate qualifies activity; it is not the
+normalization target and does not share LUFS units. Inactivity freezes the
+last gain without muting audio or returning gain to unity. Set the activity
+threshold above the source's processed background-noise level.
 
-The target detector averages signal power with the configured RMS time
-constant. Gain decreases as soon as active audio calls for a reduction,
-subject to the configured dB-per-second limit. An increase requires
-continuously active audio below target minus deadband for the full hold
-interval. Inactivity, a reduction request, or return to the deadband resets
-that interval. The hold is not a delay after speech ends. Gain requests are
-updated at a sample-derived 1 kHz cadence and interpolated between updates.
+## Limits and verification
 
-Maximum boost and attenuation bound the available correction. The separate
-compressor and limiter stages still handle peaks: this slow leveler cannot
-guarantee that transients remain below PCM full scale.
+This causal, bounded rider cannot guarantee exact integrated loudness for a
+short transmission or a target beyond its configured gain limits. Window,
+hold, rate, and deadband settings also affect convergence. Compare
+representative speech and pauses at matched loudness, and measure the full
+output independently.
 
-## Default choices
+AGC is not a true-peak limiter and does not itself guarantee a -1 dBTP
+ceiling. Compressor and limiter stages remain separate; verify the required
+peak protection independently. Automated checks cover the LADSPA host
+contract, K-weighted gain response against independent FFmpeg measurements,
+gain bounds and rates, silence, reacquisition, malformed controls, in-place
+processing, block boundaries, and callback allocations. Listening, hardware
+checks, and final RF-path measurements remain necessary.
 
-The −24 dBFS target, 200 ms averaging, ±6 dB gain range, 2 dB/s gain increase,
-6 dB/s decrease, −50 dBFS activity threshold, 3 dB hysteresis, 500 ms hold,
-and ±1 dB deadband are conservative starting points, not a radio standard
-or a promise of transparent sound with every source.
+## Migration
 
-The design separates detector smoothing from gain response and activity
-qualification, as commercial levelers do. Q-SYS describes filtered detector
-inputs, RMS smoothing, activity thresholds, and retaining gain during pauses;
-its optional hold/recovery behavior differs from USBRadioPlus's
-gain-increase qualification. [Q-SYS AGC reference](https://help.qsys.com/Content/Schematic_Library/leveler.htm)
+Replace `agc_target_dbfs` with `agc_target_lufs` and
+`agc_rms_averaging_ms` with `agc_loudness_window_ms`; these are different
+measurements, not aliases with renamed units. Start from the new -23 LUFS
+and 400 ms defaults, then verify the result. Remove
+`agc_sidechain_highpass_hz` and `agc_sidechain_lowpass_hz`. The old keys have
+no compatibility aliases.
 
-The modest gain range follows the ±6 dB defaults in Harman's voice AGC;
-Harman also cautions that excessive boost raises noise and disrupts gain
-structure. Its target window and speech detector are not reproduced here.
-[Harman Soundweb London AEC card reference](https://adn.harmanpro.com/static/archimedia/aa_help/Soundweb_London/AEC_Card_Panel.htm)
-
-The averaging, 2 dB/s gain-increase rate, faster reduction, activity threshold,
-hysteresis, hold, and deadband are USBRadioPlus engineering choices. Adjust
-them using representative quiet and loud speech, pauses, and background noise.
-Compare at matched loudness; a louder result is not necessarily a cleaner result.
-
-## Configuration and validation
-
-All three source chains use the same numeric defaults. Stage enablement and
-position remain separate controls. The clean-slate configuration exposes the
-RMS target, averaging, gain rates, gain bounds, activity gate, hold, deadband,
-and detector filters described here. See `man usbradioplus.conf` for every
-range.
-
-Bench checks should include quiet/loud speech transitions, long pauses,
-noise below and near the activity threshold, isolated peaks, and detector
-cutoffs enabled and disabled. Check both 8 kHz link processing and 48 kHz
-native processing. Confirm that pauses do not raise noise, renewed speech
-does not surge, short syllables do not cause pumping, and gain changes do
-not click. Listening and hardware checks supplement the automated signal
-tests; they cannot be inferred from a passing build.
+The packaged filename remains `usbradioplus_agc.so.1` and the standard
+13-port LADSPA interface retains its port positions. The effect label is
+now `usbradioplus_agc_lufs`, so an old graph consumer cannot silently apply
+RMS controls to the new LUFS effect. Install matching application and
+plugin artifacts together. See `man usbradioplus.conf` for all ranges.

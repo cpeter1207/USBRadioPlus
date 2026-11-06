@@ -1,3 +1,10 @@
+usbradioplus (0.1.0~alpha29-1+bs1770.20261106) unstable; urgency=medium
+
+  * Replace RMS with LUFS in the AGC.
+  * Target -23 LUFS using BS.1770 metering in the existing processing graph.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 06 Nov 2026 09:28:40 -0600
+
 usbradioplus (0.1.0~alpha28-1) unstable; urgency=medium
 
   * Share Hamlib and parallel remote-base control across radio hosts.

@@ -1,19 +1,19 @@
 /* SPDX-License-Identifier: MIT */
 /** @file
- * @brief Frozen LADSPA port contract used by the Rust plugin parity test.
+ * @brief LADSPA port contract used by the Rust LUFS plugin host tests.
  */
 #ifndef USBRADIOPLUS_TEST_RMS_AGC_LADSPA_H
 #define USBRADIOPLUS_TEST_RMS_AGC_LADSPA_H
 
 #include <ladspa.h>
 
-/** LADSPA ports shared by the production Rust plugin and frozen C reference. */
+/** LADSPA port positions for the production Rust LUFS plugin. */
 enum usbradioplus_agc_port {
 	USBRADIOPLUS_AGC_INPUT,
 	USBRADIOPLUS_AGC_DETECTOR,
 	USBRADIOPLUS_AGC_OUTPUT,
-	USBRADIOPLUS_AGC_TARGET_DBFS,
-	USBRADIOPLUS_AGC_AVERAGING_MS,
+	USBRADIOPLUS_AGC_TARGET_LUFS,
+	USBRADIOPLUS_AGC_LOUDNESS_WINDOW_MS,
 	USBRADIOPLUS_AGC_INCREASE_DB_PER_SECOND,
 	USBRADIOPLUS_AGC_DECREASE_DB_PER_SECOND,
 	USBRADIOPLUS_AGC_MAX_BOOST_DB,
