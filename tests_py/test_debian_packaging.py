@@ -175,7 +175,7 @@ def staged_install_fixture(tmp_path):
     provider_metadata.mkdir()
     for name, abi in (
         ("rate_adjusting_pcm_ring3", 3),
-        ("rptadvradio", 4),
+        ("rptadvradio", 5),
         ("rptadv_samplerate_adapter", 2),
         ("rptadv_ffmpeg_adapter", 1),
         ("rptadv_portaudio_alsa_adapter", 2),
@@ -200,7 +200,7 @@ def staged_install_fixture(tmp_path):
             f"DESTDIR={stage}",
         ],
         cwd=source,
-        env=dict(os.environ, PKG_CONFIG_LIBDIR=str(provider_metadata)),
+        env=dict(os.environ, PKG_CONFIG_LIBDIR=str(provider_metadata), PKG_CONFIG_PATH=""),
         check=True,
         capture_output=True,
         text=True,
