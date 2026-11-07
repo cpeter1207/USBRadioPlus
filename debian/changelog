@@ -5,7 +5,7 @@ usbradioplus (0.1.0~alpha31-1) unstable; urgency=medium
   * Require matched radio ABI5 and direct receive callback ABI6.
   * Default all LUFS AGCs to 400 ms; retain 6/2 dB per second attack/release.
 
- -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 06 Nov 2026 20:00:00 -0600
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sat, 07 Nov 2026 11:18:15 -0600
 
 usbradioplus (0.1.0~alpha30-1+bs1770.20261106) unstable; urgency=medium
 
