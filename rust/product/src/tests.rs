@@ -88,8 +88,20 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             abi_version: ABI_VERSION,
             ..UrpAstSiteSnapshot::default()
         };
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        let retry_site_busy = |operation: &mut dyn FnMut() -> c_int| loop {
+            let result = operation();
+            if result != URP_AST_CHANNEL_BUSY {
+                return result;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "site cache did not admit a coherent read"
+            );
+            std::thread::yield_now();
+        };
         assert_eq!(
-            api.channel_site_snapshot.unwrap()(channel, 0, &mut snapshot),
+            retry_site_busy(&mut || api.channel_site_snapshot.unwrap()(channel, 0, &mut snapshot)),
             URP_AST_OK
         );
         let binding = UrpAstSiteBinding {
@@ -101,10 +113,9 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             safe_high_mask: 0,
         };
         assert_eq!(
-            api.channel_site_bind.unwrap()(channel, 0, &binding),
+            retry_site_busy(&mut || api.channel_site_bind.unwrap()(channel, 0, &binding)),
             URP_AST_OK
         );
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
         loop {
             let result = api.channel_site_snapshot.unwrap()(channel, 0, &mut snapshot);
             if result == URP_AST_OK
@@ -113,6 +124,7 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             {
                 break;
             }
+            assert!(matches!(result, URP_AST_OK | URP_AST_CHANNEL_BUSY));
             assert!(
                 std::time::Instant::now() < deadline,
                 "site binding not acknowledged"
@@ -130,18 +142,18 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             high_mask: 0,
         };
         assert_eq!(
-            api.channel_site_publish.unwrap()(channel, 0, &request),
+            retry_site_busy(&mut || api.channel_site_publish.unwrap()(channel, 0, &request)),
             URP_AST_OK
         );
         assert_eq!(
-            api.channel_site_publish.unwrap()(
+            retry_site_busy(&mut || api.channel_site_publish.unwrap()(
                 channel,
                 0,
                 &UrpAstSiteRequest {
                     high_mask: 0x40,
                     ..request
                 }
-            ),
+            )),
             URP_AST_INVALID_ARGUMENT
         );
         assert_eq!(
