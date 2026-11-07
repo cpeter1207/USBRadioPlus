@@ -57,30 +57,63 @@ def covered_lines(report: Path, root: Path) -> dict[Path, dict[int, int]]:
     return counts
 
 
-def covered_branches(
-    report: Path, root: Path
-) -> dict[Path, dict[tuple[int, int, int, int], list[int]]]:
-    """Combine LLVM branch counts having the same source span."""
-    grouped: dict[Path, dict[tuple[int, int, int, int], list[int]]] = {}
+def covered_branches(report: Path, root: Path) -> dict[Path, dict[tuple[int, ...], list[int]]]:
+    """Merge compiled copies while preserving distinct same-span branch decisions.
+
+    Raise ValueError if a production file branch span lacks function metadata
+    anywhere in the combined report.
+    """
+    grouped: dict[Path, dict[tuple[int, ...], list[int]]] = {}
     document = json.loads(report.read_text(encoding="utf-8"))
+    expected = set()
     for data in document.get("data", []):
         for entry in data.get("files", []):
             path = Path(entry["filename"])
-            if not production_source(path, root):
-                continue
-            spans = grouped.setdefault(path.resolve(), {})
+            if production_source(path, root):
+                path = path.resolve()
+                expected.update((path, *branch[:4]) for branch in entry.get("branches", []))
+        for entry in data.get("functions", []):
+            lexical = {}
+            for region in entry["regions"]:
+                if region[7] == 0:
+                    filename = entry["filenames"][region[5]]
+                    # Codegen copies can have different region ends, but their starts stay fixed.
+                    lexical.setdefault(filename, tuple(region[:2]))
+            for filename in lexical:
+                path = Path(filename)
+                if production_source(path, root):
+                    grouped.setdefault(path.resolve(), {})
+            occurrences: dict[tuple[str, tuple[int, ...]], int] = defaultdict(int)
             for branch in entry.get("branches", []):
+                filename = entry["filenames"][branch[6]]
+                path = Path(filename)
+                if not production_source(path, root):
+                    continue
                 span = tuple(branch[:4])
-                totals = spans.setdefault(span, [0, 0])
+                ordinal = occurrences[(filename, span)]
+                occurrences[(filename, span)] += 1
+                key = span + lexical[filename] + (ordinal,)
+                totals = grouped[path.resolve()].setdefault(key, [0, 0])
                 totals[0] += branch[4]
                 totals[1] += branch[5]
+    available = {(path, *key[:4]) for path, branches in grouped.items() for key in branches}
+    missing = expected - available
+    if missing:
+        locations = ", ".join(
+            f"{path.relative_to(root.resolve())}:{line}:{column}"
+            for path, line, column, _, _ in sorted(missing)
+        )
+        raise ValueError("production Rust branch spans missing function metadata: " + locations)
     return grouped
 
 
 def validate(json_report: Path, lcov_report: Path, root: Path) -> list[str]:
     """Return concise failures for missing production source coverage."""
     lines = covered_lines(lcov_report, root)
-    branches = covered_branches(json_report, root)
+    try:
+        branches = covered_branches(json_report, root)
+    except ValueError as error:
+        return [str(error)]
     reported = set(lines) | set(branches)
     if not reported:
         return ["no production Rust coverage data"]
@@ -106,7 +139,7 @@ def validate(json_report: Path, lcov_report: Path, root: Path) -> list[str]:
         if missing_branches:
             failures.append(
                 f"{relative}: uncovered branch outcomes "
-                + ", ".join(f"{line}:{column}" for line, column, _, _ in missing_branches)
+                + ", ".join(f"{span[0]}:{span[1]}" for span in missing_branches)
             )
     return failures
 

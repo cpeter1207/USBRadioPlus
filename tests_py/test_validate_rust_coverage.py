@@ -7,7 +7,17 @@ import pytest
 from tools import validate_rust_coverage
 
 
-def write_reports(tmp_path: Path, branches=None, line_count=1):
+def llvm_function(source, branches, name="covered", first_region=(1, 1, 1, 16)):
+    return {
+        "name": name,
+        "count": 1,
+        "filenames": [str(source)],
+        "regions": [[*first_region, 1, 0, 0, 0]],
+        "branches": [[*branch, 0, 0, 4] for branch in branches],
+    }
+
+
+def write_reports(tmp_path: Path, branches=None, line_count=1, function_branches=None):
     source = tmp_path / "crate" / "src" / "lib.rs"
     source.parent.mkdir(parents=True)
     source.write_text("fn covered() {}\n", encoding="utf-8")
@@ -26,12 +36,25 @@ def write_reports(tmp_path: Path, branches=None, line_count=1):
                         "files": [
                             {
                                 "filename": str(source),
-                                "branches": branches or [],
+                                "branches": branches
+                                or [
+                                    branch
+                                    for values in function_branches or []
+                                    for branch in values
+                                ],
                             },
                             {"filename": str(facade), "branches": []},
                             {"filename": str(ignored), "branches": [[1, 1, 1, 2, 0, 0]]},
                             {"filename": str(outside), "branches": [[1, 1, 1, 2, 0, 0]]},
+                        ],
+                        "functions": [
+                            llvm_function(source, values, name=f"compiled_{index}")
+                            for index, values in enumerate(function_branches or [branches or []])
                         ]
+                        + [
+                            llvm_function(ignored, [[1, 1, 1, 2, 0, 0]]),
+                            llvm_function(outside, [[1, 1, 1, 2, 0, 0]]),
+                        ],
                     }
                 ]
             }
@@ -51,11 +74,92 @@ def write_reports(tmp_path: Path, branches=None, line_count=1):
 def test_complete_reports_merge_duplicate_branch_instantiations(tmp_path):
     root, json_report, lcov_report = write_reports(
         tmp_path,
-        branches=[
-            [1, 4, 1, 10, 0, 2],
-            [1, 4, 1, 10, 3, 0],
+        function_branches=[
+            [[1, 4, 1, 10, 0, 2]],
+            [[1, 4, 1, 10, 3, 0]],
         ],
     )
+    document = json.loads(json_report.read_text(encoding="utf-8"))
+    document["data"][0]["functions"][1]["regions"][0][3] = 42
+    json_report.write_text(json.dumps(document), encoding="utf-8")
+    assert validate_rust_coverage.validate(json_report, lcov_report, root) == []
+
+
+@pytest.mark.parametrize("complete", [False, True])
+def test_same_span_guard_decisions_preserve_outcome_requirements(tmp_path, complete):
+    root, json_report, lcov_report = write_reports(
+        tmp_path,
+        function_branches=[
+            [[1, 4, 1, 10, 1, 1], [1, 4, 1, 10, 1, 0]],
+            [[1, 4, 1, 10, 0, 0], [1, 4, 1, 10, 0, int(complete)]],
+        ],
+    )
+    expected = [] if complete else ["src/lib.rs: uncovered branch outcomes 1:4"]
+    assert validate_rust_coverage.validate(json_report, lcov_report, root) == expected
+
+
+def test_different_lexical_functions_do_not_merge_branch_outcomes(tmp_path):
+    root, json_report, lcov_report = write_reports(tmp_path)
+    source = root / "src" / "lib.rs"
+    document = json.loads(json_report.read_text(encoding="utf-8"))
+    document["data"][0]["functions"] = [
+        llvm_function(source, [[1, 4, 1, 10, 1, 1]], first_region=(1, 1, 5, 16)),
+        llvm_function(source, [[1, 4, 1, 10, 1, 0]], first_region=(1, 2, 5, 16)),
+    ]
+    json_report.write_text(json.dumps(document), encoding="utf-8")
+    assert validate_rust_coverage.validate(json_report, lcov_report, root) == [
+        "src/lib.rs: uncovered branch outcomes 1:4"
+    ]
+
+
+def test_function_file_indices_and_non_code_regions_preserve_source_identity(tmp_path):
+    root, json_report, lcov_report = write_reports(tmp_path, branches=[[1, 4, 1, 10, 1, 0]])
+    document = json.loads(json_report.read_text(encoding="utf-8"))
+    function = document["data"][0]["functions"][0]
+    function["filenames"].insert(0, str(root / "build.rs"))
+    function["regions"][0][5] = 1
+    function["regions"].insert(0, [1, 1, 1, 16, 1, 0, 0, 1])
+    function["branches"][0][6] = 1
+    json_report.write_text(json.dumps(document), encoding="utf-8")
+    assert validate_rust_coverage.validate(json_report, lcov_report, root) == [
+        "src/lib.rs: uncovered branch outcomes 1:4"
+    ]
+
+
+@pytest.mark.parametrize("metadata", ["missing", "empty", "unrelated"])
+def test_aggregate_file_branches_cannot_replace_function_identity(tmp_path, metadata):
+    root, json_report, lcov_report = write_reports(tmp_path, branches=[[1, 4, 1, 10, 1, 1]])
+    document = json.loads(json_report.read_text(encoding="utf-8"))
+    if metadata == "missing":
+        del document["data"][0]["functions"]
+    else:
+        document["data"][0]["functions"] = (
+            [] if metadata == "empty" else [llvm_function(root / "build.rs", [[1, 4, 1, 10, 1, 1]])]
+        )
+    json_report.write_text(json.dumps(document), encoding="utf-8")
+    assert validate_rust_coverage.validate(json_report, lcov_report, root) == [
+        "production Rust branch spans missing function metadata: src/lib.rs:1:4"
+    ]
+
+
+def test_missing_one_function_branch_span_rejects_partial_metadata(tmp_path):
+    root, json_report, lcov_report = write_reports(
+        tmp_path, branches=[[1, 4, 1, 10, 1, 1], [2, 4, 2, 10, 1, 1]]
+    )
+    document = json.loads(json_report.read_text(encoding="utf-8"))
+    document["data"][0]["functions"][0]["branches"].pop()
+    json_report.write_text(json.dumps(document), encoding="utf-8")
+    assert validate_rust_coverage.validate(json_report, lcov_report, root) == [
+        "production Rust branch spans missing function metadata: src/lib.rs:2:4"
+    ]
+
+
+def test_function_branch_metadata_can_come_from_another_report_unit(tmp_path):
+    root, json_report, lcov_report = write_reports(tmp_path, branches=[[1, 4, 1, 10, 1, 1]])
+    document = json.loads(json_report.read_text(encoding="utf-8"))
+    functions = document["data"][0].pop("functions")
+    document["data"].append({"files": [], "functions": functions})
+    json_report.write_text(json.dumps(document), encoding="utf-8")
     assert validate_rust_coverage.validate(json_report, lcov_report, root) == []
 
 
@@ -80,6 +184,7 @@ def test_branch_only_production_source_requires_line_coverage(tmp_path):
     source.write_text("fn branch_only() {}\n", encoding="utf-8")
     document = json.loads(json_report.read_text(encoding="utf-8"))
     document["data"][0]["files"].append({"filename": str(source), "branches": [[1, 1, 1, 2, 1, 1]]})
+    document["data"][0]["functions"].append(llvm_function(source, [[1, 1, 1, 2, 1, 1]]))
     json_report.write_text(json.dumps(document), encoding="utf-8")
 
     assert validate_rust_coverage.validate(json_report, lcov_report, root) == [
