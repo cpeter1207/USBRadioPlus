@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpRemoteCommandOptions" kind="struct" language="C++" prot="public">
+    <compoundname>UrpRemoteCommandOptions</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpRemoteCommandOptions_1a3770e2a56fd7bdea9e5ad4d1119bd497" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteCommandOptions::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpRemoteCommandOptions::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact complete record size. Initialize before inspection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1174" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1174" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteCommandOptions_1ae170e9be2c1e96eeaa06a9d647565b24" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteCommandOptions::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpRemoteCommandOptions::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1175" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1175" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteCommandOptions_1a8e0f3fcea9adcbefaede39fa411e5df6" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteCommandOptions::enabled</definition>
+        <argsstring></argsstring>
+        <name>enabled</name>
+        <qualifiedname>UrpRemoteCommandOptions::enabled</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One only for a configured remote composition. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1176" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1176" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteCommandOptions_1aaf0bb8e4cecbadc509aa63321815e421" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteCommandOptions::access</definition>
+        <argsstring></argsstring>
+        <name>access</name>
+        <qualifiedname>UrpRemoteCommandOptions::access</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Zero disabled, one open, two source-specific unlock. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1177" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1177" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteCommandOptions_1a7a636b3e53a4c6f4d944ba19ea40d477" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteCommandOptions::prefix_length</definition>
+        <argsstring></argsstring>
+        <name>prefix_length</name>
+        <qualifiedname>UrpRemoteCommandOptions::prefix_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>ASCII digit count, excluding the leading star. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1178" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1178" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteCommandOptions_1a1a4cc1f259db676edb2042afffcb29ef" prot="public" static="no" mutable="no">
+        <type>uint8_t</type>
+        <definition>uint8_t UrpRemoteCommandOptions::prefix[64]</definition>
+        <argsstring>[64]</argsstring>
+        <name>prefix</name>
+        <qualifiedname>UrpRemoteCommandOptions::prefix</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>At most 63 digits; unused bytes are zero. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1179" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1179" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Command policy from the shared source resolver, with no physical I/O. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="1173" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1173" bodyend="1180"/>
+    <listofallmembers>
+      <member refid="structUrpRemoteCommandOptions_1ae170e9be2c1e96eeaa06a9d647565b24" prot="public" virt="non-virtual"><scope>UrpRemoteCommandOptions</scope><name>abi_version</name></member>
+      <member refid="structUrpRemoteCommandOptions_1aaf0bb8e4cecbadc509aa63321815e421" prot="public" virt="non-virtual"><scope>UrpRemoteCommandOptions</scope><name>access</name></member>
+      <member refid="structUrpRemoteCommandOptions_1a8e0f3fcea9adcbefaede39fa411e5df6" prot="public" virt="non-virtual"><scope>UrpRemoteCommandOptions</scope><name>enabled</name></member>
+      <member refid="structUrpRemoteCommandOptions_1a1a4cc1f259db676edb2042afffcb29ef" prot="public" virt="non-virtual"><scope>UrpRemoteCommandOptions</scope><name>prefix</name></member>
+      <member refid="structUrpRemoteCommandOptions_1a7a636b3e53a4c6f4d944ba19ea40d477" prot="public" virt="non-virtual"><scope>UrpRemoteCommandOptions</scope><name>prefix_length</name></member>
+      <member refid="structUrpRemoteCommandOptions_1a3770e2a56fd7bdea9e5ad4d1119bd497" prot="public" virt="non-virtual"><scope>UrpRemoteCommandOptions</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

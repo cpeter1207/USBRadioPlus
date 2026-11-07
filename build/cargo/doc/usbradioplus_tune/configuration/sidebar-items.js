@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AslConfiguration","NativeConfiguration","SettingDestination"],"trait":["ConfigurationResolver"]};

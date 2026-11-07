@@ -1,0 +1,145 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpRemoteOperation" kind="struct" language="C++" prot="public">
+    <compoundname>UrpRemoteOperation</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpRemoteOperation_1a7d7bdd900007ad6101c8e34eb2336f73" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteOperation::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpRemoteOperation::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact complete record size, 40 bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1126" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1126" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteOperation_1a20791b09fc29e924956d4652a7a773d2" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteOperation::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpRemoteOperation::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1127" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1127" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteOperation_1ab0f354af475fa6b058a804e23fd1cbde" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteOperation::operation</definition>
+        <argsstring></argsstring>
+        <name>operation</name>
+        <qualifiedname>UrpRemoteOperation::operation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Shared remote operation identifier, 1 through 27. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1128" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1128" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteOperation_1af6aac317560adc52b49b5accb7b1e76f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteOperation::selector</definition>
+        <argsstring></argsstring>
+        <name>selector</name>
+        <qualifiedname>UrpRemoteOperation::selector</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Setting, memory, scan, preset or catalog selector. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1129" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1129" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteOperation_1a08ecf9073f98a957c8e1f5f2ba901641" prot="public" static="no" mutable="no">
+        <type>int64_t</type>
+        <definition>int64_t UrpRemoteOperation::signed_value</definition>
+        <argsstring></argsstring>
+        <name>signed_value</name>
+        <qualifiedname>UrpRemoteOperation::signed_value</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Signed step in Hz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1130" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1130" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteOperation_1aa8ca53a10d362d528aa454f81bb9cf4d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRemoteOperation::magnitude</definition>
+        <argsstring></argsstring>
+        <name>magnitude</name>
+        <qualifiedname>UrpRemoteOperation::magnitude</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Unsigned operand in the operation&apos;s declared units. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1131" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1131" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteOperation_1aae65596835a2c375cb313afbf1cbc7d9" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteOperation::decimal_places</definition>
+        <argsstring></argsstring>
+        <name>decimal_places</name>
+        <qualifiedname>UrpRemoteOperation::decimal_places</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact input precision, zero through six. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1132" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1132" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteOperation_1aa45c7297603ef0944af5c040e0786122" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteOperation::flags</definition>
+        <argsstring></argsstring>
+        <name>flags</name>
+        <qualifiedname>UrpRemoteOperation::flags</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Operation-specific direction/enable/sign flags. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1133" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1133" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Copied remote operation. Identifiers and units match the declared operating catalog; no caller-owned pointer is retained. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="1125" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1125" bodyend="1134"/>
+    <listofallmembers>
+      <member refid="structUrpRemoteOperation_1a20791b09fc29e924956d4652a7a773d2" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>abi_version</name></member>
+      <member refid="structUrpRemoteOperation_1aae65596835a2c375cb313afbf1cbc7d9" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>decimal_places</name></member>
+      <member refid="structUrpRemoteOperation_1aa45c7297603ef0944af5c040e0786122" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>flags</name></member>
+      <member refid="structUrpRemoteOperation_1aa8ca53a10d362d528aa454f81bb9cf4d" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>magnitude</name></member>
+      <member refid="structUrpRemoteOperation_1ab0f354af475fa6b058a804e23fd1cbde" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>operation</name></member>
+      <member refid="structUrpRemoteOperation_1af6aac317560adc52b49b5accb7b1e76f" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>selector</name></member>
+      <member refid="structUrpRemoteOperation_1a08ecf9073f98a957c8e1f5f2ba901641" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>signed_value</name></member>
+      <member refid="structUrpRemoteOperation_1a7d7bdd900007ad6101c8e34eb2336f73" prot="public" virt="non-virtual"><scope>UrpRemoteOperation</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

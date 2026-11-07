@@ -1,0 +1,14 @@
+<map id="rust/asterisk/include/usbradioplus_asterisk.h" name="rust/asterisk/include/usbradioplus_asterisk.h">
+<area shape="rect" id="Node000001" title="Versioned loader ABI for the Rust&#45;owned USBRadioPlus Asterisk host." alt="" coords="12,5,192,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,167,76,192"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="93,47,68,94,49,154,44,152,64,92,88,44"/>
+<area shape="rect" id="Node000003" href="$usbradioplus__product_8h.html" title="Shared USBRadioPlus product ABI. Handles are opaque and host callbacks and provider descriptors must ..." alt="" coords="78,93,251,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="119,44,149,81,145,84,115,47"/>
+<area shape="poly" id="edge5_Node000003_Node000002" title=" " alt="" coords="146,121,74,162,71,157,143,116"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="101,167,175,192"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="163,120,150,155,145,153,158,118"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="199,167,282,192"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="179,117,220,155,216,159,175,121"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="307,167,377,192"/>
+<area shape="poly" id="edge6_Node000003_Node000006" title=" " alt="" coords="194,116,302,159,300,164,192,121"/>
+</map>

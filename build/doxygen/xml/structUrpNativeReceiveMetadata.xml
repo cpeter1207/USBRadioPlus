@@ -1,0 +1,241 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpNativeReceiveMetadata" kind="struct" language="C++" prot="public">
+    <compoundname>UrpNativeReceiveMetadata</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1af7e24e5879014987c14ebcddc21ea0d0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpNativeReceiveMetadata::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact complete record size. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="575" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="575" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1a1af4f9d48a662b70a257081950618047" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpNativeReceiveMetadata::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_NATIVE_RECEIVE_METADATA_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="576" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="576" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1adf57957971af754bd9891579f5fb8963" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativeReceiveMetadata::generation_id</definition>
+        <argsstring></argsstring>
+        <name>generation_id</name>
+        <qualifiedname>UrpNativeReceiveMetadata::generation_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Source radio generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="577" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="577" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1a970f2c4d076b686ce8e44085e78794b5" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativeReceiveMetadata::first_sample_index</definition>
+        <argsstring></argsstring>
+        <name>first_sample_index</name>
+        <qualifiedname>UrpNativeReceiveMetadata::first_sample_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>First source-native frame in this span. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="578" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="578" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1ac4d7dd98d59b838a45b88eb6d01533aa" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::frame_count</definition>
+        <argsstring></argsstring>
+        <name>frame_count</name>
+        <qualifiedname>UrpNativeReceiveMetadata::frame_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact accompanying mono sample count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="579" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="579" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1a8be30d864ca58d74b879420c9df5928f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::raw_receiver_keyed</definition>
+        <argsstring></argsstring>
+        <name>raw_receiver_keyed</name>
+        <qualifiedname>UrpNativeReceiveMetadata::raw_receiver_keyed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>RF and guard qualification before VAD, zero or one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="580" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="580" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1a4049b2cb221bd5fba739b3190ac2bde2" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::receiver_keyed</definition>
+        <argsstring></argsstring>
+        <name>receiver_keyed</name>
+        <qualifiedname>UrpNativeReceiveMetadata::receiver_keyed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Speech-admitted receive, zero or one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="581" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="581" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1a3b3aaa9d52fcf82ddbeb807db6541267" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::vad_mode</definition>
+        <argsstring></argsstring>
+        <name>vad_mode</name>
+        <qualifiedname>UrpNativeReceiveMetadata::vad_mode</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Effective mode: off0, kerchunk1, on2. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="582" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="582" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1a9e3df67255f1698085c16adbfc8a87f9" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativeReceiveMetadata::rf_burst_id</definition>
+        <argsstring></argsstring>
+        <name>rf_burst_id</name>
+        <qualifiedname>UrpNativeReceiveMetadata::rf_burst_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Identity of the current or most recent qualified RF burst. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="583" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="583" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1af3226c39d2c81bc48d06087c9fefe64d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativeReceiveMetadata::vad_voice_sample_index</definition>
+        <argsstring></argsstring>
+        <name>vad_voice_sample_index</name>
+        <qualifiedname>UrpNativeReceiveMetadata::vad_voice_sample_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Last fresh voiced decision, UINT64_MAX if absent. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="584" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="584" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1ae36500dcd0733c01b86cf417dcc2ecd3" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::vad_preroll_frames</definition>
+        <argsstring></argsstring>
+        <name>vad_preroll_frames</name>
+        <qualifiedname>UrpNativeReceiveMetadata::vad_preroll_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Minimum external-ring reserve, native frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="585" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="585" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1ad5ae135491ce801c4a478f0d02f66d45" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeReceiveMetadata::vad_voice_active</definition>
+        <argsstring></argsstring>
+        <name>vad_voice_active</name>
+        <qualifiedname>UrpNativeReceiveMetadata::vad_voice_active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest actual neural decision, zero or one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="586" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="586" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1ad6d6592cf1cb967fc94132fed740f77c" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativeReceiveMetadata::vad_score</definition>
+        <argsstring></argsstring>
+        <name>vad_score</name>
+        <qualifiedname>UrpNativeReceiveMetadata::vad_score</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest actual normalized score; priming is not speech. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="587" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="587" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeReceiveMetadata_1aea0cb9dc42ca674010485d088d5715ea" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpNativeReceiveMetadata::status</definition>
+        <argsstring></argsstring>
+        <name>status</name>
+        <qualifiedname>UrpNativeReceiveMetadata::status</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Zero success; negative cancels receive, with optional zero identity. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="588" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="588" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Borrowed metadata for exactly the accompanying native receive PCM span. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="574" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="574" bodyend="589"/>
+    <listofallmembers>
+      <member refid="structUrpNativeReceiveMetadata_1a1af4f9d48a662b70a257081950618047" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>abi_version</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1a970f2c4d076b686ce8e44085e78794b5" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>first_sample_index</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1ac4d7dd98d59b838a45b88eb6d01533aa" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>frame_count</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1adf57957971af754bd9891579f5fb8963" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>generation_id</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1a8be30d864ca58d74b879420c9df5928f" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>raw_receiver_keyed</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1a4049b2cb221bd5fba739b3190ac2bde2" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>receiver_keyed</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1a9e3df67255f1698085c16adbfc8a87f9" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>rf_burst_id</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1aea0cb9dc42ca674010485d088d5715ea" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>status</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1af7e24e5879014987c14ebcddc21ea0d0" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>struct_size</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1a3b3aaa9d52fcf82ddbeb807db6541267" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>vad_mode</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1ae36500dcd0733c01b86cf417dcc2ecd3" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>vad_preroll_frames</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1ad6d6592cf1cb967fc94132fed740f77c" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>vad_score</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1ad5ae135491ce801c4a478f0d02f66d45" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>vad_voice_active</name></member>
+      <member refid="structUrpNativeReceiveMetadata_1af3226c39d2c81bc48d06087c9fefe64d" prot="public" virt="non-virtual"><scope>UrpNativeReceiveMetadata</scope><name>vad_voice_sample_index</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
