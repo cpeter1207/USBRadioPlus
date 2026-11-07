@@ -1,5 +1,10 @@
 use super::*;
 
+fn counters(mut observation: LinkObservation) -> LinkObservation {
+    observation.loudness = Default::default();
+    observation
+}
+
 struct Gain {
     factor: f32,
     succeeds: bool,
@@ -31,7 +36,7 @@ fn setup_requires_positive_exact_bounds() {
     assert!(!LinkError::InvalidConfiguration.to_string().is_empty());
 
     let link = PreparedLink::new(8_000, 160, graph(1.0, true)).unwrap();
-    assert_eq!(link.observe(), LinkObservation::default());
+    assert_eq!(counters(link.observe()), LinkObservation::default());
 }
 
 #[test]
@@ -44,11 +49,12 @@ fn exact_read_frames_are_converted_processed_and_saturated() {
     );
     assert_eq!(pcm, [i16::MIN, -2, 2, i16::MAX]);
     assert_eq!(
-        link.observe(),
+        counters(link.observe()),
         LinkObservation {
             processed_blocks: 1,
             bypassed_blocks: 0,
             failed_blocks: 0,
+            ..LinkObservation::default()
         }
     );
 }
@@ -103,11 +109,12 @@ fn native_float_frames_preserve_precision_without_integer_conversion() {
     );
     assert_eq!(pcm, [-1.0, -0.246_913_58, 0.246_913_58, 1.0]);
     assert_eq!(
-        link.observe(),
+        counters(link.observe()),
         LinkObservation {
             processed_blocks: 1,
             bypassed_blocks: 0,
             failed_blocks: 0,
+            ..LinkObservation::default()
         }
     );
 }
@@ -136,11 +143,76 @@ fn native_float_rejections_and_graph_failure_retain_original_pcm() {
     );
     assert_eq!(pcm, original);
     assert_eq!(
-        link.observe(),
+        counters(link.observe()),
         LinkObservation {
             processed_blocks: 0,
             bypassed_blocks: 4,
             failed_blocks: 1,
+            ..LinkObservation::default()
         }
     );
+}
+
+#[test]
+fn output_meter_tracks_returned_audio_idle_and_failure_without_resetting_history() {
+    use usbradioplus_core::OutputLoudnessMeter;
+    for rate in [8_000, 48_000] {
+        let frames = (rate / 50) as usize;
+        let mut link = PreparedLink::new(rate, frames, graph(0.5, true)).unwrap();
+        let observer = link.observer();
+        let epoch = observer.observe().loudness.epoch;
+        assert_ne!(epoch, 0);
+        assert_eq!(observer.observe().loudness.sample_count, 0);
+        let mut reference = OutputLoudnessMeter::new(rate, frames).unwrap();
+        for _ in 0..50 {
+            let mut pcm: Vec<i16> = (0..frames)
+                .map(|i| [0, 5657, 8000, 5657, 0, -5657, -8000, -5657][i % 8])
+                .collect();
+            assert_eq!(
+                link.process_s16(LinkDirection::Read, rate, &mut pcm),
+                LinkProcessOutcome::Processed
+            );
+            let output: Vec<f32> = pcm.into_iter().map(s16_to_f32).collect();
+            reference.process(&output).unwrap();
+        }
+        for _ in 0..150 {
+            assert_eq!(link.advance_silence(frames), LinkProcessOutcome::Processed);
+            assert!(
+                link.input
+                    .iter()
+                    .chain(link.output.iter())
+                    .all(|v| *v == 0.0)
+            );
+            reference.process(&vec![0.0; frames]).unwrap();
+        }
+        let observed = observer.observe().loudness;
+        let expected = reference.observer().snapshot();
+        assert_eq!(observed.epoch, epoch);
+        assert_eq!(observed.sample_count, u64::from(rate) * 4);
+        assert_eq!(observed.integrated_lufs, expected.integrated_lufs);
+        assert_eq!(observed.true_peak_dbtp, expected.true_peak_dbtp);
+        for count in [0, frames + 1] {
+            assert_eq!(link.advance_silence(count), LinkProcessOutcome::Bypassed);
+            assert_eq!(observer.observe().loudness, observed);
+        }
+        let mut failed = PreparedLink::new(rate, frames, graph(2.0, false)).unwrap();
+        let mut original = vec![1234; frames];
+        assert_eq!(
+            failed.process_s16(LinkDirection::Read, rate, &mut original),
+            LinkProcessOutcome::GraphFailed
+        );
+        assert_eq!(original, vec![1234; frames]);
+        assert_eq!(
+            failed.advance_silence(frames),
+            LinkProcessOutcome::GraphFailed
+        );
+        assert_eq!(failed.observe().loudness.sample_count, 2 * frames as u64);
+        assert!(
+            failed
+                .input
+                .iter()
+                .chain(failed.output.iter())
+                .all(|v| *v == 0.0)
+        );
+    }
 }

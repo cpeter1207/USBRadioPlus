@@ -305,7 +305,12 @@ fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
     let (plan, processing) = prepared.into_parts();
     let mut received = 0_u32;
     let mut transmitted = 0_u32;
-    unsafe extern "C" fn receive(context: *mut c_void, _: u32, _: *mut f32, frames: u32) -> i32 {
+    unsafe extern "C" fn receive(
+        context: *mut c_void,
+        _: *const crate::DirectReceiveMetadata,
+        _: *mut f32,
+        frames: u32,
+    ) -> i32 {
         // SAFETY: this test retains the u32 until synchronous runtime destruction.
         unsafe { *context.cast::<u32>() += frames };
         0
@@ -1109,6 +1114,8 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     STOPS.set(0);
     DESTROYS.set(0);
     let (mut runtime, mut control) = runtime(20);
+    let original_rx = control.receive_loudness().unwrap().epoch;
+    let original_tx = control.transmit_loudness().unwrap().epoch;
     let hardware = runtime.hardware_state();
     hardware.publish_inputs(HardwareInputs {
         carrier: true,
@@ -1125,6 +1132,7 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     let before = control.radio().radio().snapshot().unwrap();
     let mut configuration = control.plan().configuration().clone();
     configuration.local.input_gain_db = 3.0;
+    configuration.voice_telemetry.output_gain_db = -1.0;
     let plan = StationPlan::new("usb", configuration, control.plan().transport(), 21, 960).unwrap();
     let update = runtime
         .prepare_update(&control, plan, &factory(), radio_provider())
@@ -1136,11 +1144,14 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     ));
     // Explicit ticks let the test observe each owner without a timing-dependent sleep.
     update_tick(&mut runtime, true);
+    assert_ne!(control.receive_loudness().unwrap().epoch, original_rx);
+    assert_eq!(control.transmit_loudness().unwrap().epoch, original_tx);
     assert!(matches!(
         runtime.update_result(),
         Err(crate::StationUpdateError::Pending)
     ));
     update_tick(&mut runtime, false);
+    assert_ne!(control.transmit_loudness().unwrap().epoch, original_tx);
     runtime.accept_update(&mut control).unwrap();
     runtime.finish_update(&mut control, true).unwrap();
     let after = control.radio().radio().snapshot().unwrap();
@@ -1149,6 +1160,65 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
     assert!(hardware.outputs().logical_ptt);
     assert_eq!((STARTS.get(), STOPS.get(), DESTROYS.get()), (1, 0, 0));
     assert_eq!(control.plan().configuration().local.input_gain_db, 3.0);
+}
+
+#[test]
+fn disabled_receive_source_starts_a_new_meter_epoch() {
+    STARTS.set(0);
+    STOPS.set(0);
+    DESTROYS.set(0);
+    let (mut runtime, mut control) = runtime(20);
+    let original_rx = control.receive_loudness().unwrap().epoch;
+    let original_tx = control.transmit_loudness().unwrap().epoch;
+    let hardware = runtime.hardware_state();
+    hardware.publish_inputs(HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        physical_ptt: true,
+        ..HardwareInputs::default()
+    });
+    hardware.publish_requests(ControllerRequests {
+        transmit: true,
+        render_admitted: true,
+        ..ControllerRequests::default()
+    });
+    runtime.start().unwrap();
+    let before = control.radio().radio().snapshot().unwrap();
+    let mut configuration = control.plan().configuration().clone();
+    configuration.station.receive.audio_source = usbradioplus_core::ReceiveAudioSource::Disabled;
+    let mut radio = *control.plan().radio();
+    radio.generation_id = 21;
+    radio.receive_input_gain = 0.0;
+    let plan = control
+        .plan()
+        .clone()
+        .with_radio_configuration(configuration, radio);
+    let update = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    assert!(matches!(
+        runtime.update_result(),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    // Explicit ticks let the test observe each owner without a timing-dependent sleep.
+    update_tick(&mut runtime, true);
+    assert_ne!(control.receive_loudness().unwrap().epoch, original_rx);
+    assert_eq!(control.transmit_loudness().unwrap().epoch, original_tx);
+    assert!(matches!(
+        runtime.update_result(),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, false);
+    assert_eq!(control.transmit_loudness().unwrap().epoch, original_tx);
+    runtime.accept_update(&mut control).unwrap();
+    runtime.finish_update(&mut control, true).unwrap();
+    let after = control.radio().radio().snapshot().unwrap();
+    assert!(after.receive_frames > before.receive_frames);
+    assert!(after.transmit_frames > before.transmit_frames);
+    assert!(hardware.outputs().logical_ptt);
+    assert_eq!((STARTS.get(), STOPS.get(), DESTROYS.get()), (1, 0, 0));
+    assert_eq!(control.plan().radio().receive_input_gain, 0.0);
 }
 
 #[test]
@@ -1518,6 +1588,14 @@ fn shared_hardware_state_round_trips_complete_atomic_snapshots() {
     state.publish_receive_clipping(2);
     assert_eq!(state.receive_clip_events(), 1);
     let observation_result = ReceiveResult {
+        raw_receiver_keyed: true,
+        rf_burst_id: 0,
+        vad_mode: usbradioplus_radio::VadMode::Off,
+        vad_voice_active: false,
+        vad_score: 0.0,
+        vad_voice_sample_index: u64::MAX,
+        vad_preroll_frames: 0,
+
         generation_id: 1,
         first_sample_index: 0,
         frame_count: 1,
@@ -1882,6 +1960,7 @@ struct DirectCapture {
     metadata_source: u32,
     metadata_calls: u32,
     fail_metadata_after: u32,
+    receive_metadata: Option<crate::DirectReceiveMetadata>,
 }
 
 unsafe extern "C" fn direct_metadata(context: *mut c_void, flags: u32, source: *mut u32) -> c_int {
@@ -1901,19 +1980,21 @@ unsafe extern "C" fn direct_metadata(context: *mut c_void, flags: u32, source: *
 
 unsafe extern "C" fn direct_receive(
     context: *mut c_void,
-    keyed: u32,
+    metadata: *const crate::DirectReceiveMetadata,
     samples: *mut f32,
     count: u32,
 ) -> c_int {
     // SAFETY: the test owns the context and exact mono span for this call.
-    let (capture, samples) = unsafe {
+    let (capture, samples, metadata) = unsafe {
         (
             &mut *context.cast::<DirectCapture>(),
             std::slice::from_raw_parts_mut(samples, count as usize),
+            &*metadata,
         )
     };
     capture.samples.copy_from_slice(&samples[..4]);
-    capture.keyed = keyed;
+    capture.keyed = metadata.receiver_keyed;
+    capture.receive_metadata = Some(*metadata);
     capture.receive_calls += 1;
     samples.fill(0.0);
     capture.rx_status
@@ -2085,6 +2166,23 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     assert_eq!(runtime.hardware.callback_statistics().receive_failures, 1);
     capture.rx_status = 0;
     assert_eq!(capture.rx_status, 0);
+    let invalid = [f32::NAN; 8];
+    assert_eq!(
+        // SAFETY: this stopped runtime owns the context and the exact stereo span.
+        unsafe { receive_callback(runtime._receive_context.get().cast(), invalid.as_ptr(), 4) },
+        CALLBACK_FAILED
+    );
+    assert_eq!(
+        capture.receive_calls, 3,
+        "source failure must cancel the previous direct admission"
+    );
+    let cancelled = capture.receive_metadata.unwrap();
+    assert!(cancelled.status < 0);
+    assert_eq!(
+        (cancelled.raw_receiver_keyed, cancelled.receiver_keyed),
+        (0, 0)
+    );
+    assert_eq!(capture.samples, [0.0; 4]);
     let mut voice = ControllerPcmFrame::silence(AsteriskPcmMode::Advanced);
     assert!(control.controller().next_action(&mut voice).is_none());
     let mut output = [0.0; 8];
@@ -2159,7 +2257,7 @@ fn direct_callbacks_bypass_asterisk_and_stage_audio_and_key_in_the_same_render()
     drop(runtime);
     assert_eq!(DESTROYS.get(), 1);
     // Context remains owned here until both callback owners have been destroyed.
-    assert_eq!(capture.receive_calls, 3);
+    assert_eq!(capture.receive_calls, 4);
     assert_eq!(capture.transmit_calls, 5);
 }
 
@@ -2282,6 +2380,14 @@ fn metadata_maps_qualification_ctcss_voter_and_transmit_status() {
     tones[0] = CtcssTone::from_tenths_hz(670);
     let metadata = receive_metadata(
         ReceiveResult {
+            raw_receiver_keyed: true,
+            rf_burst_id: 0,
+            vad_mode: usbradioplus_radio::VadMode::Off,
+            vad_voice_active: false,
+            vad_score: 0.0,
+            vad_voice_sample_index: u64::MAX,
+            vad_preroll_frames: 0,
+
             generation_id: 1,
             first_sample_index: 0,
             frame_count: 1,
@@ -2429,6 +2535,14 @@ fn receive_failure_without_pending_transmit_ctcss_needs_no_restore() {
 #[test]
 fn metadata_omits_voter_status_when_it_is_not_reportable() {
     let result = |receiver_keyed, rssi_updated| ReceiveResult {
+        raw_receiver_keyed: receiver_keyed,
+        rf_burst_id: 0,
+        vad_mode: usbradioplus_radio::VadMode::Off,
+        vad_voice_active: false,
+        vad_score: 0.0,
+        vad_voice_sample_index: u64::MAX,
+        vad_preroll_frames: 0,
+
         generation_id: 1,
         first_sample_index: 0,
         frame_count: 1,

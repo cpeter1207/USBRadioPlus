@@ -33,6 +33,9 @@ struct RawReceiveConfig {
     dcs_inverted: u32,
     cpu_saver_enabled: u32,
     native_squelch_delay_frames: u32,
+    vad_mode: u32,
+    vad_hang_ms: u32,
+    vad_external_delay: u32,
 }
 
 #[repr(C)]
@@ -97,7 +100,7 @@ fn radio() -> RawSessionConfig {
     // SAFETY: the fixture consists solely of integers, floats and numeric arrays.
     let mut config: RawSessionConfig = unsafe { std::mem::zeroed() };
     config.struct_size = size_of::<RawSessionConfig>() as u32;
-    config.abi_version = 4;
+    config.abi_version = 5;
     config.generation_id = 1;
     config.native_sample_rate_hz = 48_000;
     config.interleaved_channels = 2;
@@ -194,7 +197,7 @@ fn native_create_accepts_the_current_processing_configuration_abi() {
     fixture::clear_failure();
     let raw = radio();
     let mut config = request(&raw);
-    config.abi_version = 3;
+    config.abi_version = URP_NATIVE_CONFIG_ABI_VERSION;
     let (status, handle) = create(&config);
     assert_eq!(status, URP_AST_OK);
     // SAFETY: successful creation transfers the uniquely owned native handle.
@@ -549,6 +552,11 @@ fn native_physical_commands_snapshot_and_manual_cleanup_share_the_owner() {
         assert!(processing.contains("radio_receive_calls=1"));
         assert!(processing.contains("radio_transmit_calls=1"));
         assert!(processing.contains("radio_receive_failures=0"));
+        assert!(processing.contains("receive_loudness_meter_enabled=1\n"));
+        assert!(processing.contains("transmit_loudness_meter_enabled=1\n"));
+        assert!(processing.contains("transmit_integrated_lufs=unavailable\n"));
+        assert!(processing.contains("transmit_true_peak_dbtp=unavailable\n"));
+        assert!(processing.contains("transmit_loudness_sample_count=0\n"));
         assert_eq!(crate::native::set_transmit(handle, 1, 1_000), URP_AST_OK);
         command.command = URP_AST_COMMAND_SET_TEST_TONE;
         command.value = 1;
@@ -1196,7 +1204,7 @@ fn native_create_rejects_old_or_short_configurations_before_reading_the_gain_tai
     assert!(handle.is_null());
     let raw = radio();
     let mut config = request(&raw);
-    for version in [1, 2, 4] {
+    for version in [1, 2, 3, 5] {
         config.abi_version = version;
         let (status, handle) = create(&config);
         assert_eq!(status, URP_AST_INCOMPATIBLE_ABI);

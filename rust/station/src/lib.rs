@@ -20,13 +20,13 @@ mod runtime;
 use usbradioplus_core::{
     CarrierSource as ConfigCarrierSource, ChannelConfiguration, CtcssSource, CtcssTone,
     CtcssTurnoffMode, DcsPolarity, HardwareOutputAssignment, RadioDuplexMode, ReceiveAudioSource,
-    SignalingMethod,
+    SignalingMethod, VadMode as ConfigVadMode,
 };
 use usbradioplus_radio::{
     CarrierSource, CtcssReceiveConfig, CtcssToneIndex, CtcssToneMask, CtcssTransmitConfig,
     DcsReceiveConfig, DcsTransmitConfig, NoiseFilterProfile, OutputConfig, OutputRoute,
     QualificationConfig, RadioError, ReceiveConfig, ReceiveSignaling, SessionConfig,
-    SubaudibleSource, ToneOffMode, TransmitConfig, TransmitSignaling,
+    SubaudibleSource, ToneOffMode, TransmitConfig, TransmitSignaling, VadMode,
 };
 use usbradioplus_runtime::NativeProcessingPlan;
 
@@ -36,8 +36,8 @@ pub use hardware::{
     native_hardware_plan,
 };
 pub use media::{
-    ControllerSetup, DirectCallbacks, NativeStationMedia, StationControl, StationMedia,
-    StationMediaError, StationReceive, StationTransmit,
+    ControllerSetup, DirectCallbacks, DirectReceiveMetadata, NativeStationMedia, StationControl,
+    StationMedia, StationMediaError, StationReceive, StationTransmit,
 };
 pub use program::{
     ProgramRingConsumer, ProgramRingPlan, ProgramRingSetupError, prepare_program_ring,
@@ -102,9 +102,20 @@ pub fn radio_session_config(
         vox_threshold: i32::from(receive.vox_threshold),
         vox_hang_milliseconds: i32::from(receive.vox_hang_ms),
         signaling: receive_signaling(channel)?,
-        cpu_saver_enabled: receive.cpu_saver_enabled,
+        cpu_saver_enabled: false,
         native_squelch_delay_frames: u32::from(receive.squelch_delay_ms) * 48,
+        vad_mode: match receive.vad_mode {
+            ConfigVadMode::Off => VadMode::Off,
+            ConfigVadMode::Kerchunk => VadMode::Kerchunk,
+            ConfigVadMode::On => VadMode::On,
+        },
+        vad_hang_ms: receive.vad_hang_ms,
+        vad_external_delay: transport == ControllerTransport::RptAdvanced
+            && receive.vad_mode != ConfigVadMode::Off,
     };
+    if result.receive.vad_external_delay {
+        result.receive.native_squelch_delay_frames = 0;
+    }
     result.qualification = QualificationConfig {
         carrier_source: carrier_source(receive.cos_assignment),
         subaudible_source: subaudible_source(channel),
@@ -119,7 +130,7 @@ pub fn radio_session_config(
         tone_off_mode: tone_off_mode(station.ctcss.turnoff_mode),
         settle_time_milliseconds: i32::try_from(station.transmit.settle_ms)
             .map_err(|_| RadioError::InvalidArgument)?,
-        cpu_saver_enabled: station.transmit.cpu_saver_enabled,
+        cpu_saver_enabled: false,
         receive_blanking_milliseconds: i32::from(station.transmit.rx_blanking_ms),
         output_a: output_config(station.hardware.output_a_assignment),
         output_b: output_config(station.hardware.output_b_assignment),
@@ -140,6 +151,7 @@ pub fn native_radio_session_config(
         maximum_frame_count,
     )?;
     radio.receive.native_squelch_delay_frames = 0;
+    radio.receive.vad_external_delay = true;
     Ok(radio)
 }
 

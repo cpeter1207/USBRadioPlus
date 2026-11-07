@@ -692,12 +692,6 @@ const ALIASES: &[Alias] = &[
     ),
     alias!("receive_audio", "receive", "audio_source", Audio),
     alias!("receive_signaling", "receive", "signaling_method", Identity),
-    alias!(
-        "receive_cpu_saver_enabled",
-        "receive",
-        "cpu_saver_enabled",
-        Identity
-    ),
     alias!("carrier_source", "receive", "cos_assignment", Carrier),
     alias!("squelch_level", "receive", "squelch_level", Identity),
     alias!(
@@ -709,6 +703,8 @@ const ALIASES: &[Alias] = &[
     alias!("noise_filter", "receive", "noise_filter_type", Noise),
     alias!("vox_threshold", "receive", "vox_threshold", Identity),
     alias!("vox_hang_ms", "receive", "vox_hang_ms", Identity),
+    alias!("vad_mode", "receive", "vad_mode", Identity),
+    alias!("vad_hang_ms", "receive", "vad_hang_ms", Identity),
     alias!(
         "receive_on_delay_ms",
         "receive",
@@ -796,12 +792,6 @@ const ALIASES: &[Alias] = &[
         "transmit_signaling",
         "transmit",
         "signaling_method",
-        Identity
-    ),
-    alias!(
-        "transmit_cpu_saver_enabled",
-        "transmit",
-        "cpu_saver_enabled",
         Identity
     ),
     alias!(

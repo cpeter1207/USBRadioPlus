@@ -30,7 +30,7 @@ use usbradioplus_station::{
 };
 
 /// Current resolved native station request ABI.
-pub const URP_NATIVE_CONFIG_ABI_VERSION: u32 = 3;
+pub const URP_NATIVE_CONFIG_ABI_VERSION: u32 = 4;
 /// Select hardware capture gain at native startup.
 pub const URP_NATIVE_HARDWARE_GAIN_INPUT: u32 = 1;
 /// Select hardware output-A gain at native startup.
@@ -45,9 +45,9 @@ pub const URP_NATIVE_HARDWARE_GAIN_OUTPUT_B: u32 = 4;
 pub struct UrpNativeStationConfig {
     /// Exact structure size.
     pub struct_size: u32,
-    /// Native request ABI, currently three.
+    /// Native request ABI, currently four.
     pub abi_version: u32,
-    /// Pointer to the released `rptadv_radio_session_config` ABI-4 template.
+    /// Pointer to the released `rptadv_radio_session_config` ABI-5 template.
     /// Effective settings are preserved except lifecycle generation, frame bounds
     /// and publication cadence; inactive signaling fields are normalized.
     pub radio: *const c_void,
@@ -463,12 +463,10 @@ pub(crate) unsafe extern "C" fn processing_status_text(
         let station = unsafe { handle.cast::<NativeStation>().as_ref() };
         let station = station.ok_or(Status::InvalidArgument)?;
         let observation = station.runtime.hardware_state().callback_statistics();
-        let text = format!(
-            "radio_receive_calls={}\nradio_transmit_calls={}\nradio_receive_failures={}\nradio_transmit_failures={}\n",
-            observation.receive_calls,
-            observation.transmit_calls,
-            observation.receive_failures,
-            observation.transmit_failures,
+        let text = crate::maintenance::processing_status_text(
+            observation,
+            station.control.receive_loudness(),
+            station.control.transmit_loudness(),
         );
         // SAFETY: the synchronous sink borrows this complete UTF-8 span only.
         unsafe { sink(context, text.as_ptr(), text.len() as u32) };
@@ -983,6 +981,7 @@ unsafe fn resolve(
         ExplicitNativeProcessingPlan {
             local: None,
             voice_telemetry: None,
+            receive_input_gain: radio.receive_input_gain,
             receive_graph,
             transmit_graph,
             receive_deemphasis: config.receive_deemphasis != 0,

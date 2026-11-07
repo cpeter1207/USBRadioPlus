@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{f32_to_s16, s16_to_f32};
+use usbradioplus_core::{OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudnessSnapshot};
 
 /// Exact-rate graph operation prepared by product composition.
 ///
@@ -22,12 +23,14 @@ pub enum LinkDirection {
     Read,
     /// Audio written toward the remote link.
     Write,
+    /// Advance an idle clock with silence without producing link media.
+    Silence,
 }
 
 /// Invalid per-link control-plane setup.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LinkError {
-    /// Sample rate and maximum frame count must both be positive.
+    /// Sample rate must be 8..384 kHz and the frame bound must be 1..4096.
     InvalidConfiguration,
 }
 
@@ -51,7 +54,7 @@ pub enum LinkProcessOutcome {
 }
 
 /// Lock-free counters readable by diagnostics while an audiohook is active.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct LinkObservation {
     /// Successfully processed blocks.
     pub processed_blocks: u64,
@@ -59,6 +62,8 @@ pub struct LinkObservation {
     pub bypassed_blocks: u64,
     /// Graph failures that retained original PCM.
     pub failed_blocks: u64,
+    /// Mandatory final-output integrated loudness and true-peak measurement.
+    pub loudness: OutputLoudnessSnapshot,
 }
 
 #[derive(Default)]
@@ -72,6 +77,7 @@ struct LinkCounters {
 #[derive(Clone)]
 pub struct LinkObserver {
     counters: Arc<LinkCounters>,
+    loudness: OutputLoudnessObserver,
 }
 
 impl LinkObserver {
@@ -81,6 +87,7 @@ impl LinkObserver {
             processed_blocks: self.counters.processed_blocks.load(Ordering::Relaxed),
             bypassed_blocks: self.counters.bypassed_blocks.load(Ordering::Relaxed),
             failed_blocks: self.counters.failed_blocks.load(Ordering::Relaxed),
+            loudness: self.loudness.snapshot(),
         }
     }
 }
@@ -94,6 +101,7 @@ pub struct PreparedLink {
     input: Box<[f32]>,
     output: Box<[f32]>,
     graph: Box<dyn ExactRateGraph>,
+    meter: OutputLoudnessMeter,
     observation: LinkObserver,
 }
 
@@ -104,16 +112,18 @@ impl PreparedLink {
         maximum_frame_count: usize,
         graph: Box<dyn ExactRateGraph>,
     ) -> Result<Self, LinkError> {
-        if sample_rate_hz == 0 || maximum_frame_count == 0 {
-            return Err(LinkError::InvalidConfiguration);
-        }
+        let meter = OutputLoudnessMeter::new(sample_rate_hz, maximum_frame_count)
+            .map_err(|_| LinkError::InvalidConfiguration)?;
+        let loudness = meter.observer();
         Ok(Self {
             sample_rate_hz,
             input: vec![0.0; maximum_frame_count].into_boxed_slice(),
             output: vec![0.0; maximum_frame_count].into_boxed_slice(),
             graph,
+            meter,
             observation: LinkObserver {
                 counters: Arc::new(LinkCounters::default()),
+                loudness,
             },
         })
     }
@@ -159,7 +169,7 @@ impl PreparedLink {
         to_float: impl Fn(T) -> f32,
         from_float: impl Fn(f32) -> T,
     ) -> LinkProcessOutcome {
-        if direction != LinkDirection::Read
+        if direction == LinkDirection::Write
             || sample_rate_hz != self.sample_rate_hz
             || pcm.is_empty()
             || pcm.len() > self.input.len()
@@ -170,6 +180,11 @@ impl PreparedLink {
                 .fetch_add(1, Ordering::Relaxed);
             return LinkProcessOutcome::Bypassed;
         }
+        if direction == LinkDirection::Silence {
+            let outcome = self.advance_silence(pcm.len());
+            pcm.fill(from_float(0.0));
+            return outcome;
+        }
         for (output, input) in self.input[..pcm.len()].iter_mut().zip(pcm.iter()) {
             *output = to_float(*input);
         }
@@ -177,20 +192,61 @@ impl PreparedLink {
             .graph
             .process_exact(&self.input[..pcm.len()], &mut self.output[..pcm.len()])
         {
+            self.meter
+                .process(&self.input[..pcm.len()])
+                .expect("validated link frame bound");
             self.observation
                 .counters
                 .failed_blocks
                 .fetch_add(1, Ordering::Relaxed);
             return LinkProcessOutcome::GraphFailed;
         }
-        for (output, processed) in pcm.iter_mut().zip(&self.output) {
+        for ((output, measured), processed) in pcm.iter_mut().zip(&mut self.input).zip(&self.output)
+        {
             *output = from_float(*processed);
+            *measured = to_float(*output);
         }
+        self.meter
+            .process(&self.input[..pcm.len()])
+            .expect("validated link frame bound");
         self.observation
             .counters
             .processed_blocks
             .fetch_add(1, Ordering::Relaxed);
         LinkProcessOutcome::Processed
+    }
+
+    /// Advance one bounded idle interval without emitting audio or resetting history.
+    /// All workspaces are prepared; graph tails are discarded and silence is metered.
+    pub fn advance_silence(&mut self, count: usize) -> LinkProcessOutcome {
+        if count == 0 || count > self.input.len() {
+            self.observation
+                .counters
+                .bypassed_blocks
+                .fetch_add(1, Ordering::Relaxed);
+            return LinkProcessOutcome::Bypassed;
+        }
+        self.input[..count].fill(0.0);
+        let processed = self
+            .graph
+            .process_exact(&self.input[..count], &mut self.output[..count]);
+        self.output[..count].fill(0.0);
+        self.meter
+            .process(&self.input[..count])
+            .expect("validated idle frame bound");
+        if processed {
+            self.observation
+                .counters
+                .processed_blocks
+                .fetch_add(1, Ordering::Relaxed);
+            LinkProcessOutcome::Processed
+        } else {
+            self.observation
+                .counters
+                .failed_blocks
+                .fetch_add(1, Ordering::Relaxed);
+            LinkProcessOutcome::GraphFailed
+        }
     }
 
     /// Read one coherent-enough set of independent diagnostic counters.

@@ -1,5 +1,5 @@
 .TH USBRADIOPLUS-TUNE 8 "November 2026" "USBRadioPlus alpha" "System Administration"
-.\" source-sha256 rust/tune/src/catalog.rs e53b9a2a35c5251d7039f5f52ce1d9f1ad31b6bdc12ec081d80cadfb52632c47
+.\" source-sha256 rust/tune/src/catalog.rs 3dc27953a30268fac68d0aeaec768c63050e6f195d4bca4d31c79b7474faaeca
 .\" source-sha256 rust/tune/src/control.rs 5062a2064f466dc687f6ecce3f07fcce76f499c0d17ffbee8881ed25eba97cad
 .SH NAME
 usbradioplus-tune \- tune and monitor a shared radio interface
@@ -123,6 +123,13 @@ and
 .B [transmit]
 configuration. The CTCSS and DCS submenus edit their separate signaling
 sections. Select one signaling method per direction: carrier, CTCSS, or DCS.
+The receiver menu also offers VAD Off, Kerchunk suppression, and continuous
+speech qualification, with a separate 0--32767 ms VAD hang setting (default
+1000 ms). These edits reload the radio policy; they do not change the existing
+VOX threshold or hang. Kerchunk requires fresh speech once per RF-qualified
+burst. With no closing RF qualification it reports a fallback to continuous
+speech qualification. Active VAD uses a minimum 160 ms reserve in the existing
+receive delay owner. Standalone delay remains a controller setting.
 Receive CTCSS is independent of transmit signaling: it requires a CTCSS
 receive method, a CTCSS source other than no indication, and a supported
 receive-frequency list. Transmit CTCSS is likewise independent of receive
@@ -198,10 +205,8 @@ radio or profile section receiving each edit.
 .PP
 Standalone defaults remain exact device selection, mono playback, output A
 carrying voice, output B carrying tone, transmit pre-emphasis off, and EEPROM
-disabled. Receive and transmit CPU savers are independent:
-.B receive_cpu_saver_enabled
-and
-.BR transmit_cpu_saver_enabled .
+disabled. Receive and transmit processing remains active during idle intervals
+so mandatory output analysis advances. CPU-saver settings are retired.
 Configured parallel inputs and outputs use the same hardware owner as USB GPIO;
 no parallel transport opens when none is configured. Receive delay remains
 standalone controller policy.
@@ -216,22 +221,30 @@ images leave file tuning in effect. Startup never writes EEPROM.
 The Local receiver, Linked audio, and Voice + telemetry menus edit their
 separate processing chains. Each Stages menu enables or disables the available
 stages and edits the order of equalizer, expander, AGC, de-esser, compressor,
-and limiter. RNNoise, local receiver filters, the final limiter, and its
-post-limiter brick-wall band-pass are not reorderable. The local chain alone offers RNNoise
-and CTCSS filtering; the voice/telemetry chain alone offers the final limiter
-and post-limiter brick-wall band-pass.
+and Multiband Limiter. Every role has a separate Peak Limiter page and toggle.
+Peak Limiter runs after optional dynamics, software gain, and source-specific
+filtering; it is not reorderable. The local chain alone offers RNNoise and
+CTCSS filtering. Only voice/telemetry offers the fixed transmitter band-pass,
+which precedes Peak Limiter.
 .PP
-The Compressor and Limiter pages each select single-band or three-band mode.
+The Compressor and Multiband Limiter pages each select single-band or three-band mode.
 Three-band mode uses low, mid, and high controls around configurable
 crossovers. The Equalizer and De-esser pages expose their respective parameters.
-The AGC page exposes its detector-band RMS target, averaging, gain rates,
-limits, activity gate, hold, deadband, and optional detector filters. See
+The AGC page exposes its full-program LUFS target and 400-3000 ms loudness
+window (default 400 ms), gain rates and limits, separate raw dBFS activity
+gate, hold, and deadband. A complete initial window precedes gain changes;
+renewed activity preserves its history. Boosts also require the configured
+hold. AGC does not buffer program audio or provide a
+true-peak ceiling. See
 .BR usbradioplus.conf (5)
 for parameter definitions and ranges.
 .TP
 .B Show processing measurement snapshot
-Show one coherent, recently published processing-statistics snapshot. It can be
-briefly stale rather than waiting for native or link rendering.
+Show recently published processing-statistics snapshots. Separate receive,
+transmit, and per-link measurements include integrated loudness, maximum true
+peak, validity, sample count, and epoch. The meters are always active after
+Peak Limiter and have no Stages-menu toggle. Measurements can be briefly stale
+rather than waiting for native or link rendering.
 .TP
 .B Show complete active configuration
 Show the selected radio's resolved configuration and live state.
@@ -261,7 +274,7 @@ Controls are grouped by source and signaling system; configure a
 signaling system before selecting it for either direction.
 The local Filters page controls the receive band-pass and one PL-removal mode:
 disabled, high-pass, or automatic decoded-tone notch. The voice/telemetry
-Filters page controls the post-limiter brick-wall band-pass. The link chain has no fixed
+Filters page controls the fixed transmitter band-pass. The link chain has no fixed
 filter page.
 .PP
 Compressor and Limiter pages select single-band or three-band operation.

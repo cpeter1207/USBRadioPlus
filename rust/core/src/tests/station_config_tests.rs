@@ -63,6 +63,20 @@ fn shipped_station_defaults_are_concrete_and_safe() {
 }
 
 #[test]
+fn retired_cpu_saver_keys_warn_at_every_station_overlay() {
+    for value in ["yes", "no", "invalid"] {
+        let resolved = resolve(&format!(
+            "[usb]\n[receive]\ncpu_saver_enabled={value}\n[transmit]\ncpu_saver_enabled={value}\n[receive usb]\ncpu_saver_enabled={value}\n[transmit usb]\ncpu_saver_enabled={value}\n"
+        )).unwrap();
+        assert_eq!(resolved.config(), &StationConfig::default());
+        assert_eq!(resolved.warnings().len(), 4);
+        assert!(resolved.warnings().iter().all(|warning| warning.kind
+            == ResolutionWarningKind::UnknownOption
+            && warning.name == "cpu_saver_enabled"));
+    }
+}
+
+#[test]
 fn every_current_non_processing_option_is_typed() {
     let resolved = resolve(
         "[usb]\n\
@@ -119,7 +133,6 @@ fn every_current_non_processing_option_is_typed() {
              \n\
              [receive]\n\
              signaling_method = ctcss\n\
-             cpu_saver_enabled = yes\n\
              audio_source = speaker\n\
              cos_assignment = usb\n\
              vox_hang_ms = 100\n\
@@ -133,7 +146,6 @@ fn every_current_non_processing_option_is_typed() {
              \n\
              [transmit]\n\
              signaling_method = ctcss\n\
-             cpu_saver_enabled = yes\n\
              preemphasis_enabled = no\n\
              settle_ms = 600\n\
              rx_blanking_ms = 700\n\
@@ -433,7 +445,6 @@ fn malformed_scalars_warn_and_fall_back_at_their_overlay_layer() {
     let resolved = resolve(
         "[usb]\n\
              [receive]\n\
-             cpu_saver_enabled = true\n\
              vox_threshold = -1\n\
              noise_filter_type = 2\n\
              squelch_delay_ms = 512\n\
@@ -452,7 +463,7 @@ fn malformed_scalars_warn_and_fall_back_at_their_overlay_layer() {
     )
     .unwrap();
     assert_eq!(resolved.config(), &StationConfig::default());
-    assert_eq!(resolved.warnings().len(), 12);
+    assert_eq!(resolved.warnings().len(), 11);
     assert!(
         resolved
             .warnings()
@@ -1077,4 +1088,115 @@ fn duplicate_equal_assignments_and_validation_short_circuits_are_safe() {
     candidate.hardware.output_a_assignment = HardwareOutputAssignment::Off;
     candidate.hardware.output_b_assignment = HardwareOutputAssignment::Ctcss;
     assert_eq!(candidate.validate(), Ok(()));
+}
+
+#[test]
+fn vad_modes_resolve_after_profiles_without_changing_vox() {
+    let defaults = resolve("[usb]\n").unwrap();
+    assert_eq!(defaults.config().receive.vad_mode, VadMode::Off);
+    assert_eq!(defaults.config().receive.vad_hang_ms, 1_000);
+    let resolved = resolve("[usb]\nreceive_profile=voice\n[receive]\nvad_mode=off\nvad_hang_ms=123\nvox_hang_ms=4321\n[receive voice]\nvad_mode=KeRcHuNk\nvad_hang_ms=32767\n").unwrap();
+    assert_eq!(resolved.config().receive.vad_mode, VadMode::Kerchunk);
+    assert_eq!(resolved.config().receive.vad_mode.to_string(), "kerchunk");
+    assert_eq!(resolved.config().receive.vad_hang_ms, 32767);
+    assert_eq!(resolved.config().receive.vox_hang_ms, 4321);
+    assert!(resolved.warnings().is_empty());
+    for value in ["-1", "32768", "bogus"] {
+        let resolved = resolve(&format!("[usb]\n[receive]\nvad_mode=off\nvad_hang_ms=123\n[receive usb]\nvad_mode=maybe\nvad_hang_ms={value}\n")).unwrap();
+        assert_eq!(resolved.config().receive.vad_mode, VadMode::Off);
+        assert_eq!(resolved.config().receive.vad_hang_ms, 123);
+        assert_eq!(resolved.warnings().len(), 2);
+        assert!(
+            resolved.warnings().iter().all(
+                |w| w.kind == ResolutionWarningKind::InvalidValue && w.section == "receive usb"
+            )
+        );
+    }
+    assert_eq!(
+        resolve("[usb]\n[receive]\nvad_hang_ms=0\n")
+            .unwrap()
+            .config()
+            .receive
+            .vad_hang_ms,
+        0
+    );
+}
+
+#[test]
+fn vad_kerchunk_without_a_closing_rf_gate_falls_back_with_origin() {
+    let resolved = resolve("[usb]\nreceive_profile=voice\n[receive]\ncos_assignment=no\n[receive voice]\nVAD_MODE=Kerchunk\n").unwrap();
+    assert_eq!(resolved.config().receive.vad_mode, VadMode::On);
+    assert_eq!(
+        resolved.config().receive.cos_assignment,
+        CarrierSource::Open
+    );
+    let warning = &resolved.warnings()[0];
+    assert_eq!(warning.source, "/etc/asterisk/usbradioplus.conf");
+    assert_eq!(warning.section, "receive voice");
+    assert_eq!(warning.name, "VAD_MODE");
+    assert_eq!(warning.supplied_value, "Kerchunk");
+    assert_eq!(warning.fallback, "on");
+    assert_eq!(warning.kind, ResolutionWarningKind::InvalidValue);
+    // An invalid higher overlay inherits the valid lower mode and its warning origin.
+    let inherited = resolve("[usb]\n[receive]\ncos_assignment=open\nvad_mode=kerchunk\n[receive usb]\nvad_mode=invalid\n").unwrap();
+    assert_eq!(inherited.warnings().last().unwrap().section, "receive");
+    assert_eq!(inherited.config().receive.vad_mode, VadMode::On);
+}
+
+#[test]
+fn vad_preserves_real_carrier_and_tone_only_kerchunk_gates() {
+    for carrier in [
+        "dsp",
+        "vox",
+        "external",
+        "usb",
+        "usbinvert",
+        "pp",
+        "ppinvert",
+    ] {
+        let resolved = resolve(&format!(
+            "[usb]\n[receive]\nvad_mode=kerchunk\ncos_assignment={carrier}\n"
+        ))
+        .unwrap();
+        assert_eq!(resolved.config().receive.vad_mode, VadMode::Kerchunk);
+        assert!(resolved.warnings().is_empty());
+    }
+    for (signaling, source) in [
+        ("ctcss", "dsp"),
+        ("ctcss", "usb"),
+        ("ctcss", "usbinvert"),
+        ("ctcss", "pp"),
+        ("ctcss", "ppinvert"),
+        ("dcs", "no"),
+    ] {
+        let text = format!(
+            "[usb]\n[receive]\nvad_mode=kerchunk\ncos_assignment=no\nsignaling_method={signaling}\n[ctcss]\nreceive_source={source}\n"
+        );
+        let resolved = resolve(&text).unwrap();
+        assert_eq!(resolved.config().receive.vad_mode, VadMode::Kerchunk);
+        assert_eq!(
+            resolved.config().receive.cos_assignment,
+            CarrierSource::Open
+        );
+        assert!(resolved.warnings().is_empty());
+        let overridden = resolve(&(text + "receive_override_enabled=yes\n")).unwrap();
+        assert_eq!(overridden.config().receive.vad_mode, VadMode::On);
+        assert_eq!(overridden.warnings().len(), 1);
+    }
+    for mode in ["off", "on"] {
+        let resolved = resolve(&format!(
+            "[usb]\n[receive]\nvad_mode={mode}\ncos_assignment=no\n"
+        ))
+        .unwrap();
+        assert_eq!(resolved.config().receive.vad_mode.to_string(), mode);
+        assert_eq!(
+            resolved.config().receive.cos_assignment,
+            if mode == "off" {
+                CarrierSource::Disabled
+            } else {
+                CarrierSource::Open
+            }
+        );
+        assert!(resolved.warnings().is_empty());
+    }
 }

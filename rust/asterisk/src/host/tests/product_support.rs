@@ -62,7 +62,12 @@ pub(crate) fn descriptor() -> &'static UrpAstDescriptor {
     unsafe { &*(address as *const UrpAstDescriptor) }
 }
 
-unsafe extern "C" fn receive_noop(_: *mut c_void, _: u32, _: *mut f32, _: u32) -> c_int {
+unsafe extern "C" fn receive_noop(
+    _: *mut c_void,
+    _: *const crate::UrpNativeReceiveMetadata,
+    _: *mut f32,
+    _: u32,
+) -> c_int {
     0
 }
 

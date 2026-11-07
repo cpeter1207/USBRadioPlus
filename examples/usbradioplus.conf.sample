@@ -112,9 +112,6 @@ channel_enabled = yes
 [receive]
 ; Select exactly one receive qualification method: carrier, ctcss, or dcs.
 signaling_method = carrier
-; Run enabled local RNNoise and dynamics continuously when no qualified signal is
-; present. Set yes to bypass those optional stages while the receiver is idle.
-;cpu_saver_enabled = no
 ; Select no receiver audio, de-emphasized speaker audio, or flat discriminator.
 ;audio_source = flat
 ; Select the COS source used by carrier qualification.
@@ -122,6 +119,14 @@ signaling_method = carrier
 ; Nonnegative VOX hold time in milliseconds and detector threshold (0--32767).
 ;vox_hang_ms = 2000
 ;vox_threshold = 0
+; Neural speech qualification is independent of VOX: off, kerchunk, or on.
+; Kerchunk needs fresh speech once per RF-qualified burst; on also closes after
+; speech and its hang. Without a closing carrier/tone gate kerchunk warns and
+; uses on. Active VAD retains enabled RF qualifications and receive guards.
+;vad_mode = off
+; Separate speech hang (0--32767 ms). Active VAD uses at least 160 ms of the
+; existing receive delay; larger configured delay is retained.
+;vad_hang_ms = 1000
 ; Nonnegative DSP noise-squelch open-state margin (0--32767) and detector
 ; filter selector (0 or 1).
 ;noise_squelch_hysteresis = 3000
@@ -138,8 +143,6 @@ signaling_method = carrier
 [transmit]
 ; Select exactly one transmitted signaling method: carrier, ctcss, or dcs.
 signaling_method = carrier
-; Reduce optional transmitter DSP activity while no transmitter audio is active.
-;cpu_saver_enabled = no
 ; Enable pre-emphasis for a direct modulator connection; disable it when the
 ; radio supplies pre-emphasis.
 ;preemphasis_enabled = yes
@@ -291,33 +294,28 @@ output_gain_db = 0.0
 
 ; Enable automatic gain control.
 agc_enabled = yes
-; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
-agc_target_dbfs = -24.0
+; Full-program K-weighted loudness target, -40 through -3 LUFS; not a peak ceiling.
+agc_target_lufs = -23.0
 ; Maximum boost for active weak speech, 0 through 30 dB.
 agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
-; RMS detector averaging time, 10 through 5000 ms; adds no audio buffering.
-agc_rms_averaging_ms = 200.0
+; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
+agc_loudness_window_ms = 400.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
 agc_gain_decrease_db_per_second = 6.0
-; Activity opens at this 10 ms detector level, -100 to -3 dBFS, below target.
+; Activity opens at this separate raw 10 ms RMS level, -100 through -3 dBFS.
 ; Inactivity freezes gain; it does not mute audio or reset gain to unity.
 agc_activity_threshold_dbfs = -50.0
 ; Activity closes below threshold minus this margin, 0 through 12 dB.
 agc_activity_hysteresis_db = 3.0
-; Require continuous active audio below target minus deadband before raising
-; gain, 0 through 10000 ms. Inactivity, reduction or deadband resets the wait.
+; After the initial loudness window, require sustained active audio below target
+; minus deadband before raising gain, 0 through 10000 ms. Pauses reset the wait.
 agc_hold_ms = 500.0
 ; Hold gain within this distance either side of target, 0 through 6 dB.
 agc_deadband_db = 1.0
-; Two-pole detector-only high-pass: 0 disables, otherwise 50 through 2000 Hz.
-agc_sidechain_highpass_hz = 800.0
-; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
-; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
-agc_sidechain_lowpass_hz = 1500.0
 
 ; Enable downward expansion to reduce noise between words.
 expander_enabled = yes
@@ -452,6 +450,18 @@ limiter_high_attack_ms = 1.0
 ; High-band limiter release time in milliseconds.
 limiter_high_release_ms = 50.0
 
+; Peak Limiter is fixed after dynamics, output gain, and source-specific filtering.
+; Its defaults are disabled and -3 dBFS. Output I/TP metering is always active.
+lookahead_limiter_enabled = no
+; Oversampling: 1, 2, or 4; return to the negotiated source rate after limiting.
+lookahead_limiter_oversample = 4
+; Internal sample ceiling, -30 through -0.1 dBFS.
+lookahead_limiter_ceiling_dbfs = -3.0
+; Lookahead, attack, and release in milliseconds.
+lookahead_limiter_lookahead_ms = 5.0
+lookahead_limiter_attack_ms = 1.0
+lookahead_limiter_release_ms = 100.0
+
 [link]
 ; Enable processing for audio received from connected nodes.
 enabled = no
@@ -500,7 +510,7 @@ input_gain_db = 0.0
 output_gain_db = -6.2
 ; Enable individual link dynamics stages as required.
 expander_enabled = yes
-; Enable or disable the gated RMS gain rider.
+; Enable or disable the gated LUFS gain rider.
 agc_enabled = yes
 ; Enable or disable link compression.
 compressor_enabled = yes
@@ -521,33 +531,28 @@ expander_release_ms = 750.0
 expander_sidechain_highpass_hz = 300.0
 ; Upper expander detector-band cutoff in hertz.
 expander_sidechain_lowpass_hz = 1500.0
-; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
-agc_target_dbfs = -24.0
+; Full-program K-weighted loudness target, -40 through -3 LUFS; not a peak ceiling.
+agc_target_lufs = -23.0
 ; Maximum boost for active weak speech, 0 through 30 dB.
 agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
-; RMS detector averaging time, 10 through 5000 ms; adds no audio buffering.
-agc_rms_averaging_ms = 200.0
+; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
+agc_loudness_window_ms = 400.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
 agc_gain_decrease_db_per_second = 6.0
-; Activity opens at this 10 ms detector level, -100 to -3 dBFS, below target.
+; Activity opens at this separate raw 10 ms RMS level, -100 through -3 dBFS.
 ; Inactivity freezes gain; it does not mute audio or reset gain to unity.
 agc_activity_threshold_dbfs = -50.0
 ; Activity closes below threshold minus this margin, 0 through 12 dB.
 agc_activity_hysteresis_db = 3.0
-; Require continuous active audio below target minus deadband before raising
-; gain, 0 through 10000 ms. Inactivity, reduction or deadband resets the wait.
+; After the initial loudness window, require sustained active audio below target
+; minus deadband before raising gain, 0 through 10000 ms. Pauses reset the wait.
 agc_hold_ms = 500.0
 ; Hold gain within this distance either side of target, 0 through 6 dB.
 agc_deadband_db = 1.0
-; Two-pole detector-only high-pass: 0 disables, otherwise 50 through 2000 Hz.
-agc_sidechain_highpass_hz = 800.0
-; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
-; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
-agc_sidechain_lowpass_hz = 1500.0
 ; One full-band compressor (1) or three independent RMS band compressors (3).
 ; Three bands are below 500 Hz, 500-2000 Hz, and above 2000 Hz by default.
 ; Only the selected mode's controls are applied; inactive values are retained.
@@ -659,13 +664,25 @@ limiter_high_attack_ms = 1.0
 ; High-band limiter release time in milliseconds.
 limiter_high_release_ms = 50.0
 
+; Peak Limiter is fixed after dynamics, output gain, and source-specific filtering.
+; Its defaults are disabled and -3 dBFS. Output I/TP metering is always active.
+lookahead_limiter_enabled = no
+; Oversampling: 1, 2, or 4; return to the negotiated source rate after limiting.
+lookahead_limiter_oversample = 4
+; Internal sample ceiling, -30 through -0.1 dBFS.
+lookahead_limiter_ceiling_dbfs = -3.0
+; Lookahead, attack, and release in milliseconds.
+lookahead_limiter_lookahead_ms = 5.0
+lookahead_limiter_attack_ms = 1.0
+lookahead_limiter_release_ms = 100.0
+
 [voice_telemetry]
 ; Enable the final transmitter chain for mixed voice and telemetry.
 enabled = yes
 ; Gain ahead of dynamics. The 6 dB default supplies normal composite-path gain.
 input_gain_db = 6.0
-; Reorder the equalizer and dynamics stages. The fixed final limiter and
-; post-limiter brick-wall band-pass are not listed here. The de-esser runs immediately before
+; Reorder the equalizer and dynamics stages. The fixed Peak Limiter and
+; fixed transmitter band-pass are not listed here. The de-esser runs immediately before
 ; the compressor by default.
 stage_order = equalizer,expander,agc,deesser,compressor,limiter
 ; Three-band voice/telemetry tone control.
@@ -707,23 +724,24 @@ deesser_attack_ms = 2.0
 deesser_release_ms = 60.0
 ; Enable individual transmitter dynamics stages as required.
 expander_enabled = no
-; Enable or disable the gated RMS gain rider.
+; Enable or disable the gated LUFS gain rider.
 agc_enabled = no
 ; Enable or disable transmitter compression.
 compressor_enabled = no
-; Enable or disable transmitter peak limiting.
+; Enable or disable the reorderable Multiband Limiter.
 limiter_enabled = no
-; Enable or disable the fixed final limiter explicitly.
+; Peak Limiter is fixed after dynamics, output gain, and source-specific filtering.
+; Its defaults are disabled and -3 dBFS. Output I/TP metering is always active.
 lookahead_limiter_enabled = no
-; Explicit final-limiter ceiling, -30 through -0.1 dBFS.
+; Oversampling: 1, 2, or 4; return to the negotiated source rate after limiting.
+lookahead_limiter_oversample = 4
+; Internal sample ceiling, -30 through -0.1 dBFS.
 lookahead_limiter_ceiling_dbfs = -3.0
-; Lookahead, attack, and release times in milliseconds.
+; Lookahead, attack, and release in milliseconds.
 lookahead_limiter_lookahead_ms = 5.0
-; Final limiter attack time in milliseconds.
 lookahead_limiter_attack_ms = 1.0
-; Final limiter release time in milliseconds.
 lookahead_limiter_release_ms = 100.0
-; Enable the fixed brick-wall band-pass after final limiting.
+; Band-pass after main dynamics and before oversampled Peak Limiter.
 post_limiter_bandpass_enabled = no
 ; Lower band-pass cutoff, 0 through 300 Hz; 0 disables the lower edge.
 post_limiter_bandpass_highpass_hz = 0.0
@@ -747,33 +765,28 @@ expander_release_ms = 750.0
 expander_sidechain_highpass_hz = 800.0
 ; Upper expander detector-band cutoff in hertz.
 expander_sidechain_lowpass_hz = 1500.0
-; Output target measured as filtered detector-band RMS, not peaks; -40 to -3 dBFS.
-agc_target_dbfs = -24.0
+; Full-program K-weighted loudness target, -40 through -3 LUFS; not a peak ceiling.
+agc_target_lufs = -23.0
 ; Maximum boost for active weak speech, 0 through 30 dB.
 agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
-; RMS detector averaging time, 10 through 5000 ms; adds no audio buffering.
-agc_rms_averaging_ms = 200.0
+; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
+agc_loudness_window_ms = 400.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
 agc_gain_decrease_db_per_second = 6.0
-; Activity opens at this 10 ms detector level, -100 to -3 dBFS, below target.
+; Activity opens at this separate raw 10 ms RMS level, -100 through -3 dBFS.
 ; Inactivity freezes gain; it does not mute audio or reset gain to unity.
 agc_activity_threshold_dbfs = -50.0
 ; Activity closes below threshold minus this margin, 0 through 12 dB.
 agc_activity_hysteresis_db = 3.0
-; Require continuous active audio below target minus deadband before raising
-; gain, 0 through 10000 ms. Inactivity, reduction or deadband resets the wait.
+; After the initial loudness window, require sustained active audio below target
+; minus deadband before raising gain, 0 through 10000 ms. Pauses reset the wait.
 agc_hold_ms = 500.0
 ; Hold gain within this distance either side of target, 0 through 6 dB.
 agc_deadband_db = 1.0
-; Two-pole detector-only high-pass: 0 disables, otherwise 50 through 2000 Hz.
-agc_sidechain_highpass_hz = 800.0
-; Two-pole detector-only low-pass: 0 disables, otherwise above 0 through
-; 3500 Hz; above high-pass when both are enabled. Neither filters program audio.
-agc_sidechain_lowpass_hz = 1500.0
 ; One full-band compressor (1) or three independent RMS band compressors (3).
 ; Three bands are below 500 Hz, 500-2000 Hz, and above 2000 Hz by default.
 ; Only the selected mode's controls are applied; inactive values are retained.

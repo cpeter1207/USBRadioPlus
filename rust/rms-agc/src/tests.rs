@@ -41,6 +41,8 @@ unsafe fn fail_allocation(_: Layout) -> *mut u8 {
 
 struct Fixture {
     handle: Handle,
+    rate: f64,
+    sample: usize,
     controls: Box<[f32; CONTROL_COUNT]>,
     input: [f32; 512],
     detector: [f32; 512],
@@ -61,6 +63,8 @@ impl Fixture {
         }
         Self {
             handle,
+            rate: rate as f64,
+            sample: 0,
             controls,
             input: [0.0; 512],
             detector: [0.0; 512],
@@ -85,9 +89,14 @@ impl Fixture {
     fn drive(&mut self, mut count: usize, detector: f32, input: f32) -> f64 {
         let mut result = 0.0;
         self.input.fill(input);
-        self.detector.fill(detector);
         while count != 0 {
             let block = count.min(512);
+            for sample in &mut self.detector[..block] {
+                *sample = (f64::from(detector)
+                    * (std::f64::consts::TAU * 1000.0 * self.sample as f64 / self.rate).sin())
+                    as f32;
+                self.sample += 1;
+            }
             self.process(block);
             result = f64::from(self.output[block - 1]) / f64::from(input);
             count -= block;
@@ -122,11 +131,11 @@ fn descriptor_and_allocation_contract() {
     unsafe {
         assert_eq!(
             CStr::from_ptr(DESCRIPTOR.label).to_bytes(),
-            b"usbradioplus_agc"
+            b"usbradioplus_agc_lufs"
         );
         assert_eq!(
             CStr::from_ptr(DESCRIPTOR.name).to_bytes(),
-            b"USBRadioPlus gated RMS gain rider"
+            b"USBRadioPlus gated LUFS gain rider"
         );
         assert_eq!(
             CStr::from_ptr(DESCRIPTOR.maker).to_bytes(),
@@ -155,13 +164,13 @@ fn descriptor_and_allocation_contract() {
                 assert_eq!(hint.upper_bound, SPECS[index - 3].1 as f32);
             }
         }
-        for rate in [0, 999, 384001, c_ulong::MAX] {
+        for rate in [0, 999, 1000, 2000, 3000, 7999, 384001, c_ulong::MAX] {
             assert!(instantiate(descriptor, rate).is_null());
         }
         assert!(instantiate_with(8000, fail_allocation).is_null());
         cleanup(ptr::null_mut());
     }
-    for rate in [1000, 384000] {
+    for rate in [8000, 384000] {
         drop(Fixture::new(rate));
     }
 }
@@ -191,17 +200,24 @@ fn disconnected_ports_defaults_and_reset() {
 }
 
 #[test]
-fn gain_law_caps_freezing_and_immediate_reduction() {
+fn gain_law_caps_freezing_and_continuous_window_reduction() {
     for rate in [8000, 16000, 48000] {
         let mut f = Fixture::new(rate);
+        f.controls[1] = 3000.0;
         let r = rate as usize;
-        assert!((f.drive(r / 4, 0.01, 0.1) - 1.0).abs() < 1e-6);
+        assert!((f.drive(3 * r, 0.01, 0.1) - 1.0).abs() < 1e-6);
+        assert!((f.drive(2 * r / 5, 0.01, 0.1) - 1.0).abs() < 1e-6);
+        // The initial three-second window precedes the 500 ms active boost hold;
+        // 400 ms of subsequent gain increase at 2 dB/s yields approximately 0.8 dB.
         let db = 20.0 * f.drive(r / 2, 0.01, 0.1).log10();
-        assert!((0.4..0.6).contains(&db));
+        assert!((0.79..0.82).contains(&db), "{rate} Hz: {db} dB");
         assert!((20.0 * f.drive(4 * r, 0.01, 0.1).log10() - 6.0).abs() < 0.001);
         let frozen = f.drive(r, 0.0001, 0.1);
         assert_eq!(f.drive(2 * r, 0.0001, 0.1), frozen);
-        assert!((2.8..3.2).contains(&(20.0 * f.drive(r / 2, 0.5, 0.1).log10())));
+        // The continuous window sees the louder rekey within one 100 ms query;
+        // the remaining 400 ms reduces gain by approximately 2.4 dB at 6 dB/s.
+        let db = 20.0 * f.drive(r / 2, 0.5, 0.1).log10();
+        assert!((3.5..3.7).contains(&db), "{rate} Hz: {db} dB");
         assert!((20.0 * f.drive(3 * r, 0.5, 0.1).log10() + 6.0).abs() < 0.001);
         f.controls[5] = 0.0;
         assert_eq!(f.drive(1, 0.5, 2.0), 1.0);
@@ -210,26 +226,27 @@ fn gain_law_caps_freezing_and_immediate_reduction() {
 }
 
 #[test]
-fn detector_independence_hysteresis_reacquisition_and_deadband() {
+fn detector_independence_hysteresis_and_deadband() {
     let mut f = Fixture::new(48000);
     f.controls[8] = 0.0;
     f.controls[4] = 30.0;
-    assert_eq!(f.drive(48000, 0.001, 4.0), 1.0);
+    assert_eq!(f.drive(3 * 48000, 0.001, 4.0), 1.0);
     let before = f.drive(24000, 0.006, 0.1);
-    assert!(f.drive(24000, 0.0028, 0.1) > before);
+    assert!(f.drive(24000, 0.004, 0.1) > before);
     let frozen = f.drive(48000, 0.001, 0.1);
     assert_eq!(f.drive(48000, 0.001, 0.1), frozen);
-    assert!(f.drive(4800, 0.5, 0.1) < frozen);
+    assert!(f.drive(24000, 0.5, 0.1) < frozen);
     // SAFETY: Fixture owns its handle and has no concurrent run.
     unsafe {
         activate(f.handle);
     }
-    assert!((20.0 * f.drive(144000, 0.063_095_73, 0.1).log10()).abs() < 0.1);
+    assert!((20.0 * f.drive(144000, 0.1, 0.1).log10()).abs() < 0.1);
 }
 
 #[test]
 fn pauses_and_reductions_reset_continuous_hold() {
     let mut f = Fixture::new(8000);
+    assert!((f.drive(24000, 0.1, 0.1) - 1.0).abs() < 1e-6);
     for _ in 0..4 {
         assert!((f.drive(2000, 0.01, 0.1) - 1.0).abs() < 1e-6);
         assert!((f.drive(4000, 0.0001, 0.1) - 1.0).abs() < 1e-6);
@@ -240,7 +257,7 @@ fn pauses_and_reductions_reset_continuous_hold() {
 
 #[test]
 fn malformed_controls_audio_and_overflow_recover() {
-    let mut f = Fixture::new(1000);
+    let mut f = Fixture::new(8000);
     for value in [f32::NAN, -f32::MAX, f32::MAX] {
         f.controls.fill(value);
         assert!(f.drive(1000, 0.1, 0.1).is_finite());
@@ -251,7 +268,7 @@ fn malformed_controls_audio_and_overflow_recover() {
     assert_eq!(&f.output[..2], &[0.0, 0.0]);
     let mut f = Fixture::new(8000);
     f.controls[8] = 0.0;
-    assert!(f.drive(16000, 0.01, 0.1) > 1.0);
+    assert!(f.drive(32000, 0.01, 0.1) > 1.0);
     assert_eq!(f.drive(1, 0.01, f32::MAX), 0.0);
     assert!(f.drive(8000, f32::MAX, 0.1).is_finite());
     f.controls[4] = 0.0;
@@ -261,7 +278,7 @@ fn malformed_controls_audio_and_overflow_recover() {
 
 #[test]
 fn blocks_and_in_place_processing_are_identical() {
-    for rate in [1000, 1001, 8000, 16000, 44100, 48000, 384000] {
+    for rate in [8000, 8001, 16000, 44100, 48000, 384000] {
         let mut bulk = Fixture::new(rate);
         let mut single = Fixture::new(rate);
         bulk.controls[8] = 0.0;
@@ -308,4 +325,69 @@ fn detector_output_aliasing_preserves_both_inputs() {
         }
         assert_eq!(separate.output[0], detector);
     }
+}
+#[test]
+fn three_second_window_ages_silence_without_rekey_acquisition() {
+    let mut f = Fixture::new(48000);
+    f.controls[1] = 3000.0;
+    f.controls[2] = 2.0;
+    f.controls[3] = 6.0;
+    f.controls[8] = 0.0;
+    let initial = f.drive(4 * 48000, 0.1, 0.1);
+    assert!((initial - 1.0).abs() < 1e-6);
+    let held = f.drive(48000, 0.0, 0.1);
+    assert_eq!(f.drive(48000, 0.0, 0.1), held);
+    assert_eq!(held, initial);
+    // The independent program probe reveals the applied gain while detector
+    // silence ages the same rolling window; it is not a new speech acquisition.
+    let rekeyed = f.drive(14400, 0.1, 0.1);
+    assert!(rekeyed > held * 1.005, "held={held}, rekeyed={rekeyed}");
+    assert!(20.0 * (rekeyed / held).log10() <= 0.601);
+}
+
+#[test]
+fn initial_three_second_acquisition_includes_inactive_samples() {
+    let mut f = Fixture::new(48000);
+    f.controls[1] = 3000.0;
+    f.controls[8] = 0.0;
+    assert_eq!(f.drive(48000, 0.01, 0.1), 1.0);
+    assert_eq!(f.drive(3 * 48000, 0.0, 0.1), 1.0);
+    let rekeyed = f.drive(9600, 0.01, 0.1);
+    assert!(rekeyed > 1.005, "rekeyed={rekeyed}");
+}
+
+#[test]
+fn lufs_requires_a_complete_fresh_window() {
+    assert_eq!(SPECS[1].2, 400.0);
+    let sample_rate = SampleRate::new(48000u32).unwrap();
+    let settings = Settings::from_ports([None; CONTROL_COUNT]);
+    let mut gain_rider = GainRider::new(sample_rate);
+    gain_rider.configure(settings);
+    for index in 0..19199 {
+        let detector = 0.5 * f32::sin(std::f32::consts::TAU * 1000.0 * index as f32 / 48000.0);
+        let output = gain_rider.process(0.25, detector);
+        assert_eq!(output, 0.25);
+    }
+}
+
+#[test]
+fn lufs_controls_and_window_change_reacquisition() {
+    assert_eq!(SPECS[0].2, -23.0);
+    assert_eq!(SPECS[1], (400.0, 3000.0, 400.0));
+    let mut f = Fixture::new(48000);
+    f.controls[1] = 400.0;
+    f.controls[8] = 0.0;
+    let before = f.drive(48000, 0.01, 0.1);
+    assert!(before > 1.0);
+    f.controls[1] = 3000.0;
+    assert_eq!(f.drive(139200, 0.01, 0.1), before);
+    assert!(f.drive(9600, 0.01, 0.1) > before);
+    // SAFETY: Fixture owns this serialized handle; reset must retain preallocation.
+    unsafe {
+        AUDIO_ACTIVE.with(|active| active.set(true));
+        activate(f.handle);
+        AUDIO_ACTIVE.with(|active| active.set(false));
+    }
+    AUDIO_ALLOCS.with(|count| assert_eq!(count.get(), 0));
+    assert_eq!(f.drive(139200, 0.01, 0.1), 1.0);
 }

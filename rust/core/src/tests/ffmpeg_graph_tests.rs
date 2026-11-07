@@ -55,6 +55,7 @@ fn dynamics_graph_uses_only_enabled_stages_in_requested_order() {
     chain.equalizer.enabled = false;
     chain.expander.enabled = true;
     chain.agc.enabled = true;
+    chain.peak_limiter.enabled = true;
     chain.stage_order = StageOrder::parse(
         "agc,expander",
         &[ProcessingStage::Agc, ProcessingStage::Expander],
@@ -63,14 +64,17 @@ fn dynamics_graph_uses_only_enabled_stages_in_requested_order() {
     let graph = factory().dynamics(&chain).unwrap();
     assert!(graph.find("ladspa=").unwrap() < graph.find("sidechaingate=").unwrap());
     assert!(graph.contains("file='/usr/lib/usbradioplus/agc\\'s\\:effect.so'"));
+    assert!(graph.contains("anull,anull"));
+    assert!(graph.contains("alimiter=limit="));
     assert!(graph.ends_with("[out]"));
 }
 
 #[test]
-fn transmitter_graph_contains_preemphasis_gain_limiter_and_final_bandpass() {
+fn transmitter_graph_places_bandpass_and_all_gain_before_final_limiter() {
     let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
     chain.equalizer.enabled = false;
-    chain.transmit_tail.limiter_enabled = true;
+    chain.output_gain_db = 3.0;
+    chain.peak_limiter.enabled = true;
     chain.transmit_tail.bandpass_enabled = true;
     chain.transmit_tail.bandpass_highpass_hz = 0.0;
     chain.transmit_tail.bandpass_lowpass_hz = 5_000.0;
@@ -78,7 +82,149 @@ fn transmitter_graph_contains_preemphasis_gain_limiter_and_final_bandpass() {
     assert!(graph.contains("volume=1.995262314969"));
     assert!(graph.contains("biquad=b0="));
     assert!(graph.contains("alimiter=limit="));
-    assert!(graph.contains("split=5000.000000000:order=20th[out]"));
+    assert!(graph.contains("split=5000.000000000:order=20th"));
+    assert!(graph.contains("aresample=192000"));
+    assert!(graph.contains("aresample=48000"));
+    assert!(graph.find("biquad=b0=").unwrap() < graph.rfind("volume=").unwrap());
+    assert!(graph.rfind("volume=").unwrap() < graph.find("split=5000.").unwrap());
+    assert!(graph.find("split=5000.").unwrap() < graph.find("aresample=192000").unwrap());
+    assert!(graph.find("aresample=192000").unwrap() < graph.find("alimiter=").unwrap());
+    assert!(graph.find("alimiter=").unwrap() < graph.find("aresample=48000").unwrap());
+}
+
+#[test]
+fn final_limiter_oversampling_is_selectable_and_disabled_with_the_limiter() {
+    let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
+    chain.peak_limiter.enabled = true;
+    for (factor, rate) in [(1, None), (2, Some("96000")), (4, Some("192000"))] {
+        chain.peak_limiter.oversample = factor;
+        let graph = factory().transmitter(&chain, false, 300.0).unwrap();
+        assert_eq!(graph.matches("alimiter=").count(), 1);
+        assert!(graph.contains(":level=0:latency=0"));
+        if let Some(rate) = rate {
+            assert!(graph.contains(&format!("aresample={rate},alimiter=")));
+            assert!(graph.contains(",aresample=48000["));
+        } else {
+            assert!(!graph.contains("aresample="));
+        }
+    }
+    chain.peak_limiter.enabled = false;
+    let graph = factory().transmitter(&chain, false, 300.0).unwrap();
+    assert!(!graph.contains("alimiter="));
+    assert!(!graph.contains("aresample="));
+}
+
+#[test]
+fn peak_limiter_graph_uses_its_exact_rate() {
+    let mut chain = ProcessingChain::shipped(ChainRole::Link);
+    chain.equalizer.enabled = false;
+    chain.peak_limiter.enabled = true;
+    chain.peak_limiter.oversample = 4;
+    assert!(chain.validate().is_ok());
+    for rate in [8_000, 16_000, 44_100, 48_000, 384_000] {
+        let graph = factory().dynamics_at_rate(&chain, rate).unwrap();
+        assert!(graph.contains(&format!("aresample={},alimiter=", rate * 4)));
+        assert!(graph.contains(&format!(",aresample={rate}[")));
+    }
+    for rate in [0, 7_999, 384_001, u32::MAX] {
+        assert_eq!(
+            factory().dynamics_at_rate(&chain, rate),
+            Err(GraphDescriptionError::InvalidSampleRate)
+        );
+    }
+}
+
+fn ffmpeg_true_peak(source: &str, graph: &str) -> f64 {
+    let graph = format!(
+        "{};[meter]aformat=sample_fmts=flt,ebur128=peak=true:metadata=1:framelog=verbose,ametadata=print:key=lavfi.r128.true_peak:file=-[out]",
+        graph.replace("[in]", "[0:a]").replace("[out]", "[meter]")
+    );
+    let output = std::process::Command::new("ffmpeg")
+        .args([
+            "-hide_banner",
+            "-nostdin",
+            "-v",
+            "error",
+            "-filter_complex_threads",
+            "1",
+            "-f",
+            "lavfi",
+            "-i",
+            source,
+            "-filter_complex",
+            &graph,
+            "-map",
+            "[out]",
+            "-f",
+            "null",
+            "-",
+        ])
+        .output()
+        .expect("FFmpeg CLI is required for final-limiter output tests");
+    assert!(
+        output.status.success(),
+        "FFmpeg failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut max_peak: Option<f64> = None;
+    for line in stdout.lines() {
+        if let Some(peak) = line.strip_prefix("lavfi.r128.true_peak=") {
+            let value = peak.parse::<f64>().expect("invalid FFmpeg true peak");
+            max_peak = Some(max_peak.map_or(value, |maximum| maximum.max(value)));
+        }
+    }
+    max_peak.expect("FFmpeg did not report true peak")
+}
+
+#[test]
+fn final_limiter_bounds_true_peak_after_return_to_native_rate() {
+    let sources = [
+        "aevalsrc=1.41*sin(2*PI*12000*t+PI/4):s=48000:d=1,afade=t=in:d=0.01,afade=t=out:st=0.99:d=0.01",
+        "aevalsrc='if(gte(sin(2*PI*1000*t),0),1.5,-1.5)':s=48000:d=1",
+        "anoisesrc=color=white:amplitude=1:sample_rate=48000:duration=1:seed=1,volume=3",
+    ];
+    std::thread::scope(|scope| {
+        let mut tasks = Vec::new();
+        for source in sources {
+            for (role, rate, bandpass_enabled) in [
+                (ChainRole::LocalReceive, 48_000, false),
+                (ChainRole::Link, 48_000, false),
+                (ChainRole::Link, 8_000, false),
+                (ChainRole::VoiceTelemetry, 48_000, false),
+                (ChainRole::VoiceTelemetry, 48_000, true),
+            ] {
+                let mut chain = ProcessingChain::shipped(role);
+                chain.enabled = false;
+                chain.input_gain_db = 0.0;
+                chain.output_gain_db = 0.0;
+                chain.peak_limiter.enabled = true;
+                chain.peak_limiter.ceiling_dbfs = -2.0;
+                chain.peak_limiter.oversample = 4;
+                chain.transmit_tail.bandpass_enabled = bandpass_enabled;
+                chain.transmit_tail.bandpass_lowpass_hz = 5_000.0;
+                assert!(chain.validate().is_ok());
+                let graph = if role == ChainRole::VoiceTelemetry {
+                    factory().transmitter(&chain, false, 300.0).unwrap()
+                } else {
+                    factory().dynamics_at_rate(&chain, rate).unwrap()
+                };
+                let source = source
+                    .replace("12000", &(rate / 4).to_string())
+                    .replace("48000", &rate.to_string());
+                tasks.push(scope.spawn(move || {
+                    let peak = ffmpeg_true_peak(&source, &graph);
+                    assert!(
+                        peak <= db_to_linear(-1.0),
+                        "role={role:?}, rate={rate}, source={source}, bandpass={bandpass_enabled}, true peak={peak}"
+                    );
+                }));
+            }
+        }
+        for task in tasks {
+            task.join().unwrap();
+        }
+    });
 }
 
 #[test]
@@ -110,9 +256,9 @@ fn invalid_factory_and_crossover_are_rejected() {
     );
     let mut chain = ProcessingChain::shipped(ChainRole::Link);
     chain.compressor.enabled = true;
-    chain.compressor.high_crossover_hz = 24_000.0;
+    chain.compressor.high_crossover_hz = 4_000.0;
     assert_eq!(
-        factory().dynamics(&chain),
+        factory().dynamics_at_rate(&chain, 8_000),
         Err(GraphDescriptionError::CrossoverAboveNyquist)
     );
 
@@ -123,11 +269,17 @@ fn invalid_factory_and_crossover_are_rejected() {
         factory().dynamics(&chain),
         Err(GraphDescriptionError::CrossoverAboveNyquist)
     );
+    chain.enabled = false;
+    assert!(factory().dynamics_at_rate(&chain, 8_000).is_ok());
 }
 
 #[test]
 fn graph_errors_have_stable_messages_and_format_conversion() {
     let cases = [
+        (
+            GraphDescriptionError::InvalidSampleRate,
+            "graph sample rate must be between 8000 and 384000 Hz",
+        ),
         (
             GraphDescriptionError::CrossoverAboveNyquist,
             "dynamics crossover must be below Nyquist",
@@ -193,7 +345,7 @@ fn local_bypass_omits_deemphasis_owned_gain_and_disabled_dynamics() {
 fn transmitter_tail_stages_are_independently_optional() {
     let mut transmit = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
     transmit.equalizer.enabled = false;
-    transmit.transmit_tail.limiter_enabled = false;
+    transmit.peak_limiter.enabled = false;
     transmit.transmit_tail.bandpass_enabled = false;
     let graph = factory().transmitter(&transmit, false, 300.0).unwrap();
     assert!(graph.ends_with("anull[out]"));
@@ -211,8 +363,6 @@ fn equalizer_deesser_zero_sidechains_and_makeup_are_generated() {
     chain.expander.sidechain_highpass_hz = 0.0;
     chain.expander.sidechain_lowpass_hz = 0.0;
     chain.agc.enabled = true;
-    chain.agc.sidechain_highpass_hz = 0.0;
-    chain.agc.sidechain_lowpass_hz = 0.0;
     chain.compressor.enabled = true;
     chain.compressor.low.makeup_gain_db = 1.0;
     chain.stage_order = StageOrder::parse(

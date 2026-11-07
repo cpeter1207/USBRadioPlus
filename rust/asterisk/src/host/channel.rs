@@ -1287,6 +1287,26 @@ unsafe extern "C" fn setoption(
         unsafe { *libc::__errno_location() = libc::EINVAL };
         return -1;
     }
+    if option == super::super::URP_AST_OPTION_RECEIVE_POLICY {
+        if data_length as usize != size_of::<UrpAstChannelCommand>() {
+            return -1;
+        }
+        // SAFETY: the exact borrowed command may be byte-aligned.
+        let mut command = unsafe { data.cast::<UrpAstChannelCommand>().read_unaligned() };
+        if command.struct_size as usize != size_of::<UrpAstChannelCommand>()
+            || command.abi_version != super::super::ABI_VERSION
+            || command.command != super::super::URP_AST_COMMAND_GET_RECEIVE_POLICY
+            || command.target != 0
+        {
+            return -1;
+        }
+        let status = run_command(channel, &mut command);
+        if status == URP_AST_OK {
+            // SAFETY: the same complete writable storage outlives serialized dispatch.
+            unsafe { data.cast::<UrpAstChannelCommand>().write_unaligned(command) };
+        }
+        return status;
+    }
     if option as u32 == super::super::URP_AST_OPTION_REMOTE_CONTROL {
         use super::super::{URP_AST_REMOTE_OPTION_ABI_VERSION, UrpAstRemoteControl};
         if data_length as usize != size_of::<UrpAstRemoteControl>() {
@@ -1631,6 +1651,15 @@ pub(super) fn read_status(channel: &Channel, output: &mut UrpAstChannelStatus) -
             status
         }
         _ => URP_AST_ASTERISK_FAILURE,
+    }
+}
+
+pub(super) fn processing_status_text(channel: &Channel) -> Result<String, i32> {
+    match channel.control(ControlOperation::ProcessingText) {
+        ControlResult::ProcessingText(URP_AST_OK, text) => {
+            String::from_utf8(text).map_err(|_| URP_AST_ASTERISK_FAILURE)
+        }
+        result => Err(result.status()),
     }
 }
 

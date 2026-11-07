@@ -384,13 +384,33 @@ impl fmt::Display for CarrierSource {
     }
 }
 
+/// Speech admission policy, independent of the audio-level VOX carrier detector.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum VadMode {
+    /// Preserve configured RF qualification without speech detection.
+    #[default]
+    Off,
+    /// Require fresh speech once per qualified RF burst.
+    Kerchunk,
+    /// Require speech or its configured release hold throughout reception.
+    On,
+}
+
+impl fmt::Display for VadMode {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Self::Off => "off",
+            Self::Kerchunk => "kerchunk",
+            Self::On => "on",
+        })
+    }
+}
+
 /// Effective receiver controls.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReceiveConfig {
     /// Selected receive signaling method.
     pub signaling_method: SignalingMethod,
-    /// Whether idle optional receive processing is bypassed.
-    pub cpu_saver_enabled: bool,
     /// Receiver audio connection.
     pub audio_source: ReceiveAudioSource,
     /// Carrier qualification source.
@@ -399,6 +419,10 @@ pub struct ReceiveConfig {
     pub vox_hang_ms: u16,
     /// VOX detector threshold.
     pub vox_threshold: u16,
+    /// Neural speech admission mode.
+    pub vad_mode: VadMode,
+    /// Speech release hold in milliseconds, independent of VOX hang.
+    pub vad_hang_ms: u32,
     /// Noise-squelch open-state margin.
     pub noise_squelch_hysteresis: u16,
     /// Native noise-detector filter, `0` or `1`.
@@ -417,11 +441,12 @@ impl Default for ReceiveConfig {
     fn default() -> Self {
         Self {
             signaling_method: SignalingMethod::Carrier,
-            cpu_saver_enabled: false,
             audio_source: ReceiveAudioSource::Flat,
             cos_assignment: CarrierSource::Dsp,
             vox_hang_ms: 2_000,
             vox_threshold: 0,
+            vad_mode: VadMode::Off,
+            vad_hang_ms: 1_000,
             noise_squelch_hysteresis: 3_000,
             noise_filter_type: 0,
             squelch_delay_ms: 0,
@@ -437,8 +462,6 @@ impl Default for ReceiveConfig {
 pub struct TransmitConfig {
     /// Selected transmit signaling method.
     pub signaling_method: SignalingMethod,
-    /// Whether idle optional transmit work is bypassed.
-    pub cpu_saver_enabled: bool,
     /// Whether transmitter pre-emphasis is enabled.
     pub preemphasis_enabled: bool,
     /// Delay after PTT assertion in milliseconds.
@@ -455,7 +478,6 @@ impl Default for TransmitConfig {
     fn default() -> Self {
         Self {
             signaling_method: SignalingMethod::Carrier,
-            cpu_saver_enabled: false,
             preemphasis_enabled: true,
             settle_ms: 500,
             rx_blanking_ms: 0,
@@ -996,9 +1018,13 @@ impl ResolvedStationConfig {
             &mut warnings,
         )?;
 
+        let mut receive_section = "receive".to_owned();
         for (kind, apply) in PROFILE_KINDS {
             let resolved_section =
                 document.resolved_section(channel, kind, &source, &mut warnings)?;
+            if kind == "receive" {
+                receive_section.clone_from(&resolved_section);
+            }
             apply_overlay(
                 &mut config,
                 apply,
@@ -1018,6 +1044,13 @@ impl ResolvedStationConfig {
                 )?;
             }
         }
+        normalize_vad(
+            &mut config,
+            document,
+            &source,
+            &receive_section,
+            &mut warnings,
+        );
         config.validate()?;
         Ok(Self {
             channel: channel.to_owned(),
@@ -1374,13 +1407,14 @@ fn apply_receive(
 ) {
     let target = &mut config.receive;
     match name {
+        "vad_mode" => assign_display(&mut target.vad_mode, setting, warnings, parse_vad_mode),
+        "vad_hang_ms" => assign_u32(&mut target.vad_hang_ms, 0, 32_767, setting, warnings),
         "signaling_method" => assign_display(
             &mut target.signaling_method,
             setting,
             warnings,
             parse_signaling_method,
         ),
-        "cpu_saver_enabled" => assign_bool(&mut target.cpu_saver_enabled, setting, warnings),
         "audio_source" => assign_display(
             &mut target.audio_source,
             setting,
@@ -1439,6 +1473,72 @@ fn apply_receive(
     }
 }
 
+fn parse_vad_mode(value: &str) -> Result<VadMode, String> {
+    if value.eq_ignore_ascii_case("off") {
+        Ok(VadMode::Off)
+    } else if value.eq_ignore_ascii_case("kerchunk") {
+        Ok(VadMode::Kerchunk)
+    } else if value.eq_ignore_ascii_case("on") {
+        Ok(VadMode::On)
+    } else {
+        Err("requires off, kerchunk, or on".to_owned())
+    }
+}
+
+fn normalize_vad(
+    config: &mut StationConfig,
+    document: &ConfigDocument,
+    source: &str,
+    receive_section: &str,
+    warnings: &mut Vec<ResolutionWarning>,
+) {
+    if config.receive.vad_mode == VadMode::Off {
+        return;
+    }
+    let carrier_gate = !matches!(
+        config.receive.cos_assignment,
+        CarrierSource::Disabled | CarrierSource::Open
+    );
+    let tone_gate = !config.ctcss.receive_override_enabled
+        && match config.receive.signaling_method {
+            SignalingMethod::Carrier => false,
+            SignalingMethod::Ctcss => config.ctcss.receive_source != CtcssSource::Disabled,
+            SignalingMethod::Dcs => true,
+        };
+    if config.receive.cos_assignment == CarrierSource::Disabled {
+        config.receive.cos_assignment = CarrierSource::Open;
+    }
+    if config.receive.vad_mode != VadMode::Kerchunk || carrier_gate || tone_gate {
+        return;
+    }
+    let mut origin = (
+        "receive".to_owned(),
+        "vad_mode".to_owned(),
+        "kerchunk".to_owned(),
+    );
+    for section in ["receive", receive_section] {
+        for (name, value) in document.explicit_values(section) {
+            if name.eq_ignore_ascii_case("vad_mode")
+                && parse_vad_mode(value.trim()) == Ok(VadMode::Kerchunk)
+            {
+                origin = (section.to_owned(), name, value);
+            }
+        }
+    }
+    invalid_warning(
+        warnings,
+        Setting {
+            source,
+            section: &origin.0,
+            name: &origin.1,
+            value: &origin.2,
+        },
+        "on".to_owned(),
+        "requires a carrier or tone qualification capable of ending the RF burst".to_owned(),
+    );
+    config.receive.vad_mode = VadMode::On;
+}
+
 fn apply_transmit(
     config: &mut StationConfig,
     name: &str,
@@ -1453,7 +1553,6 @@ fn apply_transmit(
             warnings,
             parse_signaling_method,
         ),
-        "cpu_saver_enabled" => assign_bool(&mut target.cpu_saver_enabled, setting, warnings),
         "preemphasis_enabled" => assign_bool(&mut target.preemphasis_enabled, setting, warnings),
         "settle_ms" => assign_u32(&mut target.settle_ms, 0, i32::MAX as u32, setting, warnings),
         "rx_blanking_ms" => assign_u16(

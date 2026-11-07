@@ -14,6 +14,7 @@ fn explicit_native_processing_preserves_graphs_gain_and_only_selected_notches() 
     let plan = ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "highpass=f=60,lowpass=f=5500".to_owned(),
         transmit_graph: "volume=-2dB".to_owned(),
         receive_deemphasis: true,
@@ -60,6 +61,7 @@ fn explicit_native_graph_uses_passthrough_for_zero_gain_and_reports_notch_failur
     let mut plan = ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "anull".to_owned(),
         transmit_graph: "anull".to_owned(),
         receive_deemphasis: false,
@@ -103,6 +105,7 @@ fn explicit_native_graph_reports_deemphasis_and_receive_gain_prepare_failures() 
     let plan = ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "anull".to_owned(),
         transmit_graph: "anull".to_owned(),
         receive_deemphasis: true,
@@ -157,6 +160,7 @@ fn explicit_native_profiles_use_the_same_prepared_chains_and_conditioning() {
     let request = ExplicitNativeProcessingPlan {
         local: Some(profile.local),
         voice_telemetry: Some(profile.voice_telemetry),
+        receive_input_gain: 1.0,
         receive_graph: "unused receive graph".to_owned(),
         transmit_graph: "unused transmit graph".to_owned(),
         receive_deemphasis: profile.deemphasis_enabled,
@@ -200,6 +204,7 @@ fn explicit_native_profiles_preserve_unconfigured_roles_and_require_denoise_when
             local: local_present.then_some(local),
             voice_telemetry: (!local_present)
                 .then(|| ProcessingChain::shipped(ChainRole::VoiceTelemetry)),
+            receive_input_gain: 1.0,
             receive_graph: "volume=0.4".to_owned(),
             transmit_graph: "volume=0.5".to_owned(),
             receive_deemphasis: true,
@@ -569,6 +574,7 @@ fn explicit_raw_plan() -> ExplicitNativeProcessingPlan {
     ExplicitNativeProcessingPlan {
         local: None,
         voice_telemetry: None,
+        receive_input_gain: 1.0,
         receive_graph: "highpass=f=60".to_owned(),
         transmit_graph: "volume=-2dB".to_owned(),
         receive_deemphasis: false,
@@ -625,6 +631,44 @@ fn explicit_replacement_keeps_unchanged_raw_stages_and_restores_exact_graphs() {
     );
     assert_eq!(GRAPH_CREATES.get(), 0);
     assert_eq!(GRAPH_PROCESSES.get(), 0);
+}
+
+#[test]
+fn raw_receive_gain_changes_reset_only_receive_history_and_rollback_epoch() {
+    let factory = factory();
+    for gain in [0.125, 0.0] {
+        let original_plan = explicit_raw_plan();
+        let original = factory.prepare(&original_plan).unwrap();
+        let original_rx = original.receive_loudness().unwrap().epoch;
+        let original_tx = original.transmit_loudness().unwrap().epoch;
+        let unchanged =
+            // SAFETY: the unchanged snapshot retains the original serial owners.
+            unsafe { factory.prepare_replacement(&original_plan, &original_plan, &original) }
+                .unwrap();
+        assert_eq!(unchanged.receive_loudness().unwrap().epoch, original_rx);
+        let mut changed = original_plan.clone();
+        changed.receive_input_gain = gain;
+        GRAPH_CREATES.set(0);
+        let forward =
+            // SAFETY: the gain-only update retains those same RX/TX owners.
+            unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+        let forward_rx = forward.receive_loudness().unwrap().epoch;
+        assert_ne!(forward_rx, original_rx);
+        assert_eq!(forward.transmit_loudness().unwrap().epoch, original_tx);
+        assert_eq!(forward.receive_loudness().unwrap().sample_count, 0);
+        assert_eq!(GRAPH_CREATES.get(), 0);
+        let restored =
+            // SAFETY: rollback immediately follows this matching gain-only update.
+            unsafe { factory.prepare_restore(&original_plan, &original, &forward) }.unwrap();
+        assert_ne!(restored.receive_loudness().unwrap().epoch, forward_rx);
+        assert_ne!(restored.receive_loudness().unwrap().epoch, original_rx);
+        assert_eq!(restored.transmit_loudness().unwrap().epoch, original_tx);
+        assert_eq!(
+            restored.receive_input_gain,
+            original_plan.receive_input_gain
+        );
+        assert_eq!(GRAPH_CREATES.get(), 0);
+    }
 }
 
 #[test]
@@ -794,11 +838,20 @@ fn transmit_change_preserves_receive_history_and_fixed_processors() {
 
 fn process_transmit(generation: &mut ProcessingGeneration, input: &[f32]) -> Vec<f32> {
     let mut output = vec![0.0; input.len()];
-    let context = generation.transmit_program.pointer().cast().as_ptr();
+    let (context, process) = match &generation.transmit_loudness {
+        Some(stage) => (
+            NonNull::from(stage.as_ref()).cast().as_ptr(),
+            metered_graph_process as unsafe extern "C" fn(_, _, _, _) -> _,
+        ),
+        None => (
+            generation.transmit_program.pointer().cast().as_ptr(),
+            graph_process as unsafe extern "C" fn(_, _, _, _) -> _,
+        ),
+    };
     assert_eq!(
         // SAFETY: the test owns the TX processor serially and supplies exact spans.
         unsafe {
-            graph_process(
+            process(
                 context,
                 input.as_ptr(),
                 output.as_mut_ptr(),
@@ -808,6 +861,140 @@ fn process_transmit(generation: &mut ProcessingGeneration, input: &[f32]) -> Vec
         PORT_OK
     );
     output
+}
+
+#[test]
+fn transmit_meter_excludes_warmup_and_measures_final_program_without_changing_it() {
+    let settings = plan();
+    let mut generation = factory().prepare(settings).unwrap();
+    assert_eq!(generation.transmit_loudness().unwrap().sample_count, 0);
+    let mut expected = Vec::new();
+    let mut actual = Vec::new();
+    for block in 0..50 {
+        let input: Vec<f32> = (0..960)
+            .map(|i| {
+                (std::f64::consts::TAU * 1000.0 * (block * 960 + i) as f64 / 48_000.0).sin() as f32
+                    * 0.1
+            })
+            .collect();
+        expected.extend_from_slice(&input);
+        actual.extend(process_transmit(&mut generation, &input));
+    }
+    assert_eq!(actual, expected);
+    let measured = generation.transmit_loudness().unwrap();
+    assert_eq!(measured.sample_count, 48_000);
+    assert!((measured.integrated_lufs.unwrap() + 23.05).abs() < 0.1);
+    assert!((measured.true_peak_dbtp.unwrap() + 20.0).abs() < 0.1);
+    for _ in 0..50 {
+        process_transmit(&mut generation, &[0.0; 960]);
+    }
+    let paused = generation.transmit_loudness().unwrap();
+    assert_eq!(paused.sample_count, 96_000);
+    assert_eq!(paused.epoch, measured.epoch);
+    assert!(paused.integrated_lufs.unwrap() > measured.integrated_lufs.unwrap() - 1.0);
+    assert_eq!(paused.true_peak_dbtp, measured.true_peak_dbtp);
+}
+
+#[test]
+fn transmit_meter_epoch_follows_transmit_graph_and_cannot_be_disabled() {
+    let original_plan = plan();
+    let mut original = factory().prepare(original_plan.clone()).unwrap();
+    process_transmit(&mut original, &[0.1; 960]);
+    let first = original.transmit_loudness().unwrap();
+    let mut receive_plan = original_plan.clone();
+    receive_plan.local.input_gain_db += 1.0;
+    let receive =
+        // SAFETY: replacements stay with this test's original serial owners.
+        unsafe { factory().prepare_replacement(&receive_plan, &original_plan, &original) }.unwrap();
+    assert_eq!(receive.transmit_loudness().unwrap().epoch, first.epoch);
+    assert_eq!(receive.transmit_loudness().unwrap().sample_count, 960);
+    let mut transmit_plan = receive_plan.clone();
+    transmit_plan.voice_telemetry.input_gain_db += 1.0;
+    let transmit =
+        // SAFETY: same sole owners and matching preceding plan.
+        unsafe { factory().prepare_replacement(&transmit_plan, &receive_plan, &receive) }.unwrap();
+    let changed = transmit.transmit_loudness().unwrap();
+    assert_ne!(changed.epoch, first.epoch);
+    assert_eq!(changed.sample_count, 0);
+    let restored =
+        // SAFETY: this inverse immediately follows its matching forward update.
+        unsafe { factory().prepare_restore(&receive_plan, &receive, &transmit) }.unwrap();
+    assert_ne!(restored.transmit_loudness().unwrap().epoch, first.epoch);
+    let mut bypass_plan = original_plan.clone();
+    bypass_plan.voice_telemetry.enabled = false;
+    bypass_plan.voice_telemetry.peak_limiter.enabled = false;
+    let bypassed =
+        // SAFETY: the same serial owners retain the corresponding stages.
+        unsafe { factory().prepare_replacement(&bypass_plan, &original_plan, &original) }.unwrap();
+    assert!(bypassed.transmit_loudness().is_some());
+    assert!(bypassed.receive_loudness().is_some());
+}
+
+#[test]
+fn transmit_meter_does_not_count_rejected_blocks_or_setup_samples() {
+    let settings = plan();
+    let mut generation = factory().prepare(&settings).unwrap();
+    {
+        let _ports = generation.session_ports(ProgramRingPort::silence());
+    }
+    let context = NonNull::from(generation.transmit_loudness.as_ref().unwrap().as_ref())
+        .cast()
+        .as_ptr();
+    let input = [0.1_f32; 961];
+    let mut output = [0.0_f32; 961];
+    // SAFETY: all non-null spans cover the supplied counts; invalid arguments
+    // are deliberately rejected before those pointers are dereferenced.
+    unsafe {
+        assert_eq!(
+            metered_graph_process(ptr::null_mut(), input.as_ptr(), output.as_mut_ptr(), 1),
+            PORT_ERROR
+        );
+        assert_eq!(
+            metered_graph_process(context, ptr::null(), output.as_mut_ptr(), 1),
+            PORT_ERROR
+        );
+        assert_eq!(
+            metered_graph_process(context, input.as_ptr(), ptr::null_mut(), 1),
+            PORT_ERROR
+        );
+        assert_eq!(
+            metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 0),
+            PORT_ERROR
+        );
+        assert_eq!(
+            metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 961),
+            PORT_ERROR
+        );
+    }
+    assert_eq!(generation.transmit_loudness().unwrap().sample_count, 0);
+    // Deliberately mismatch the private analysis bound to exercise its defensive
+    // error path while the public graph still accepts this complete block.
+    let stage = generation.transmit_loudness.as_ref().unwrap();
+    // SAFETY: no callback is running; this test exclusively owns the TX stage.
+    unsafe {
+        *stage.meter.get() = OutputLoudnessMeter::new(48_000, 1).unwrap();
+    }
+    assert_eq!(
+        // SAFETY: both spans contain at least two samples and this is the sole owner.
+        unsafe { metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 2) },
+        PORT_ERROR
+    );
+    let plan: ExplicitNativeProcessingPlan = settings.into();
+    let invalid = factory()
+        .prepare(plan.clone())
+        .unwrap()
+        .with_output_meters(&plan, 0, None);
+    let error = invalid.err().unwrap();
+    assert!(matches!(error, ProcessingRuntimeError::Loudness(_)));
+    assert!(error.to_string().contains("output meter setup failed"));
+}
+
+#[test]
+fn tiny_graph_warmup_exercises_at_least_sixty_four_input_samples() {
+    GRAPH_CREATES.set(0);
+    GRAPH_PROCESSES.set(0);
+    let _generation = factory_with_maximum(1).prepare(plan()).unwrap();
+    assert_eq!(GRAPH_PROCESSES.get(), GRAPH_CREATES.get() * 64);
 }
 
 fn process_denoise(generation: &mut ProcessingGeneration, input: &[f32]) -> Vec<f32> {
@@ -962,6 +1149,40 @@ fn restoring_denoise_after_disabling_reuses_model_and_discards_stale_framing() {
 }
 
 #[test]
+fn tiny_limiter_handoff_primes_the_resampled_filter_before_its_48_frame_fade() {
+    GRAPH_SIMULATE_LOOKAHEAD.set(true);
+    let factory = factory_with_maximum(1);
+    let mut original_plan = plan();
+    original_plan.preemphasis_enabled = false;
+    original_plan.voice_telemetry.enabled = false;
+    original_plan.voice_telemetry.input_gain_db = 0.0;
+    original_plan.voice_telemetry.peak_limiter.enabled = true;
+    original_plan.voice_telemetry.peak_limiter.lookahead_ms = 5.0;
+    let mut original = factory.prepare(&original_plan).unwrap();
+    for _ in 0..300 {
+        process_transmit(&mut original, &[0.5]);
+    }
+    let mut changed = original_plan.clone();
+    changed.voice_telemetry.output_gain_db = -6.020_599_913;
+    let mut replacement =
+        // SAFETY: both generations retain this test's original serial TX owner.
+        unsafe { factory.prepare_replacement(&changed, &original_plan, &original) }.unwrap();
+    for frame in 0..(240 + 256) {
+        assert_eq!(
+            process_transmit(&mut replacement, &[0.5]),
+            [0.5],
+            "prime frame {frame}"
+        );
+    }
+    for frame in 1..=48 {
+        let expected = 0.5 - 0.25 * frame as f32 / 48.0;
+        assert!((process_transmit(&mut replacement, &[0.5])[0] - expected).abs() < 0.0001);
+    }
+    assert!((process_transmit(&mut replacement, &[0.5])[0] - 0.25).abs() < 0.0001);
+    GRAPH_SIMULATE_LOOKAHEAD.set(false);
+}
+
+#[test]
 fn changed_transmit_graph_covers_real_lookahead_without_silent_samples() {
     GRAPH_SIMULATE_LOOKAHEAD.set(true);
     for maximum in [64, 960] {
@@ -971,8 +1192,8 @@ fn changed_transmit_graph_covers_real_lookahead_without_silent_samples() {
             original_plan.preemphasis_enabled = false;
             original_plan.voice_telemetry.enabled = false;
             original_plan.voice_telemetry.input_gain_db = 0.0;
-            original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
-            original_plan.voice_telemetry.transmit_tail.lookahead_ms = lookahead_ms;
+            original_plan.voice_telemetry.peak_limiter.enabled = true;
+            original_plan.voice_telemetry.peak_limiter.lookahead_ms = lookahead_ms;
             let mut original = factory.prepare(&original_plan).unwrap();
             for _ in 0..32 {
                 process_transmit(&mut original, &vec![0.5; maximum as usize]);
@@ -1021,7 +1242,7 @@ fn rapid_graph_replacements_keep_one_audible_predecessor_and_bounded_work() {
     active_plan.preemphasis_enabled = false;
     active_plan.voice_telemetry.enabled = false;
     active_plan.voice_telemetry.input_gain_db = 0.0;
-    active_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
+    active_plan.voice_telemetry.peak_limiter.enabled = true;
     let mut active = factory.prepare(&active_plan).unwrap();
     process_transmit(&mut active, &[0.5; 960]);
     for gain in [-3.0, -6.0, -9.0, -12.0] {
@@ -1163,7 +1384,7 @@ fn delayed_publication_selects_the_now_audible_predecessor() {
     original_plan.preemphasis_enabled = false;
     original_plan.voice_telemetry.enabled = false;
     original_plan.voice_telemetry.input_gain_db = 0.0;
-    original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
+    original_plan.voice_telemetry.peak_limiter.enabled = true;
     let mut original = factory.prepare(&original_plan).unwrap();
     process_transmit(&mut original, &[0.5; 960]);
     let mut first_plan = original_plan.clone();
@@ -1265,7 +1486,7 @@ fn inverse_handoff_primes_retained_originals_without_recreation_or_silent_pcm() 
         original_plan.preemphasis_enabled = false;
         original_plan.voice_telemetry.enabled = false;
         original_plan.voice_telemetry.input_gain_db = 0.0;
-        original_plan.voice_telemetry.transmit_tail.limiter_enabled = true;
+        original_plan.voice_telemetry.peak_limiter.enabled = true;
         let mut original = factory.prepare(&original_plan).unwrap();
         process_transmit(&mut original, &[0.5; 960]);
         let mut changed = original_plan.clone();
@@ -1728,4 +1949,131 @@ fn setup_errors_remain_specific_and_human_readable() {
         ProcessingRuntimeError::IncorrectChainRole.to_string(),
         "processing chain has the wrong role"
     );
+}
+
+#[test]
+fn mandatory_receive_meter_tracks_complete_path_and_independent_transmit_history() {
+    let mut selected = plan();
+    let mut current = factory().prepare(&selected).unwrap();
+    let rx_epoch = current.receive_loudness().unwrap().epoch;
+    let tx_epoch = current.transmit_loudness().unwrap().epoch;
+    assert_ne!(rx_epoch, tx_epoch);
+    assert_eq!(current.receive_loudness().unwrap().sample_count, 0);
+    let input = [0.1; 960];
+    let mut output = [0.0; 960];
+    for _ in 0..50 {
+        let stage = current.receive_loudness.as_ref().unwrap();
+        assert_eq!(
+            // SAFETY: this test is the sole RX owner and supplies complete spans.
+            unsafe {
+                metered_graph_process(
+                    NonNull::from(stage.as_ref()).cast().as_ptr(),
+                    input.as_ptr(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            PORT_OK,
+        );
+    }
+    assert_eq!(current.receive_loudness().unwrap().sample_count, 48_000);
+    assert_eq!(current.transmit_loudness().unwrap().sample_count, 0);
+    let mut next = selected.clone();
+    next.voice_telemetry.output_gain_db -= 1.0;
+    current =
+        // SAFETY: each replacement retains these original serial owners.
+        unsafe { factory().prepare_replacement(&next, &selected, &current) }.unwrap();
+    assert_eq!(current.receive_loudness().unwrap().epoch, rx_epoch);
+    assert_eq!(current.receive_loudness().unwrap().sample_count, 48_000);
+    let tx_epoch = current.transmit_loudness().unwrap().epoch;
+    selected = next;
+    let changes: [fn(&mut NativeProcessingPlan); 4] = [
+        |p| p.local.input_gain_db += 1.0,
+        |p| p.local.receive.bandpass_lowpass_hz -= 500.0,
+        |p| p.local.rnnoise_enabled = true,
+        |p| p.local.receive.pl_filter = PlFilter::DecodedToneNotch,
+    ];
+    for change in changes {
+        let previous_rx = current.receive_loudness().unwrap().epoch;
+        let mut next = selected.clone();
+        change(&mut next);
+        current =
+            // SAFETY: same factory and same sole RX/TX owners for this test.
+            unsafe { factory().prepare_replacement(&next, &selected, &current) }.unwrap();
+        assert_ne!(current.receive_loudness().unwrap().epoch, previous_rx);
+        assert_eq!(current.receive_loudness().unwrap().sample_count, 0);
+        assert_eq!(current.transmit_loudness().unwrap().epoch, tx_epoch);
+        selected = next;
+    }
+    let raw = factory().prepare(explicit_raw_plan()).unwrap();
+    assert!(raw.receive_loudness().is_some());
+    assert!(raw.transmit_loudness().is_some());
+}
+
+#[test]
+fn optional_receive_stages_preserve_history_on_transmit_edits_and_reset_on_mask_changes() {
+    let mut selected: ExplicitNativeProcessingPlan = plan().into();
+    let local = selected.local.as_mut().unwrap();
+    local.receive.pl_filter = PlFilter::DecodedToneNotch;
+    local.rnnoise_enabled = true;
+    selected.receive_ctcss_mask = 1;
+    let current = factory().prepare(&selected).unwrap();
+    let stage = current.receive_loudness.as_ref().unwrap();
+    let mut output = [0.0; 960];
+    assert_eq!(
+        // SAFETY: this test is the sole RX owner of the prepared meter and complete spans.
+        unsafe {
+            metered_graph_process(
+                NonNull::from(stage.as_ref()).cast().as_ptr(),
+                [0.1; 960].as_ptr(),
+                output.as_mut_ptr(),
+                960,
+            )
+        },
+        PORT_OK
+    );
+    let measured = current.receive_loudness().unwrap();
+    assert_eq!(measured.sample_count, 960);
+    let mut changed = selected.clone();
+    changed.voice_telemetry.as_mut().unwrap().output_gain_db -= 1.0;
+    let transmit_changed =
+        // SAFETY: replacement retains the same sole serial RX/TX owners.
+        unsafe { factory().prepare_replacement(&changed, &selected, &current) }.unwrap();
+    assert_eq!(
+        transmit_changed.receive_loudness().unwrap().epoch,
+        measured.epoch
+    );
+    assert_eq!(
+        transmit_changed.receive_loudness().unwrap().sample_count,
+        960
+    );
+    let tx_epoch = transmit_changed.transmit_loudness().unwrap().epoch;
+    selected = changed;
+    let mut changed = selected.clone();
+    changed.receive_ctcss_mask = 0;
+    let mask_changed =
+        // SAFETY: this successor also retains both original serial owners.
+        unsafe { factory().prepare_replacement(&changed, &selected, &transmit_changed) }.unwrap();
+    assert_ne!(
+        mask_changed.receive_loudness().unwrap().epoch,
+        measured.epoch
+    );
+    assert_eq!(mask_changed.receive_loudness().unwrap().sample_count, 0);
+    assert_eq!(mask_changed.transmit_loudness().unwrap().epoch, tx_epoch);
+
+    let previous_epoch = mask_changed.receive_loudness().unwrap().epoch;
+    let mut tail_only = changed.clone();
+    // This public mask is accepted even though it selects no supported decoded tone.
+    tail_only.receive_ctcss_mask = 1_u64 << CTCSS_TONE_COUNT;
+    let tail_changed =
+        // SAFETY: this immediate successor retains the same two serial owners.
+        unsafe { factory().prepare_replacement(&tail_only, &changed, &mask_changed) }.unwrap();
+    assert!(tail_changed.receive_ctcss_notch.iter().all(Option::is_none));
+    assert!(tail_changed.receive_ctcss_tail_notch.is_some());
+    assert_ne!(
+        tail_changed.receive_loudness().unwrap().epoch,
+        previous_epoch
+    );
+    assert_eq!(tail_changed.receive_loudness().unwrap().sample_count, 0);
+    assert_eq!(tail_changed.transmit_loudness().unwrap().epoch, tx_epoch);
 }

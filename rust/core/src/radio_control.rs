@@ -111,6 +111,8 @@ pub const URP_AST_COMMAND_SET_CTCSS_INHIBIT: u32 = 7;
 pub const URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE: u32 = 8;
 /// Persist the current live mixer, CTCSS, and squelch tuning to EEPROM.
 pub const URP_AST_COMMAND_SAVE_TUNING_EEPROM: u32 = 9;
+/// Read effective VAD mode in value and minimum native preroll frames in flags, before start.
+pub const URP_AST_COMMAND_GET_RECEIVE_POLICY: u32 = 10;
 
 /// Receiver ADC mixer.
 pub const URP_AST_MIXER_RECEIVE: u32 = 1;

@@ -46,18 +46,16 @@ fn common_values() -> Vec<(String, String)> {
         ("deesser_attack_ms", "3"),
         ("deesser_release_ms", "70"),
         ("agc_enabled", "yes"),
-        ("agc_target_dbfs", "-20"),
+        ("agc_target_lufs", "-20"),
         ("agc_max_gain_db", "8"),
         ("agc_max_attenuation_db", "8"),
-        ("agc_rms_averaging_ms", "250"),
+        ("agc_loudness_window_ms", "500"),
         ("agc_gain_increase_db_per_second", "3"),
         ("agc_gain_decrease_db_per_second", "7"),
         ("agc_activity_threshold_dbfs", "-45"),
         ("agc_activity_hysteresis_db", "4"),
         ("agc_hold_ms", "600"),
         ("agc_deadband_db", "2"),
-        ("agc_sidechain_highpass_hz", "700"),
-        ("agc_sidechain_lowpass_hz", "1600"),
         ("expander_enabled", "yes"),
         ("expander_threshold_dbfs", "-50"),
         ("expander_ratio", "2"),
@@ -95,6 +93,12 @@ fn common_values() -> Vec<(String, String)> {
         ("compressor_high_release_ms", "350"),
         ("compressor_sidechain_highpass_hz", "700"),
         ("compressor_sidechain_lowpass_hz", "1600"),
+        ("lookahead_limiter_enabled", "yes"),
+        ("lookahead_limiter_oversample", "2"),
+        ("lookahead_limiter_ceiling_dbfs", "-2"),
+        ("lookahead_limiter_lookahead_ms", "4"),
+        ("lookahead_limiter_attack_ms", "2"),
+        ("lookahead_limiter_release_ms", "80"),
         ("limiter_enabled", "yes"),
         ("limiter_bands", "1"),
         ("limiter_low_crossover_hz", "600"),
@@ -164,11 +168,6 @@ fn every_common_and_source_specific_schema_field_is_applied() {
 
     let mut voice_values = common_values();
     voice_values.extend(values(&[
-        ("lookahead_limiter_enabled", "yes"),
-        ("lookahead_limiter_ceiling_dbfs", "-2"),
-        ("lookahead_limiter_lookahead_ms", "4"),
-        ("lookahead_limiter_attack_ms", "2"),
-        ("lookahead_limiter_release_ms", "80"),
         ("post_limiter_bandpass_enabled", "yes"),
         ("post_limiter_bandpass_highpass_hz", "100"),
         ("post_limiter_bandpass_lowpass_hz", "6000"),
@@ -176,9 +175,51 @@ fn every_common_and_source_specific_schema_field_is_applied() {
     let voice = RawOverlay::flat(ChainRole::VoiceTelemetry, "radio.conf", voice_values);
     let voice = ResolvedProfile::resolve(ChainRole::VoiceTelemetry, &voice, None).unwrap();
     assert!(voice.warnings().is_empty());
-    assert!(voice.chain().transmit_tail.limiter_enabled);
+    assert!(voice.chain().peak_limiter.enabled);
     assert!(voice.chain().transmit_tail.bandpass_enabled);
-    assert_eq!(voice.chain().transmit_tail.ceiling_dbfs, -2.0);
+    assert_eq!(voice.chain().peak_limiter.ceiling_dbfs, -2.0);
+    assert_eq!(voice.chain().peak_limiter.oversample, 2);
+    assert_eq!(local.chain().peak_limiter, voice.chain().peak_limiter);
+    let link = RawOverlay::flat(ChainRole::Link, "radio.conf", common_values());
+    let link = ResolvedProfile::resolve(ChainRole::Link, &link, None).unwrap();
+    assert!(link.warnings().is_empty());
+    assert_eq!(link.chain().peak_limiter, voice.chain().peak_limiter);
+}
+
+#[test]
+fn final_limiter_oversample_preserves_valid_inheritance_and_warns_for_other_factors() {
+    for (supplied, expected) in [("1", 1), ("2", 2), ("4", 4)] {
+        let flat = RawOverlay::flat(
+            ChainRole::VoiceTelemetry,
+            "radio.conf",
+            values(&[("lookahead_limiter_oversample", supplied)]),
+        );
+        let resolved = ResolvedProfile::resolve(ChainRole::VoiceTelemetry, &flat, None).unwrap();
+        assert_eq!(resolved.chain().peak_limiter.oversample, expected);
+        assert!(resolved.warnings().is_empty());
+    }
+    for supplied in ["0", "3", "8", "2.0", "bad"] {
+        let flat = RawOverlay::flat(
+            ChainRole::VoiceTelemetry,
+            "radio.conf",
+            values(&[("lookahead_limiter_oversample", "2")]),
+        );
+        let scoped = RawOverlay::scoped(
+            ChainRole::VoiceTelemetry,
+            "radio.conf",
+            "voice_telemetry hilltop",
+            values(&[("lookahead_limiter_oversample", supplied)]),
+        );
+        let resolved =
+            ResolvedProfile::resolve(ChainRole::VoiceTelemetry, &flat, Some(&scoped)).unwrap();
+        assert_eq!(resolved.chain().peak_limiter.oversample, 2);
+        assert_eq!(resolved.warnings().len(), 1);
+        assert_eq!(resolved.warnings()[0].fallback, "2");
+        assert_eq!(
+            resolved.warnings()[0].kind,
+            ResolutionWarningKind::InvalidValue
+        );
+    }
 }
 
 #[test]
@@ -205,7 +246,7 @@ fn malformed_unknown_and_source_inapplicable_values_warn_and_fall_back() {
         ChainRole::Link,
         "radio.conf",
         values(&[
-            ("agc_target_dbfs", "-20"),
+            ("agc_target_lufs", "-20"),
             ("future_knob", "future-value"),
             ("rnnoise_enabled", "yes"),
         ]),
@@ -215,12 +256,12 @@ fn malformed_unknown_and_source_inapplicable_values_warn_and_fall_back() {
         "radio.conf",
         "link hilltop",
         values(&[
-            ("agc_target_dbfs", "loud"),
+            ("agc_target_lufs", "loud"),
             ("equalizer_enabled", "sometimes"),
         ]),
     );
     let resolved = ResolvedProfile::resolve(ChainRole::Link, &flat, Some(&scoped)).unwrap();
-    assert_eq!(resolved.chain().agc.target_dbfs, -20.0);
+    assert_eq!(resolved.chain().agc.target_lufs, -20.0);
     assert!(resolved.chain().equalizer.enabled);
     assert!(!resolved.chain().rnnoise_enabled);
     assert_eq!(
@@ -240,12 +281,12 @@ fn malformed_unknown_and_source_inapplicable_values_warn_and_fall_back() {
     assert_eq!(malformed.source, "radio.conf");
     assert_eq!(malformed.section, "link hilltop");
     assert_eq!(malformed.fallback, "-20");
-    assert!(malformed.to_string().contains("agc_target_dbfs=\"loud\""));
+    assert!(malformed.to_string().contains("agc_target_lufs=\"loud\""));
 }
 
 #[test]
 fn scalar_and_enum_fallbacks_keep_the_value_inherited_at_each_layer() {
-    assert!(parse_number("NaN", -1.0, 1.0, false).is_err());
+    assert!(parse_number("NaN", -1.0, 1.0).is_err());
     let flat = RawOverlay::flat(
         ChainRole::Link,
         "radio.conf",
@@ -254,8 +295,8 @@ fn scalar_and_enum_fallbacks_keep_the_value_inherited_at_each_layer() {
             ("compressor_bands", "1"),
             ("limiter_bands", "invalid"),
             ("input_gain_db", "999"),
-            ("agc_sidechain_highpass_hz", "-1"),
-            ("agc_sidechain_lowpass_hz", "0"),
+            ("expander_sidechain_highpass_hz", "-1"),
+            ("expander_sidechain_lowpass_hz", "1600"),
         ]),
     );
     let scoped = RawOverlay::scoped(
@@ -269,8 +310,8 @@ fn scalar_and_enum_fallbacks_keep_the_value_inherited_at_each_layer() {
     assert_eq!(resolved.chain().compressor.layout, BandLayout::FullBand);
     assert_eq!(resolved.chain().limiter.layout, BandLayout::ThreeBand);
     assert_eq!(resolved.chain().input_gain_db, 0.0);
-    assert_eq!(resolved.chain().agc.sidechain_highpass_hz, 800.0);
-    assert_eq!(resolved.chain().agc.sidechain_lowpass_hz, 0.0);
+    assert_eq!(resolved.chain().expander.sidechain_highpass_hz, 800.0);
+    assert_eq!(resolved.chain().expander.sidechain_lowpass_hz, 1600.0);
     assert_eq!(resolved.warnings().len(), 4);
     assert_eq!(resolved.warnings()[0].fallback, "3");
     assert_eq!(resolved.warnings()[3].fallback, "1");
@@ -335,13 +376,13 @@ fn individually_valid_but_inverted_edges_are_rejected_after_all_overlays() {
     let flat = RawOverlay::flat(
         ChainRole::Link,
         "radio.conf",
-        values(&[("agc_sidechain_highpass_hz", "1000")]),
+        values(&[("expander_sidechain_highpass_hz", "1000")]),
     );
     let scoped = RawOverlay::scoped(
         ChainRole::Link,
         "radio.conf",
         "link hilltop",
-        values(&[("agc_sidechain_lowpass_hz", "500")]),
+        values(&[("expander_sidechain_lowpass_hz", "500")]),
     );
     assert!(matches!(
         ResolvedProfile::resolve(ChainRole::Link, &flat, Some(&scoped)),
@@ -483,7 +524,9 @@ fn all_source_specific_options_apply_only_to_their_own_schema() {
         values(&[
             ("rnnoise_enabled", "yes"),
             ("ctcss_filter_mode", "notch"),
+            ("loudness_meter_enabled", "yes"),
             ("lookahead_limiter_enabled", "yes"),
+            ("lookahead_limiter_oversample", "2"),
             ("lookahead_limiter_ceiling_dbfs", "-2"),
             ("lookahead_limiter_lookahead_ms", "4"),
             ("lookahead_limiter_attack_ms", "2"),
@@ -496,8 +539,12 @@ fn all_source_specific_options_apply_only_to_their_own_schema() {
     let local = ResolvedProfile::resolve(ChainRole::LocalReceive, &local, None).unwrap();
     assert!(local.chain().rnnoise_enabled);
     assert_eq!(local.chain().receive.pl_filter, PlFilter::DecodedToneNotch);
-    assert!(!local.chain().transmit_tail.limiter_enabled);
-    assert_eq!(local.warnings().len(), 8);
+    assert!(local.chain().peak_limiter.enabled);
+    assert_eq!(local.warnings().len(), 4);
+    assert!(local.warnings().iter().any(|warning| {
+        warning.name == "loudness_meter_enabled"
+            && warning.kind == ResolutionWarningKind::UnknownOption
+    }));
 
     let voice = RawOverlay::flat(
         ChainRole::VoiceTelemetry,
@@ -515,7 +562,7 @@ fn all_source_specific_options_apply_only_to_their_own_schema() {
         ]),
     );
     let voice = ResolvedProfile::resolve(ChainRole::VoiceTelemetry, &voice, None).unwrap();
-    assert!(voice.chain().transmit_tail.limiter_enabled);
+    assert!(voice.chain().peak_limiter.enabled);
     assert_eq!(voice.chain().transmit_tail.bandpass_lowpass_hz, 5_000.0);
     assert_eq!(voice.chain().receive.pl_filter, PlFilter::Disabled);
     assert_eq!(voice.warnings().len(), 7);

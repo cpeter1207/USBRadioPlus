@@ -14,8 +14,8 @@
 #include "usbradioplus_asterisk.h"
 #include "usbradioplus_product.h"
 
-_Static_assert(URP_AST_DIRECT_CALLBACKS_ABI_VERSION == 5,
-	       "direct callback ABI must include remote metadata");
+_Static_assert(URP_AST_DIRECT_CALLBACKS_ABI_VERSION == 6,
+	       "direct callback ABI must include receive admission metadata");
 _Static_assert(sizeof(urp_ast_direct_callbacks) == sizeof(UrpAstDirectCallbacks),
 	       "one shared callback layout");
 

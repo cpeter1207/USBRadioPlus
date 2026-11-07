@@ -1,4 +1,5 @@
 use super::link_support::*;
+use super::timing_support::*;
 use super::*;
 
 #[test]
@@ -63,6 +64,19 @@ fn fixed_signature_exports_match_installed_asterisk_bindings() {
     check!(ast_audiohook_attach(_, _));
     check!(ast_audiohook_detach(_));
     check!(ast_audiohook_destroy(_));
+    check!(ast_framehook_attach(_, _));
+    check!(ast_framehook_detach(_, _));
+    check!(ast_timer_open());
+    check!(ast_timer_close(_));
+    check!(ast_timer_fd(_));
+    check!(ast_timer_set_rate(_, _));
+    check!(ast_timer_get_event(_));
+    check!(ast_timer_ack(_, _));
+    check!(ast_channel_fd_add(_, _));
+    check!(ast_channel_fd(_, _));
+    check!(ast_channel_fdno(_));
+    check!(ast_channel_fdno_set(_, _));
+    check!(ast_channel_set_fd(_, _, _));
     check!(__ast_pthread_mutex_lock(_, _, _, _, _));
     check!(__ast_pthread_mutex_unlock(_, _, _, _, _));
     // SAFETY: both static declarations name the same immutable directory pointer.

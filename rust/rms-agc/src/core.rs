@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 USBRadioPlus contributors
-//! Adapter-neutral, causal RMS gain rider. No audio queue or detector filter is owned here.
+//! Adapter-neutral, causal LUFS gain rider, hosted only inside the FFmpeg graph.
+
+use ebur128::{EbuR128, Mode};
 
 /// Number of independently connected scalar controls in their established port order.
 pub(crate) const CONTROL_COUNT: usize = 10;
 
 /// A control's finite range and fallback, matching the published LADSPA contract.
 pub(crate) const SPECS: [(f64, f64, f64); CONTROL_COUNT] = [
-    (-40.0, -3.0, -24.0),
-    (10.0, 5000.0, 200.0),
+    (-40.0, -3.0, -23.0),
+    (400.0, 3000.0, 400.0),
     (0.1, 100.0, 2.0),
     (0.1, 100.0, 6.0),
     (0.0, 30.0, 6.0),
@@ -19,7 +21,7 @@ pub(crate) const SPECS: [(f64, f64, f64); CONTROL_COUNT] = [
     (0.0, 6.0, 1.0),
 ];
 
-/// Validated supported host rate; native radio operation continues to use 48 kHz.
+/// Validated 8 to 384 kHz host rate; native radio operation continues to use 48 kHz.
 #[derive(Clone, Copy)]
 pub(crate) struct SampleRate(u32);
 
@@ -27,7 +29,7 @@ impl SampleRate {
     /// Reject unsupported rates before allocating a streaming instance.
     pub(crate) fn new(rate: impl Into<u64>) -> Option<Self> {
         let rate = rate.into();
-        (1000..=384_000)
+        (8000..=384_000)
             .contains(&rate)
             .then_some(Self(rate as u32))
     }
@@ -47,10 +49,6 @@ impl Settings {
             let input = port.map(f64::from).unwrap_or(fallback);
             *value = if input.is_finite() { input } else { fallback }.clamp(minimum, maximum);
         }
-        // A threshold at/above the target must not permanently close the activity gate.
-        if values[6] >= values[0] {
-            values[6] = SPECS[6].2;
-        }
         Self(values)
     }
 }
@@ -60,10 +58,10 @@ pub(crate) struct GainRider {
     rate: SampleRate,
     settings: Option<Settings>,
     fast_coefficient: f64,
-    level_coefficient: f64,
     fast_power: f64,
-    level_power: f64,
-    level_weight: f64,
+    meter: EbuR128,
+    meter_phase: u32,
+    loudness: Option<f64>,
     opening_power: f64,
     closing_power: f64,
     gain: f64,
@@ -83,14 +81,17 @@ pub(crate) struct GainRider {
 impl GainRider {
     /// Prepare bounded state before the host starts audio processing.
     pub(crate) fn new(rate: SampleRate) -> Self {
+        let mut meter = EbuR128::new(1, rate.0, Mode::M | Mode::I | Mode::HISTOGRAM)
+            .expect("validated mono sample rate");
+        meter.set_max_window(3000).expect("bounded loudness window");
         Self {
             rate,
             settings: None,
             fast_coefficient: -(-100.0 / f64::from(rate.0)).exp_m1(),
-            level_coefficient: 0.0,
             fast_power: 0.0,
-            level_power: 0.0,
-            level_weight: 0.0,
+            meter,
+            meter_phase: 0,
+            loudness: None,
             opening_power: 0.0,
             closing_power: 0.0,
             gain: 1.0,
@@ -110,7 +111,25 @@ impl GainRider {
 
     /// Reset streaming history while retaining the adapter's connected buffers.
     pub(crate) fn reset(&mut self) {
-        *self = Self::new(self.rate);
+        self.meter.reset();
+        self.settings = None;
+        self.fast_power = 0.0;
+        self.meter_phase = 0;
+        self.loudness = None;
+        self.opening_power = 0.0;
+        self.closing_power = 0.0;
+        self.gain = 1.0;
+        self.destination_gain = 1.0;
+        self.gain_step = 0.0;
+        self.gain_db = 0.0;
+        self.hold_samples = 0.0;
+        self.acquisition_samples = 0.0;
+        self.active_samples = 0.0;
+        self.phase = 0;
+        self.elapsed = 0;
+        self.ramp_remaining = 0;
+        self.active = false;
+        self.controls = [0.0; CONTROL_COUNT];
     }
 
     /// Cache coefficients only when control values change, with no allocation or lock.
@@ -118,10 +137,15 @@ impl GainRider {
         if self.settings == Some(settings) {
             return;
         }
+        if self.controls[1] != settings.0[1] {
+            self.meter.reset();
+            self.meter_phase = 0;
+            self.loudness = None;
+            self.acquisition_samples = settings.0[1] * f64::from(self.rate.0) / 1000.0;
+        }
         self.controls = settings.0;
         self.settings = Some(settings);
         let control = &self.controls;
-        self.level_coefficient = -(-1000.0 / (f64::from(self.rate.0) * control[1])).exp_m1();
         self.opening_power = 10.0_f64.powf(control[6] / 10.0);
         self.closing_power = 10.0_f64.powf((control[6] - control[7]) / 10.0);
         self.gain_db = (20.0 * self.gain.log10()).clamp(-control[5], control[4]);
@@ -141,9 +165,6 @@ impl GainRider {
         let power = sample * sample;
         self.fast_power =
             (self.fast_power + self.fast_coefficient * (power - self.fast_power)).max(1e-30);
-        self.level_power =
-            (self.level_power + self.level_coefficient * (power - self.level_power)).max(1e-30);
-        self.level_weight += self.level_coefficient * (1.0 - self.level_weight);
         if self.active {
             if self.fast_power < self.closing_power {
                 self.active = false;
@@ -154,14 +175,12 @@ impl GainRider {
             }
         } else if self.fast_power >= self.opening_power {
             self.active = true;
-            self.level_power = self.level_coefficient * power;
-            self.level_weight = self.level_coefficient;
-            self.acquisition_samples = self.controls[1] * f64::from(self.rate.0) / 1000.0;
         }
         if self.active {
             self.active_samples += 1.0;
         }
-        self.acquisition_samples = (self.acquisition_samples - 1.0).max(0.0);
+        // Pauses age the same rolling window without reopening acquisition.
+        self.measure_loudness(if self.active { sample as f32 } else { 0.0 });
         self.phase += 1000;
         self.elapsed += 1;
         if self.phase >= self.rate.0 {
@@ -185,19 +204,37 @@ impl GainRider {
         }
     }
 
+    /// Feed K-weighted measurement without buffering program audio; query only at 100 ms.
+    fn measure_loudness(&mut self, sample: f32) {
+        self.meter
+            .add_frames_f32(&[sample])
+            .expect("validated mono sample");
+        self.acquisition_samples = (self.acquisition_samples - 1.0).max(0.0);
+        self.meter_phase += 10;
+        if self.meter_phase >= self.rate.0 {
+            self.meter_phase -= self.rate.0;
+            if self.acquisition_samples == 0.0 {
+                let level = self
+                    .meter
+                    .loudness_window(self.controls[1] as u32)
+                    .expect("prepared loudness window");
+                self.loudness = level.is_finite().then_some(level);
+            }
+        }
+    }
+
     /// Recompute the gain destination at the established sample-derived 1 kHz cadence.
     fn update_gain(&mut self) {
         if !self.active {
             self.hold_samples = 0.0;
             return;
         }
+        let Some(level) = self.loudness else {
+            return;
+        };
         let control = &self.controls;
         let rate = f64::from(self.rate.0);
-        let mut level = self.level_power / self.level_weight;
-        if self.acquisition_samples > 0.0 {
-            level = level.max(self.fast_power);
-        }
-        let wanted = control[0] - 10.0 * level.max(f64::MIN_POSITIVE).log10();
+        let wanted = control[0] - level;
         // Deadband measures target error before the requested correction reaches a gain cap.
         let difference = wanted - self.gain_db;
         let wanted = wanted.clamp(-control[5], control[4]);

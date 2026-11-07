@@ -101,7 +101,7 @@ assert descriptor.capability_name == b"usbradioplus.product1", "Wrong product ca
             PRODUCT,
             ADAPTER,
             "librate_adjusting_pcm_ring3.so.3",
-            "librptadvradio.so.4",
+            "librptadvradio.so.5",
             "librptadv_samplerate_adapter.so.2",
             "librptadv_ffmpeg_adapter.so.1",
             "librptadv_portaudio_alsa_adapter.so.2",

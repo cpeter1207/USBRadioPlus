@@ -52,6 +52,7 @@ use usbradioplus_rnnoise::DenoiseProvider;
 use usbradioplus_samplerate::SampleRateAdapter;
 /// Private initial-alpha direct callback descriptor; contexts remain caller-owned.
 pub use usbradioplus_station::DirectCallbacks as UrpAstDirectCallbacks;
+pub use usbradioplus_station::DirectReceiveMetadata as UrpNativeReceiveMetadata;
 use usbradioplus_station::{StationMedia, StationPlan, StationUpdate, StationUpdateError};
 
 const ABI_VERSION: u32 = 1;
@@ -91,6 +92,8 @@ pub const URP_AST_TRANSPORT_RPT_ADVANCED: u32 = 2;
 pub const URP_AST_LINK_DIRECTION_READ: u32 = 1;
 /// Audio written toward an Asterisk link; intentionally bypassed by link processing.
 pub const URP_AST_LINK_DIRECTION_WRITE: u32 = 2;
+/// Bounded idle integration without emitting link media.
+pub const URP_AST_LINK_DIRECTION_SILENCE: u32 = 3;
 
 /// Fixed Asterisk jitter-buffer implementation.
 pub const URP_AST_JITTER_FIXED: u32 = 1;
@@ -123,11 +126,12 @@ pub const URP_AST_LOG_WARNING: u32 = 2;
 pub const URP_AST_LOG_ERROR: u32 = 3;
 
 pub use usbradioplus_core::radio_control::{
-    URP_AST_COMMAND_GET_MIXER, URP_AST_COMMAND_READ_EEPROM, URP_AST_COMMAND_SAVE_TUNING_EEPROM,
-    URP_AST_COMMAND_SET_CTCSS_INHIBIT, URP_AST_COMMAND_SET_MIXER,
-    URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE, URP_AST_COMMAND_SET_TEST_TONE,
-    URP_AST_COMMAND_WRITE_EEPROM, URP_AST_EEPROM_CHECKSUM_VALID, URP_AST_EEPROM_MAGIC_VALID,
-    URP_AST_MIXER_RECEIVE, URP_AST_MIXER_TRANSMIT_A, URP_AST_MIXER_TRANSMIT_B,
+    URP_AST_COMMAND_GET_MIXER, URP_AST_COMMAND_GET_RECEIVE_POLICY, URP_AST_COMMAND_READ_EEPROM,
+    URP_AST_COMMAND_SAVE_TUNING_EEPROM, URP_AST_COMMAND_SET_CTCSS_INHIBIT,
+    URP_AST_COMMAND_SET_MIXER, URP_AST_COMMAND_SET_SUBAUDIBLE_OVERRIDE,
+    URP_AST_COMMAND_SET_TEST_TONE, URP_AST_COMMAND_WRITE_EEPROM, URP_AST_EEPROM_CHECKSUM_VALID,
+    URP_AST_EEPROM_MAGIC_VALID, URP_AST_MIXER_RECEIVE, URP_AST_MIXER_TRANSMIT_A,
+    URP_AST_MIXER_TRANSMIT_B,
 };
 
 /// Normalized CTCSS decoder peak used by the established 2,400-code calibration.
@@ -482,6 +486,18 @@ pub struct UrpAstLinkObservation {
     pub bypassed_blocks: u64,
     /// Graph failures which retained the original PCM.
     pub failed_blocks: u64,
+    /// Output-meter history identifier, retained through silence.
+    pub loudness_epoch: u64,
+    /// Observed output samples, including clocked silence.
+    pub loudness_sample_count: u64,
+    /// Nonzero when gated integrated loudness is measured.
+    pub loudness_valid: u32,
+    /// Nonzero when maximum true peak is measured.
+    pub true_peak_valid: u32,
+    /// Gated integrated output loudness in LUFS; read only when valid.
+    pub integrated_lufs: f64,
+    /// Maximum output true peak in dBTP; read only when valid.
+    pub true_peak_dbtp: f64,
 }
 
 /// Construct a Rust-owned driver from a complete configuration and manifest.
@@ -815,12 +831,22 @@ pub struct UrpAstDescriptor {
     pub native_activation_status: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
     /// Same observation on the existing channel control owner, without changing service status.
     pub channel_activation_status: Option<unsafe extern "C" fn(*mut c_void) -> c_int>,
+    /// Copy final-programme processing diagnostics through a synchronous UTF-8 sink
+    /// on the serialized channel owner. No fixed status record is extended.
+    pub channel_processing_status_text: Option<
+        unsafe extern "C" fn(
+            *mut c_void,
+            Option<UrpNativeProcessingDiagnostic>,
+            *mut c_void,
+        ) -> c_int,
+    >,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    channel_processing_status_text: Some(channel_processing_status_text),
     native_activation_status: Some(remote::native_activation_status),
     channel_activation_status: Some(remote::channel_activation_status),
     native_configuration_remote_options: Some(native_configuration::remote_options),
@@ -1660,17 +1686,14 @@ unsafe fn link_reload_unchanged(
         .clone()
         .ok_or(Status::NotReady)?;
     let channel = configuration.channel(name).ok_or(Status::ChannelNotFound)?;
-    if !channel.config().link.enabled
-        || link.sample_rate_hz != sample_rate_hz
-        || link.maximum_frame_count != maximum_frame_count
-    {
+    if link.sample_rate_hz != sample_rate_hz || link.maximum_frame_count != maximum_frame_count {
         return Ok(false);
     }
     let description = driver
         .0
         .factory
         .graph_descriptions()
-        .dynamics(&channel.config().link)
+        .dynamics_at_rate(&channel.config().link, sample_rate_hz)
         .map_err(|_| Status::SetupFailed)?;
     Ok(link.description == description)
 }
@@ -1683,13 +1706,10 @@ fn prepare_link(
     maximum_frame_count: u32,
 ) -> Result<LinkHandle, Status> {
     let channel = configuration.channel(name).ok_or(Status::ChannelNotFound)?;
-    if !channel.config().link.enabled {
-        return Err(Status::NotReady);
-    }
     let description = driver
         .factory
         .graph_descriptions()
-        .dynamics(&channel.config().link)
+        .dynamics_at_rate(&channel.config().link, sample_rate_hz)
         .map_err(|_| Status::SetupFailed)?;
     let processing = driver
         .link_factory
@@ -1719,6 +1739,7 @@ unsafe extern "C" fn link_process(
         let direction = match direction {
             URP_AST_LINK_DIRECTION_READ => LinkDirection::Read,
             URP_AST_LINK_DIRECTION_WRITE => LinkDirection::Write,
+            URP_AST_LINK_DIRECTION_SILENCE => LinkDirection::Silence,
             _ => return Err(Status::InvalidArgument),
         };
         if samples.is_null() {
@@ -2713,6 +2734,34 @@ unsafe extern "C" fn channel_command(
         let (channel, control) = unsafe { channel_control(channel)? };
         // SAFETY: the caller supplies initialized writable ABI storage.
         let mut command_value = unsafe { copy_abi(command.cast_const())? };
+        if command_value.command == URP_AST_COMMAND_GET_RECEIVE_POLICY {
+            if command_value.target != 0 {
+                return Err(Status::InvalidArgument);
+            }
+            let configuration = if let Some(hardware) = control.hardware.as_ref() {
+                hardware.configuration()
+            } else {
+                control
+                    .media
+                    .as_ref()
+                    .ok_or(Status::NotReady)?
+                    .plan
+                    .configuration()
+            };
+            let mode = configuration.station.receive.vad_mode;
+            command_value.value = match mode {
+                usbradioplus_core::VadMode::Off => 0,
+                usbradioplus_core::VadMode::Kerchunk => 1,
+                usbradioplus_core::VadMode::On => 2,
+            };
+            command_value.flags = if mode == usbradioplus_core::VadMode::Off {
+                0
+            } else {
+                7_680
+            };
+            // SAFETY: the complete command was validated before dispatch.
+            return unsafe { write_abi(command, command_value) };
+        }
         let hardware = control.hardware.as_mut().ok_or(Status::NotReady)?;
         let configuration = hardware.configuration().clone();
         maintenance::execute(
@@ -2726,6 +2775,41 @@ unsafe extern "C" fn channel_command(
         })?;
         // SAFETY: the same complete writable command storage was validated above.
         unsafe { write_abi(command, command_value) }
+    })
+}
+
+unsafe extern "C" fn channel_processing_status_text(
+    channel: *mut c_void,
+    sink: Option<UrpNativeProcessingDiagnostic>,
+    context: *mut c_void,
+) -> c_int {
+    ffi_status(|| {
+        let sink = sink.ok_or(Status::InvalidArgument)?;
+        // SAFETY: the taskprocessor owns this live channel control endpoint.
+        let (_, control) = unsafe { channel_control(channel)? };
+        let (observation, receive_loudness, transmit_loudness) =
+            control.hardware.as_mut().map_or_else(
+                || {
+                    (
+                        usbradioplus_station::CallbackStatistics::default(),
+                        None,
+                        None,
+                    )
+                },
+                |hardware| {
+                    let control = hardware.control();
+                    (
+                        control.hardware_state().callback_statistics(),
+                        control.receive_loudness(),
+                        control.transmit_loudness(),
+                    )
+                },
+            );
+        let text =
+            maintenance::processing_status_text(observation, receive_loudness, transmit_loudness);
+        // SAFETY: the synchronous sink borrows this complete UTF-8 span only.
+        unsafe { sink(context, text.as_ptr(), text.len() as u32) };
+        Ok(())
     })
 }
 
@@ -3072,6 +3156,12 @@ fn link_observation(observation: LinkObservation) -> UrpAstLinkObservation {
         processed_blocks: observation.processed_blocks,
         bypassed_blocks: observation.bypassed_blocks,
         failed_blocks: observation.failed_blocks,
+        loudness_epoch: observation.loudness.epoch,
+        loudness_sample_count: observation.loudness.sample_count,
+        loudness_valid: u32::from(observation.loudness.integrated_lufs.is_some()),
+        true_peak_valid: u32::from(observation.loudness.true_peak_dbtp.is_some()),
+        integrated_lufs: observation.loudness.integrated_lufs.unwrap_or(0.0),
+        true_peak_dbtp: observation.loudness.true_peak_dbtp.unwrap_or(0.0),
     }
 }
 

@@ -23,6 +23,11 @@ const SIGNALING_METHODS: [(&str, &str); 3] = [
     ("ctcss", "CTCSS"),
     ("dcs", "DCS"),
 ];
+const VAD_MODES: [(&str, &str); 3] = [
+    ("off", "Off"),
+    ("kerchunk", "Kerchunk suppression"),
+    ("on", "Continuous speech qualification"),
+];
 const RECEIVE_AUDIO_SOURCES: [(&str, &str); 3] = [
     ("no", "No receiver audio"),
     ("speaker", "De-emphasized speaker audio"),
@@ -201,12 +206,10 @@ fn processing_page(role: ChainRole, title: &str) -> MenuPage {
         MenuEntry::Section(compressor_section(section_name, &chain)),
         MenuEntry::Section(limiter_section(section_name, &chain)),
     ]);
-    if role == ChainRole::VoiceTelemetry {
-        entries.push(MenuEntry::Section(final_limiter_section(
-            section_name,
-            &chain,
-        )));
-    }
+    entries.push(MenuEntry::Section(peak_limiter_section(
+        section_name,
+        &chain,
+    )));
     if role == ChainRole::LocalReceive {
         entries.push(menu_action(
             "Echo mode: enable or disable",
@@ -292,14 +295,12 @@ fn stage_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
             ApplyMode::Reload,
         ),
     ]);
-    if chain.role == ChainRole::VoiceTelemetry {
-        settings.push(on_off(
-            "lookahead_limiter_enabled",
-            "Final limiter",
-            chain.transmit_tail.limiter_enabled,
-            ApplyMode::Reload,
-        ));
-    }
+    settings.push(on_off(
+        "lookahead_limiter_enabled",
+        "Peak Limiter",
+        chain.peak_limiter.enabled,
+        ApplyMode::Reload,
+    ));
     settings.push(text(
         "stage_order",
         "Processing stage order",
@@ -557,10 +558,6 @@ fn deesser_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
     )
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "keeping one declarative setting list preserves the menu order"
-)]
 fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
     let value = &chain.agc;
     section(
@@ -568,12 +565,12 @@ fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
         format!("{}: AGC", role_title(chain.role)),
         vec![
             number(
-                "agc_target_dbfs",
-                "Detector-band RMS target",
-                value.target_dbfs,
+                "agc_target_lufs",
+                "BS.1770 loudness target",
+                value.target_lufs,
                 -40.0,
                 -3.0,
-                "dBFS",
+                "LUFS",
             ),
             gain(
                 "agc_max_gain_db",
@@ -592,11 +589,11 @@ fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
                 ApplyMode::Reload,
             ),
             number(
-                "agc_rms_averaging_ms",
-                "RMS averaging",
-                value.rms_averaging_ms,
-                10.0,
-                5_000.0,
+                "agc_loudness_window_ms",
+                "Loudness window",
+                value.loudness_window_ms,
+                400.0,
+                3_000.0,
                 "ms",
             ),
             number(
@@ -646,22 +643,6 @@ fn agc_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
                 0.0,
                 6.0,
                 ApplyMode::Reload,
-            ),
-            number(
-                "agc_sidechain_highpass_hz",
-                "Detector high-pass; 0 disables",
-                value.sidechain_highpass_hz,
-                0.0,
-                2_000.0,
-                "Hz",
-            ),
-            number(
-                "agc_sidechain_lowpass_hz",
-                "Detector low-pass; 0 disables",
-                value.sidechain_lowpass_hz,
-                0.0,
-                3_500.0,
-                "Hz",
             ),
         ],
     )
@@ -926,12 +907,19 @@ fn limiter_band(prefix: &str, label: &str, value: &DynamicsBand, high: bool) -> 
     ]
 }
 
-fn final_limiter_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
-    let value = &chain.transmit_tail;
+fn peak_limiter_section(section_name: &str, chain: &ProcessingChain) -> SectionSpec {
+    let value = &chain.peak_limiter;
     section(
         section_name,
-        "Voice + telemetry: final limiter",
+        "Peak Limiter",
         vec![
+            enumeration(
+                "lookahead_limiter_oversample",
+                "Oversampling",
+                value.oversample.to_string(),
+                &[("1", "1x"), ("2", "2x"), ("4", "4x")],
+                ApplyMode::Reload,
+            ),
             number(
                 "lookahead_limiter_ceiling_dbfs",
                 "Ceiling",
@@ -1163,10 +1151,6 @@ fn hardware_transmit_section(value: &HardwareConfig) -> SectionSpec {
     )
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "keeping one declarative setting list preserves the menu order"
-)]
 fn receive_section(station: &StationConfig) -> SectionSpec {
     let value = &station.receive;
     section(
@@ -1178,12 +1162,6 @@ fn receive_section(station: &StationConfig) -> SectionSpec {
                 "Receive signaling method",
                 value.signaling_method.to_string(),
                 &SIGNALING_METHODS,
-                ApplyMode::Reload,
-            ),
-            on_off(
-                "cpu_saver_enabled",
-                "Receive CPU saver",
-                value.cpu_saver_enabled,
                 ApplyMode::Reload,
             ),
             enumeration(
@@ -1204,6 +1182,22 @@ fn receive_section(station: &StationConfig) -> SectionSpec {
                 "vox_hang_ms",
                 "VOX hang time",
                 value.vox_hang_ms.into(),
+                0,
+                32_767,
+                "ms",
+                ApplyMode::Reload,
+            ),
+            enumeration(
+                "vad_mode",
+                "Voice activity detection",
+                value.vad_mode.to_string(),
+                &VAD_MODES,
+                ApplyMode::Reload,
+            ),
+            integer(
+                "vad_hang_ms",
+                "VAD hang time",
+                value.vad_hang_ms.into(),
                 0,
                 32_767,
                 "ms",
@@ -1287,12 +1281,6 @@ fn transmit_section(station: &StationConfig) -> SectionSpec {
                 "Transmit signaling method",
                 value.signaling_method.to_string(),
                 &SIGNALING_METHODS,
-                ApplyMode::Reload,
-            ),
-            on_off(
-                "cpu_saver_enabled",
-                "Transmit CPU saver",
-                value.cpu_saver_enabled,
                 ApplyMode::Reload,
             ),
             on_off(
@@ -2011,6 +1999,45 @@ mod tests {
     }
 
     #[test]
+    fn vad_controls_exist_for_both_backends_without_exposing_a_second_delay() {
+        for catalog in [configuration_catalog(), standalone_configuration_catalog()] {
+            let found = sections(&catalog);
+            let mode = found
+                .iter()
+                .flat_map(|s| &s.settings)
+                .find(|s| s.key == "vad_mode")
+                .unwrap();
+            assert_eq!(mode.default_value, "off");
+            assert_eq!(mode.apply_mode, ApplyMode::Reload);
+            let SettingKind::Enumeration(items) = &mode.kind else {
+                panic!("VAD mode must be an enum")
+            };
+            assert_eq!(
+                items.iter().map(|i| i.value.as_str()).collect::<Vec<_>>(),
+                vec!["off", "kerchunk", "on"]
+            );
+            let hang = found
+                .iter()
+                .flat_map(|s| &s.settings)
+                .find(|s| s.key == "vad_hang_ms")
+                .unwrap();
+            assert_eq!(hang.default_value, "1000");
+            assert_eq!(hang.apply_mode, ApplyMode::Reload);
+            let SettingKind::Integer(editor) = &hang.kind else {
+                panic!("VAD hang must be an integer")
+            };
+            assert_eq!((editor.minimum, editor.maximum), (Some(0), Some(32767)));
+            assert_eq!(editor.units, "ms");
+            assert!(
+                !found
+                    .iter()
+                    .flat_map(|s| &s.settings)
+                    .any(|s| s.key == "vad_external_delay")
+            );
+        }
+    }
+
+    #[test]
     fn standalone_catalog_keeps_calibration_and_omits_host_owned_controls() {
         let catalog = standalone_configuration_catalog();
         for section in sections(&catalog) {
@@ -2078,10 +2105,73 @@ mod tests {
         assert!(local.contains("receive_bandpass_enabled"));
         assert!(!link.contains("receive_bandpass_enabled"));
         assert!(!voice.contains("receive_bandpass_enabled"));
-        assert!(voice.contains("lookahead_limiter_enabled"));
         assert!(voice.contains("post_limiter_bandpass_enabled"));
-        assert!(!local.contains("lookahead_limiter_enabled"));
+        assert!(!local.contains("post_limiter_bandpass_enabled"));
         assert!(!link.contains("post_limiter_bandpass_enabled"));
+    }
+
+    #[test]
+    fn peak_limiter_is_fixed_and_available_in_every_processing_role_and_backend() {
+        for catalog in [configuration_catalog(), standalone_configuration_catalog()] {
+            let sections = sections(&catalog);
+            assert!(sections.iter().all(|section| {
+                section
+                    .settings
+                    .iter()
+                    .all(|setting| setting.key != "loudness_meter_enabled")
+            }));
+            for role in [
+                ChainRole::LocalReceive,
+                ChainRole::Link,
+                ChainRole::VoiceTelemetry,
+            ] {
+                let role_sections = sections
+                    .iter()
+                    .filter(|section| section.section == role_name(role))
+                    .collect::<Vec<_>>();
+                let peak = role_sections
+                    .iter()
+                    .find(|section| section.title == "Peak Limiter")
+                    .expect("each role has a Peak Limiter page");
+                for key in [
+                    "lookahead_limiter_oversample",
+                    "lookahead_limiter_ceiling_dbfs",
+                    "lookahead_limiter_lookahead_ms",
+                    "lookahead_limiter_attack_ms",
+                    "lookahead_limiter_release_ms",
+                ] {
+                    assert!(
+                        peak.settings.iter().any(|setting| setting.key == key),
+                        "{}: {key}",
+                        peak.title
+                    );
+                }
+                let stage_settings = &role_sections
+                    .iter()
+                    .find(|section| section.title.ends_with(": stages"))
+                    .unwrap()
+                    .settings;
+                assert!(
+                    stage_settings
+                        .iter()
+                        .any(|setting| setting.key == "lookahead_limiter_enabled"
+                            && setting.label == "Peak Limiter")
+                );
+                assert!(
+                    stage_settings
+                        .iter()
+                        .any(|setting| setting.key == "limiter_enabled"
+                            && setting.label == "Multiband limiter")
+                );
+                let order = &stage_settings
+                    .iter()
+                    .find(|setting| setting.key == "stage_order")
+                    .unwrap()
+                    .default_value;
+                assert!(!order.contains("lookahead"));
+                assert!(!order.contains("peak"));
+            }
+        }
     }
 
     #[test]
@@ -2122,6 +2212,22 @@ mod tests {
                 | "duplexmode"
                 | "duplex_local_repeat_mode"
         )));
+    }
+
+    #[test]
+    fn neither_backend_offers_retired_cpu_savers() {
+        for catalog in [configuration_catalog(), standalone_configuration_catalog()] {
+            assert!(
+                sections(&catalog)
+                    .iter()
+                    .all(|section| section.settings.iter().all(|setting| !matches!(
+                        setting.key.as_str(),
+                        "cpu_saver_enabled"
+                            | "receive_cpu_saver_enabled"
+                            | "transmit_cpu_saver_enabled"
+                    )))
+            );
+        }
     }
 
     #[test]

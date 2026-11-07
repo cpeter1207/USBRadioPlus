@@ -12,6 +12,7 @@ pub mod remote_operation;
 mod channel_configuration;
 mod config_document;
 mod ffmpeg_graph;
+mod loudness_meter;
 mod native_configuration;
 mod native_stream;
 mod processing_profile;
@@ -30,6 +31,9 @@ pub use channel_configuration::{
 };
 pub use config_document::{ConfigDocument, ConfigError};
 pub use ffmpeg_graph::{GraphDescriptionError, GraphDescriptionFactory};
+pub use loudness_meter::{
+    OutputLoudnessError, OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudnessSnapshot,
+};
 pub use native_configuration::{
     NativeDeviceSelection, NativePhysicalOptions, ResolvedNativeConfiguration,
     native_configured_nodes, native_processing_profile_configured,
@@ -38,7 +42,8 @@ pub use native_configuration::{
 pub use native_stream::{NATIVE_SAMPLE_RATE_HZ, NativeStreamSpec, StreamSpecError};
 pub use processing_profile::{
     Agc, BandLayout, ChainRole, Compressor, Deesser, DynamicsBand, Equalizer, Expander, Limiter,
-    PlFilter, ProcessingChain, ProcessingConfigError, ReceiveConditioning, TransmitTail,
+    PeakLimiter, PlFilter, ProcessingChain, ProcessingConfigError, ReceiveConditioning,
+    TransmitTail,
 };
 pub use profile_resolution::{
     ProfileResolutionError, RawOverlay, ResolutionWarning, ResolutionWarningKind, ResolvedProfile,
@@ -51,6 +56,7 @@ pub use station_config::{
     JitterBufferImplementation, ParallelInputAssignment, ParallelOutputAssignment,
     ParallelPortConfig, RadioDuplexMode, ReceiveAudioSource, ReceiveConfig, ResolvedStationConfig,
     SignalingMethod, StationConfig, StationConfigError, StationValidationError, TransmitConfig,
+    VadMode,
 };
 
 #[cfg(test)]

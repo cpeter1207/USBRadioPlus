@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.0~alpha31 - 2026-11-07
+
+- Add Earshot receive VAD with Off, Kerchunk filter, and On modes.
+- Preserve speech onset in the existing PCM delay line and retain RF qualifiers.
+- Default all three LUFS AGCs to a configurable 400 ms window, with 6 dB/s
+  gain reduction and 2 dB/s gain increase. Keep the configurable 3000 ms maximum.
+- Require matching radio ABI 5 and direct receive callback ABI 6.
+
+## 0.1.0~alpha30 - 2026-11-06
+
+- Share Peak Limiter across all three source chains; retain its fixed final position.
+- Always meter integrated loudness and true peak after each chain, without an enable switch.
+- Clock legacy Asterisk link silence with bounded channel timer/framehook integration.
+- Retire CPU-saver bypass switches and require matching link-observation records.
+
+## 0.1.0~alpha29 - 2026-11-06
+
+- Replace RMS with LUFS in the AGC.
+- Target -23 LUFS with BS.1770 metering in the existing FFmpeg graph.
+- Use agc_target_lufs and agc_loudness_window_ms in shared profiles.
+- Require the matching usbradioplus_agc_lufs effect for changed control units.
+
 ## 0.1.0~alpha26 - 2026-11-03
 
 - Share local receive, incoming-link, and voice/telemetry processing with

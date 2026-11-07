@@ -2023,9 +2023,17 @@ fn visible_settings<'a>(
     section: &'a SectionSpec,
     values: &BTreeMap<String, String>,
 ) -> VisibleSettings<'a> {
-    let stage = if section.title.contains("Compressor") {
+    let stage = if section
+        .settings
+        .iter()
+        .any(|setting| setting.key == "compressor_bands")
+    {
         Some("compressor")
-    } else if section.title.contains("Limiter") && !section.title.contains("Final") {
+    } else if section
+        .settings
+        .iter()
+        .any(|setting| setting.key == "limiter_bands")
+    {
         Some("limiter")
     } else {
         None
@@ -3269,11 +3277,10 @@ mod tests {
             kind: SettingKind::OnOff,
             apply_mode: ApplyMode::Reload,
         };
-        for title in ["Compressor", "Limiter"] {
-            let prefix = title.to_ascii_lowercase();
+        for prefix in ["compressor", "limiter"] {
             let section = SectionSpec {
                 section: "local".to_owned(),
-                title: title.to_owned(),
+                title: format!("Linked audio: {prefix}"),
                 settings: vec![
                     setting(&format!("{prefix}_bands")),
                     setting(&format!("{prefix}_threshold_dbfs")),
@@ -3317,6 +3324,30 @@ mod tests {
         assert_eq!(
             visible_settings(&ordinary, &BTreeMap::new()).settings.len(),
             ordinary.settings.len()
+        );
+
+        let peak = SectionSpec {
+            section: "link".to_owned(),
+            title: "Peak Limiter".to_owned(),
+            settings: [
+                "lookahead_limiter_oversample",
+                "lookahead_limiter_ceiling_dbfs",
+                "lookahead_limiter_lookahead_ms",
+                "lookahead_limiter_attack_ms",
+                "lookahead_limiter_release_ms",
+            ]
+            .into_iter()
+            .map(setting)
+            .collect(),
+        };
+        assert_eq!(
+            visible_settings(
+                &peak,
+                &BTreeMap::from([("limiter_bands".to_owned(), "3".to_owned())])
+            )
+            .settings
+            .len(),
+            peak.settings.len()
         );
     }
 
@@ -5974,13 +6005,13 @@ mod tests {
         );
         assert!(matches!(app.toggle_echo(), Err(MenuError::Ui(_))));
 
-        let final_limiter = SectionSpec {
+        let peak_limiter = SectionSpec {
             section: "voice_telemetry".to_owned(),
-            title: "Final Limiter".to_owned(),
+            title: "Peak Limiter".to_owned(),
             settings: Vec::new(),
         };
         assert!(
-            visible_settings(&final_limiter, &BTreeMap::new())
+            visible_settings(&peak_limiter, &BTreeMap::new())
                 .settings
                 .is_empty()
         );

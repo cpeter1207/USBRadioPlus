@@ -84,6 +84,40 @@ pub(in crate::host) fn assert_link_snapshot(
     assert_eq!(snapshot[0].failed_blocks, failed);
 }
 
+#[test]
+fn concrete_link_measurements_respect_raw_readiness_and_finite_values() {
+    let _fixture = HostFixture::new();
+    let links = crate::host::link::tests::RunningFixture::new(true);
+    crate::host::link::reload_prepare(Some("alpha"))
+        .unwrap()
+        .finish(true);
+    for (valid, peak_valid, integrated, peak, expected_integrated, expected_peak) in [
+        (1, 1, -23.0, -2.0, Some(-23.0), Some(-2.0)),
+        (7, 2, -23.0, -2.0, Some(-23.0), Some(-2.0)),
+        (1, 1, f64::NAN, -2.0, None, Some(-2.0)),
+        (1, 1, -23.0, f64::INFINITY, Some(-23.0), None),
+        (0, 0, -23.0, -2.0, None, None),
+    ] {
+        links.set_observation(crate::UrpAstLinkObservation {
+            struct_size: std::mem::size_of::<crate::UrpAstLinkObservation>() as u32,
+            abi_version: crate::ABI_VERSION,
+            loudness_epoch: 11,
+            loudness_sample_count: 48_000,
+            loudness_valid: valid,
+            true_peak_valid: peak_valid,
+            integrated_lufs: integrated,
+            true_peak_dbtp: peak,
+            ..crate::UrpAstLinkObservation::default()
+        });
+        let status = ProductionBackend { fd: -1 }.link_status();
+        assert_eq!(status.len(), 1);
+        assert_eq!(status[0].loudness_epoch, 11);
+        assert_eq!(status[0].loudness_sample_count, 48_000);
+        assert_eq!(status[0].integrated_lufs, expected_integrated);
+        assert_eq!(status[0].true_peak_dbtp, expected_peak);
+    }
+}
+
 unsafe extern "C" fn active_name(
     _: *mut c_void,
     output: *mut u8,
@@ -260,6 +294,58 @@ fn concrete_backend_propagates_missing_driver_and_real_poll_readiness() {
 }
 
 #[test]
+fn processing_stats_keeps_captured_channel_when_selection_changes() {
+    unsafe extern "C" fn capture_status_and_select_other(
+        context: *mut c_void,
+        output: *mut UrpAstChannelStatus,
+    ) -> i32 {
+        // SAFETY: this fixture lends its live mutex and initialized status record.
+        let result = unsafe { capture_status(context, output) };
+        if result == URP_AST_OK {
+            CLI_CALLS.lock().unwrap().selected = b"other".to_vec();
+        }
+        result
+    }
+    let _fixture = HostFixture::new();
+    *CLI_CALLS.lock().unwrap() = CliCalls {
+        selected: b"usb".to_vec(),
+        ..CliCalls::default()
+    };
+    let mut descriptor = lifecycle_descriptor();
+    descriptor.driver_channel_name = Some(capture_profile);
+    descriptor.driver_active_channel = Some(active_name);
+    descriptor.driver_set_active_channel = Some(select_name);
+    descriptor.channel_get_status = Some(capture_status_and_select_other);
+    descriptor.channel_processing_status_text = None;
+    let calls = Mutex::new(DriverCalls::default());
+    calls.lock().unwrap().profiles = vec![b"usb".to_vec(), b"other".to_vec()];
+    let _registration = RegistrationGuard {
+        _descriptor: &descriptor,
+        _calls: &calls,
+    };
+    assert_eq!(register_fixture(&descriptor, &calls), URP_AST_OK);
+    let technology = with_state(|state| state.registered[0]) as *const ffi::ast_channel_tech;
+    // SAFETY: registration retains this technology, its capability and requester.
+    let owner = unsafe {
+        (*technology).requester.unwrap()(
+            (*technology).type_,
+            (*technology).capabilities,
+            ptr::null(),
+            ptr::null(),
+            c"usb".as_ptr(),
+            ptr::null_mut(),
+        )
+    };
+    assert!(!owner.is_null());
+    CLI_CALLS.lock().unwrap().selected = b"usb".to_vec();
+    let mut backend = ProductionBackend { fd: 41 };
+    let result = processing_stats(&mut backend, &["radioplus", "processing", "stats"]);
+    assert_eq!(backend.active_channel(), Ok("other".into()));
+    assert_eq!(result.disposition, CliDisposition::Success);
+    assert!(result.output.contains("usb"));
+}
+
+#[test]
 fn concrete_backend_uses_registered_driver_and_live_channel_callbacks() {
     let _fixture = HostFixture::new();
     *CLI_CALLS.lock().unwrap() = CliCalls {
@@ -430,6 +516,8 @@ struct Fixture {
     active: Option<String>,
     status: UrpAstChannelStatus,
     status_result: i32,
+    processing_text: String,
+    processing_result: i32,
     select_result: i32,
     echo_result: i32,
     transmit_result: i32,
@@ -487,6 +575,13 @@ impl CliBackend for Fixture {
             self.active_channel().map(|name| (name, self.status))
         } else {
             Err(self.status_result)
+        }
+    }
+    fn processing_text(&mut self, _name: &str) -> Result<String, i32> {
+        if self.processing_result == URP_AST_OK {
+            Ok(self.processing_text.clone())
+        } else {
+            Err(self.processing_result)
         }
     }
     fn set_echo(&mut self, enabled: bool) -> i32 {
@@ -866,17 +961,77 @@ fn flash_uses_three_one_second_bursts_with_established_spacing_and_cleanup() {
 #[test]
 fn reload_statistics_and_failures_preserve_operator_output() {
     let mut fixture = Fixture::healthy();
+    fixture.processing_text =
+        "transmit_integrated_lufs=-23.05\ntransmit_true_peak_dbtp=-1.10\n".into();
+    assert_eq!(
+        fixture.processing_text("alpha").unwrap(),
+        fixture.processing_text
+    );
     fixture.links.push(LinkStatus {
         name: "IAX2/506316-1".into(),
         processed_blocks: 7,
         bypassed_blocks: 2,
         failed_blocks: 1,
+        loudness_epoch: 11,
+        loudness_sample_count: 48000,
+        integrated_lufs: Some(-23.0),
+        true_peak_dbtp: Some(-2.0),
+    });
+    fixture.links.push(LinkStatus {
+        name: "IAX2/unmeasured".into(),
+        processed_blocks: 0,
+        bypassed_blocks: 0,
+        failed_blocks: 0,
+        loudness_epoch: 12,
+        loudness_sample_count: 0,
+        integrated_lufs: None,
+        true_peak_dbtp: None,
     });
     let result = run(
         &mut fixture,
         CliCommand::ProcessingStats,
         &["radioplus", "processing", "stats"],
     );
+    assert!(result.output.contains("transmit_integrated_lufs=-23.05\n"));
+    assert!(result.output.contains("transmit_true_peak_dbtp=-1.10\n"));
+    for expected in [
+        "IAX2/unmeasured/link: loudness_valid=0\n",
+        "IAX2/unmeasured/link: true_peak_valid=0\n",
+        "IAX2/unmeasured/link: integrated_lufs=unmeasured\n",
+        "IAX2/unmeasured/link: true_peak_dbtp=unmeasured\n",
+    ] {
+        assert!(result.output.contains(expected));
+    }
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: loudness_epoch=11\n")
+    );
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: loudness_sample_count=48000\n")
+    );
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: integrated_lufs=-23.00\n")
+    );
+    assert!(
+        result
+            .output
+            .contains("IAX2/506316-1/link: true_peak_dbtp=-2.00\n")
+    );
+    fixture.processing_result = URP_AST_SETUP_FAILED;
+    assert_eq!(
+        run(
+            &mut fixture,
+            CliCommand::ProcessingStats,
+            &["radioplus", "processing", "stats"]
+        ),
+        CliResult::failure("")
+    );
+    fixture.processing_result = URP_AST_OK;
     assert!(
         result
             .output

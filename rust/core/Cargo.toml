@@ -13,3 +13,6 @@ missing_docs = "deny"
 
 [lints.clippy]
 undocumented_unsafe_blocks = "deny"
+
+[dependencies]
+ebur128 = "=0.1.11"

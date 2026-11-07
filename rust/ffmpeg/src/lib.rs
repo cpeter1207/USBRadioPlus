@@ -144,7 +144,7 @@ impl GraphProvider {
             struct_size: size_of::<GraphConfig>() as u32,
             abi_version: ABI_VERSION,
             sample_rate_hz,
-            maximum_frame_count,
+            maximum_frame_count: maximum_frame_count.max(64),
             filter_description: filter_description.as_ptr(),
         };
         let mut handle = std::ptr::null_mut();
@@ -249,6 +249,7 @@ mod tests {
 
     struct FakeGraphState {
         sample_rate_hz: u32,
+        maximum_frame_count: u32,
     }
 
     unsafe extern "C" fn create(config: *const GraphConfig, output: *mut *mut c_void) -> c_int {
@@ -259,6 +260,7 @@ mod tests {
         unsafe {
             *output = Box::into_raw(Box::new(FakeGraphState {
                 sample_rate_hz: config.sample_rate_hz,
+                maximum_frame_count: config.maximum_frame_count,
             }))
             .cast()
         };
@@ -275,6 +277,7 @@ mod tests {
         unsafe {
             *output = Box::into_raw(Box::new(FakeGraphState {
                 sample_rate_hz: config.sample_rate_hz,
+                maximum_frame_count: config.maximum_frame_count,
             }))
             .cast()
         };
@@ -396,6 +399,22 @@ mod tests {
         assert_eq!(
             provider(Box::leak(Box::new(descriptor))).err(),
             Some(GraphError::IncompatibleAdapter)
+        );
+    }
+
+    #[test]
+    fn tiny_public_blocks_prepare_capacity_for_resampler_bursts() {
+        let mut graph = provider(&VALID).unwrap().prepare(c"anull", 1).unwrap();
+        // SAFETY: this fixture provider returns a retained FakeGraphState handle.
+        let state = unsafe { graph.handle.cast::<FakeGraphState>().as_ref() };
+        assert_eq!(state.maximum_frame_count, 64);
+        assert_eq!(graph.maximum_frame_count, 1);
+        let mut output = [0.0; 1];
+        graph.process_block(&[1.0], &mut output).unwrap();
+        assert_eq!(output, [0.5]);
+        assert_eq!(
+            graph.process_block(&[0.0; 2], &mut [0.0; 2]),
+            Err(GraphError::InvalidArgument)
         );
     }
 

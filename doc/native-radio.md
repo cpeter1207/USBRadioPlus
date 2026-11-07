@@ -87,6 +87,25 @@ pre-emphasis. Transmit pre-emphasis applies with a voice/telemetry profile.
 Disabled receive stays muted even when a local profile has positive gain.
 RNNoise needs its adapter when enabled; setup fails if that adapter is missing.
 
+## Speech qualification
+
+Set `vad_mode` in `[radio]` or `[radio <node>]` to `off` (the default),
+`kerchunk`, or `on`. Shared `[receive]` profiles use the same keys. Earshot
+speech detection is separate from the existing VOX carrier detector.
+Kerchunk admits a qualified RF burst after its first fresh speech decision
+and keeps that admission until RF qualification closes. On admits speech and
+its `vad_hang_ms` release hold (default 1000, range 0-32767 ms). Enabled
+carrier and tone requirements remain necessary in either active mode.
+Kerchunk without a closing RF requirement warns and uses On. An ignored
+carrier becomes continuously open while VAD is active; disabled receiver
+audio and receive/duplex guards remain enforced.
+
+Active VAD requires at least 160 ms in the existing receive delay owner,
+preserving a larger configured delay. Standalone and app_rpt_advanced use the
+controller's local PCM ring. Legacy app_rpt uses the radio's receive delay.
+There is no additional VAD audio delay line. A new RF burst requires fresh
+speech; buffered audio from a previous burst is discarded when RF closes.
+
 ## Shared standalone tuner and maintenance
 
 Install `usbradioplus-tune` independently and select `--backend standalone` to
@@ -97,8 +116,9 @@ and radio/profile edits use the shared resolver's actual destinations.
 See [Standalone tuning](standalone-tuner.md) for installation, session cleanup,
 EEPROM opt-in, live measurements and the service-monitor procedure.
 
-The independent receive/transmit CPU savers and configured parallel inputs and
-outputs use the same radio and hardware owners. Parallel hardware is not opened
+Receive and transmit processing remains active during idle intervals so
+mandatory output analysis advances; CPU-saver settings are retired. Configured
+parallel inputs and outputs use the same radio and hardware owners. Parallel hardware is not opened
 when unconfigured. Physical status and shared processing counters come from
 those owners rather than substitute controller-ring measurements. Supported
 same-device edits use prepared updates without a second audio/HID owner.

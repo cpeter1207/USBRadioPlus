@@ -8,6 +8,69 @@ mod native;
 #[path = "tests/link_observer.rs"]
 mod link_observer;
 
+unsafe extern "C" fn append_processing_text(context: *mut c_void, text: *const u8, length: u32) {
+    // SAFETY: synchronous diagnostics retain the owned output and complete span.
+    let (output, text) = unsafe {
+        (
+            &mut *context.cast::<String>(),
+            std::slice::from_raw_parts(text, length as usize),
+        )
+    };
+    output.push_str(std::str::from_utf8(text).unwrap());
+}
+
+#[test]
+fn processing_text_formats_measured_and_unmeasured_epochs() {
+    use usbradioplus_core::OutputLoudnessSnapshot;
+    use usbradioplus_station::CallbackStatistics;
+    let observation = CallbackStatistics {
+        receive_calls: 2,
+        transmit_calls: 3,
+        receive_failures: 4,
+        transmit_failures: 5,
+    };
+    let measured = maintenance::processing_status_text(
+        observation,
+        None,
+        Some(OutputLoudnessSnapshot {
+            epoch: 7,
+            sample_count: 48000,
+            integrated_lufs: Some(-23.05),
+            true_peak_dbtp: Some(-1.1),
+        }),
+    );
+    for expected in [
+        "radio_receive_calls=2\n",
+        "radio_transmit_calls=3\n",
+        "radio_receive_failures=4\n",
+        "radio_transmit_failures=5\n",
+        "receive_loudness_meter_enabled=0\n",
+        "receive_integrated_lufs=unavailable\n",
+        "transmit_true_peak_valid=1\n",
+        "transmit_loudness_meter_enabled=1\n",
+        "transmit_loudness_epoch=7\n",
+        "transmit_loudness_sample_count=48000\n",
+        "transmit_loudness_valid=1\n",
+        "transmit_integrated_lufs=-23.05\n",
+        "transmit_true_peak_dbtp=-1.10\n",
+    ] {
+        assert!(measured.contains(expected), "{expected}");
+    }
+    let warmup = maintenance::processing_status_text(
+        observation,
+        None,
+        Some(OutputLoudnessSnapshot {
+            epoch: 8,
+            sample_count: 1,
+            integrated_lufs: None,
+            true_peak_dbtp: Some(-20.0),
+        }),
+    );
+    assert!(warmup.contains("transmit_loudness_valid=0\n"));
+    assert!(warmup.contains("transmit_integrated_lufs=unavailable\n"));
+    assert!(warmup.contains("transmit_true_peak_dbtp=-20.00\n"));
+}
+
 #[test]
 fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
@@ -25,8 +88,20 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             abi_version: ABI_VERSION,
             ..UrpAstSiteSnapshot::default()
         };
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        let retry_site_busy = |operation: &mut dyn FnMut() -> c_int| loop {
+            let result = operation();
+            if result != URP_AST_CHANNEL_BUSY {
+                return result;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "site cache did not admit a coherent read"
+            );
+            std::thread::yield_now();
+        };
         assert_eq!(
-            api.channel_site_snapshot.unwrap()(channel, 0, &mut snapshot),
+            retry_site_busy(&mut || api.channel_site_snapshot.unwrap()(channel, 0, &mut snapshot)),
             URP_AST_OK
         );
         let binding = UrpAstSiteBinding {
@@ -38,10 +113,9 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             safe_high_mask: 0,
         };
         assert_eq!(
-            api.channel_site_bind.unwrap()(channel, 0, &binding),
+            retry_site_busy(&mut || api.channel_site_bind.unwrap()(channel, 0, &binding)),
             URP_AST_OK
         );
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
         loop {
             let result = api.channel_site_snapshot.unwrap()(channel, 0, &mut snapshot);
             if result == URP_AST_OK
@@ -50,6 +124,7 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             {
                 break;
             }
+            assert!(matches!(result, URP_AST_OK | URP_AST_CHANNEL_BUSY));
             assert!(
                 std::time::Instant::now() < deadline,
                 "site binding not acknowledged"
@@ -67,18 +142,18 @@ fn site_channel_bridge_changes_only_owned_pins_and_rejects_bad_records() {
             high_mask: 0,
         };
         assert_eq!(
-            api.channel_site_publish.unwrap()(channel, 0, &request),
+            retry_site_busy(&mut || api.channel_site_publish.unwrap()(channel, 0, &request)),
             URP_AST_OK
         );
         assert_eq!(
-            api.channel_site_publish.unwrap()(
+            retry_site_busy(&mut || api.channel_site_publish.unwrap()(
                 channel,
                 0,
                 &UrpAstSiteRequest {
                     high_mask: 0x40,
                     ..request
                 }
-            ),
+            )),
             URP_AST_INVALID_ARGUMENT
         );
         assert_eq!(
@@ -346,7 +421,12 @@ pub(crate) mod provider_support;
 
 pub(crate) static PROVIDER_TEST_LOCK: Mutex<()> = Mutex::new(());
 
-unsafe extern "C" fn direct_receive_noop(_: *mut c_void, _: u32, _: *mut f32, _: u32) -> c_int {
+unsafe extern "C" fn direct_receive_noop(
+    _: *mut c_void,
+    _: *const UrpNativeReceiveMetadata,
+    _: *mut f32,
+    _: u32,
+) -> c_int {
     0
 }
 unsafe extern "C" fn direct_transmit_noop(
@@ -921,6 +1001,7 @@ fn descriptor_exposes_one_complete_versioned_boundary() {
     assert!(descriptor.channel_get_jitter_config.is_some());
     assert!(descriptor.channel_command.is_some());
     assert!(descriptor.channel_get_status.is_some());
+    assert!(descriptor.channel_processing_status_text.is_some());
     assert!(descriptor.channel_service.is_some());
     assert!(descriptor.channel_destroy.is_some());
 }
@@ -994,6 +1075,30 @@ fn incoming_link_boundary_prepares_processes_observes_and_destroys() {
     assert_eq!(observation.processed_blocks, 1);
     assert_eq!(observation.bypassed_blocks, 2);
     assert_eq!(observation.failed_blocks, 0);
+
+    let measured = observation.loudness_sample_count;
+    samples.fill(321);
+    assert_eq!(
+        // SAFETY: the prepared link and complete signed-linear scratch are exclusively owned.
+        unsafe {
+            link_process(
+                link,
+                URP_AST_LINK_DIRECTION_SILENCE,
+                8_000,
+                samples.as_mut_ptr(),
+                samples.len() as u32,
+            )
+        },
+        URP_AST_OK
+    );
+    assert_eq!(samples, [0; 160]);
+    assert_eq!(
+        // SAFETY: processing is quiescent and the complete observation is writable.
+        unsafe { link_observe(link, &mut observation) },
+        URP_AST_OK
+    );
+    assert_eq!(observation.processed_blocks, 2);
+    assert_eq!(observation.loudness_sample_count, measured + 160);
 
     provider_support::set_failure(provider_support::FAIL_GRAPH);
     let mut failed_link = ptr::null_mut();
@@ -1089,24 +1194,26 @@ fn incoming_link_boundary_prepares_processes_observes_and_destroys() {
     let disabled = b"[usb]\n[link]\nenabled = no\n";
     let driver = create_driver(&context, disabled);
     link = 1_usize as *mut c_void;
-    // SAFETY: complete arguments are live; disabled and missing profiles are explicit cases.
+    // SAFETY: complete arguments are live; bypassed and missing profiles are explicit cases.
     assert_eq!(
         // SAFETY: complete arguments remain live for this setup call.
         unsafe { link_prepare(driver, c"usb".as_ptr().cast(), 3, 8_000, 160, &mut link) },
-        URP_AST_NOT_READY
+        URP_AST_OK
     );
-    assert!(link.is_null());
+    assert!(!link.is_null());
+    // SAFETY: even a bypassed profile owns its mandatory output meter.
+    unsafe { link_destroy(link) };
     assert_eq!(
         // SAFETY: complete arguments remain live for this setup call.
         unsafe { link_prepare(driver, c"other".as_ptr().cast(), 5, 8_000, 160, &mut link) },
         URP_AST_CHANNEL_NOT_FOUND
     );
-    // Disabled processing is rejected before graph construction.
+    // Bypassed optional stages still require the final graph and meter.
     provider_support::set_failure(provider_support::FAIL_GRAPH);
     assert_eq!(
         // SAFETY: complete arguments remain live for this setup call.
         unsafe { link_prepare(driver, c"usb".as_ptr().cast(), 3, 8_000, 160, &mut link) },
-        URP_AST_NOT_READY
+        URP_AST_SETUP_FAILED
     );
     provider_support::clear_failure();
     // SAFETY: null destruction is explicitly harmless and driver is consumed once.
@@ -1352,6 +1459,18 @@ fn exported_operations_contain_panics_and_reject_null_handles() {
         );
         assert_eq!(channel_command(ptr::null_mut(), ptr::null_mut()), -1);
         assert_eq!(channel_get_status(ptr::null_mut(), ptr::null_mut()), -1);
+        assert_eq!(
+            channel_processing_status_text(ptr::null_mut(), None, ptr::null_mut()),
+            -1
+        );
+        assert_eq!(
+            channel_processing_status_text(
+                ptr::null_mut(),
+                Some(append_processing_text),
+                ptr::null_mut()
+            ),
+            -1
+        );
         assert_eq!(channel_service(ptr::null_mut()), -1);
         driver_destroy(ptr::null_mut());
         channel_destroy(ptr::null_mut());
@@ -1697,6 +1816,34 @@ fn complete_driver_channel_lifecycle_crosses_the_c_boundary() {
         URP_AST_OK
     );
     assert_eq!(status.running, 0);
+    let mut processing_text = String::new();
+    assert_eq!(
+        // SAFETY: the live channel and synchronous output sink remain owned here.
+        unsafe {
+            channel_processing_status_text(
+                channel,
+                Some(append_processing_text),
+                ptr::from_mut(&mut processing_text).cast(),
+            )
+        },
+        URP_AST_OK
+    );
+    assert!(processing_text.contains("transmit_loudness_meter_enabled=0\n"));
+    assert!(processing_text.contains("transmit_integrated_lufs=unavailable\n"));
+    let mut policy = command(URP_AST_COMMAND_GET_RECEIVE_POLICY, 0, -1);
+    policy.flags = u32::MAX;
+    assert_eq!(
+        // SAFETY: the reserved channel and complete writable command are live.
+        unsafe { channel_command(channel, &mut policy) },
+        URP_AST_OK
+    );
+    assert_eq!((policy.value, policy.flags), (0, 0));
+    policy.target = 1;
+    assert_eq!(
+        // SAFETY: the same live reservation validates this unsupported target.
+        unsafe { channel_command(channel, &mut policy) },
+        URP_AST_INVALID_ARGUMENT
+    );
     let mut prestart = command(URP_AST_COMMAND_GET_MIXER, URP_AST_MIXER_RECEIVE, 0);
     // SAFETY: commands requiring opened hardware reject this prepared channel.
     assert_eq!(
@@ -1814,6 +1961,21 @@ fn complete_driver_channel_lifecycle_crosses_the_c_boundary() {
     assert_eq!(unsafe { channel_start(channel) }, URP_AST_OK);
     // SAFETY: channel is live and provider callbacks completed during start.
     assert_eq!(unsafe { channel_service(channel) }, URP_AST_OK);
+
+    processing_text.clear();
+    assert_eq!(
+        // SAFETY: the live physical channel and synchronous output remain retained.
+        unsafe {
+            channel_processing_status_text(
+                channel,
+                Some(append_processing_text),
+                ptr::from_mut(&mut processing_text).cast(),
+            )
+        },
+        URP_AST_OK
+    );
+    assert!(processing_text.contains("radio_transmit_calls=1\n"));
+    assert!(processing_text.contains("transmit_true_peak_dbtp=unavailable\n"));
 
     for (target, value) in [
         (URP_AST_MIXER_RECEIVE, 401),
@@ -3206,5 +3368,60 @@ fn multi_channel_activation_failure_rolls_every_owner_back_before_publication() 
         channel_destroy(one);
         channel_destroy(two);
         driver_destroy(driver);
+    }
+}
+
+#[test]
+fn receive_policy_query_reports_resolved_modes_before_and_after_start() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    for (mode, carrier, expected) in [
+        ("off", "dsp", 0),
+        ("kerchunk", "dsp", 1),
+        ("on", "dsp", 2),
+        ("kerchunk", "no", 2),
+    ] {
+        let context = RefCell::new(Calls::default());
+        let text = format!("[usb]\n[receive]\nvad_mode={mode}\ncos_assignment={carrier}\n");
+        let driver = create_driver(&context, text.as_bytes());
+        // SAFETY: the driver retains its reserved channel until destruction below.
+        let channel = unsafe { reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED) };
+        let mut policy = command(URP_AST_COMMAND_GET_RECEIVE_POLICY, 0, -1);
+        policy.flags = u32::MAX;
+        assert_eq!(
+            // SAFETY: the live reservation and complete writable command remain owned here.
+            unsafe { channel_command(channel, &mut policy) },
+            URP_AST_OK
+        );
+        assert_eq!(
+            (policy.value, policy.flags),
+            (expected, if expected == 0 { 0 } else { 7680 })
+        );
+        assert_eq!(
+            // SAFETY: this fixture owns the prepared channel and all fake providers.
+            unsafe { channel_start(channel) },
+            URP_AST_OK
+        );
+        policy.value = -1;
+        policy.flags = u32::MAX;
+        assert_eq!(
+            // SAFETY: the unique active channel serializes this complete control request.
+            unsafe { channel_command(channel, &mut policy) },
+            URP_AST_OK
+        );
+        assert_eq!(
+            (policy.value, policy.flags),
+            (expected, if expected == 0 { 0 } else { 7680 })
+        );
+        assert_eq!(
+            // SAFETY: stop quiesces the fixture before destroying its unique handles.
+            unsafe { channel_stop(channel) },
+            URP_AST_OK
+        );
+        // SAFETY: callbacks are stopped; destroy consumes each unique handle once.
+        unsafe {
+            channel_destroy(channel);
+            driver_destroy(driver);
+        }
     }
 }

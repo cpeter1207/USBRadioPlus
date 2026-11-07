@@ -1,5 +1,6 @@
 use super::*;
 
+use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void};
@@ -8,9 +9,38 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use crate::host::support::Fixture as HostFixture;
+use crate::host::support::timing_support;
 use crate::host::support::{
     FakeChannel as NativeChannel, product_support, with_state as with_native_state,
 };
+
+thread_local! {
+    static AUDIO_ACTIVE: Cell<bool> = const { Cell::new(false) };
+    static AUDIO_ALLOCS: Cell<usize> = const { Cell::new(0) };
+    static TEARDOWN_CHANNEL: Cell<*mut FakeChannel> = const { Cell::new(ptr::null_mut()) };
+}
+
+struct CheckedAllocator;
+
+// SAFETY: allocator inputs pass unchanged to System; thread-local counters allocate nothing.
+unsafe impl GlobalAlloc for CheckedAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        AUDIO_ACTIVE.with(|active| {
+            if active.get() {
+                AUDIO_ALLOCS.with(|count| count.set(count.get() + 1));
+            }
+        });
+        // SAFETY: preserve the caller's valid allocation layout.
+        unsafe { System.alloc(layout) }
+    }
+    unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
+        // SAFETY: preserve the original allocation's pointer and matching layout.
+        unsafe { System.dealloc(pointer, layout) }
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: CheckedAllocator = CheckedAllocator;
 
 fn native_channel() -> *mut ffi::ast_channel {
     let mut channel = NativeChannel::new(ptr::null_mut());
@@ -189,6 +219,7 @@ fn native_asterisk_link_publication_balances_every_failure_stage() {
                     assert_eq!(samples[0], 1);
                     host.detach_channel(channel);
                 }
+                timing_support::drain(channel);
                 assert_eq!(
                     with_state(|state| state.process_calls.clone()),
                     [(1, URP_AST_LINK_DIRECTION_WRITE, 48_000, 160)]
@@ -425,6 +456,8 @@ fn preparation_rejects_missing_graph_and_retires_candidate_after_teardown() {
     stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
     reload.finish(false);
     assert_eq!(attach(&host, &mut channel, "alpha"), Ok(false));
+    timer_tick(&mut channel);
+    timer_tick(&mut channel);
     assert!(channel.datastore.is_null());
     assert!(with_state(|state| state.graphs.is_empty()));
     assert_eq!(with_state(|state| state.detach_calls), 1);
@@ -497,6 +530,7 @@ fn reference_count_guards_and_final_owner_preserve_teardown() {
         host.asterisk,
         "alpha",
         "IAX2/owned",
+        8_000,
         graph,
         InstallMode::Active,
     )));
@@ -509,10 +543,10 @@ fn reference_count_guards_and_final_owner_preserve_teardown() {
     for invalid in [0, usize::MAX] {
         // SAFETY: exclusive test ownership permits a temporary count fault; the count is restored before drop.
         unsafe { (*raw).references.store(invalid, Ordering::Release) };
-        let result = std::panic::catch_unwind(|| {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             // SAFETY: the allocation remains live while the count invariant is deliberately tested.
             unsafe { LinkHook::retain(raw) };
-        });
+        }));
         // SAFETY: restore the one real owner even when the assertion unwound.
         unsafe { (*raw).references.store(1, Ordering::Release) };
         assert!(result.is_err());
@@ -540,6 +574,9 @@ struct FakeState {
     observe_result: i32,
     attach_result: i32,
     process_calls: Vec<(usize, u32, u32, u32)>,
+    silence_inputs: Vec<bool>,
+    process_result: i32,
+    wakes: usize,
     detach_calls: usize,
     destroy_hook_calls: usize,
     channels: Vec<usize>,
@@ -617,6 +654,14 @@ impl RunningFixture {
         with_state(|state| state.preparation_observer = Some(observer));
     }
 
+    pub(in crate::host) fn set_observation(&self, observation: UrpAstLinkObservation) {
+        with_state(|state| {
+            for graph in state.graphs.values_mut() {
+                graph.observation = observation;
+            }
+        });
+    }
+
     pub(in crate::host) fn peer(&mut self) -> *mut ffi::ast_channel {
         self._channel.as_mut().unwrap().raw()
     }
@@ -652,6 +697,7 @@ impl Drop for FakeChannel {
             unsafe { fake_datastore_free(self.datastore) };
             self.datastore = ptr::null_mut();
         }
+        timing_support::destroy(self.raw());
     }
 }
 
@@ -697,6 +743,22 @@ fn fake_asterisk_operations() -> AsteriskOperations {
         audiohook_destroy: fake_audiohook_destroy,
         audiohook_lock: fake_audiohook_lock,
         audiohook_unlock: fake_audiohook_unlock,
+        timer_open: ffi::ast_timer_open,
+        timer_close: ffi::ast_timer_close,
+        timer_fd: ffi::ast_timer_fd,
+        timer_set_rate: ffi::ast_timer_set_rate,
+        timer_ack: ffi::ast_timer_ack,
+        timer_get_event: ffi::ast_timer_get_event,
+        framehook_attach: ffi::ast_framehook_attach,
+        framehook_detach: ffi::ast_framehook_detach,
+        channel_fd_add: ffi::ast_channel_fd_add,
+        channel_fd: ffi::ast_channel_fd,
+        channel_fdno: ffi::ast_channel_fdno,
+        channel_fdno_set: ffi::ast_channel_fdno_set,
+        channel_set_fd: ffi::ast_channel_set_fd,
+        channel_wake: fake_channel_wake,
+        module_ref: ffi::__ast_module_ref,
+        module_unref: ffi::__ast_module_unref,
         datastore_alloc: fake_datastore_alloc,
         datastore_free: fake_datastore_free,
         channel_lock: fake_channel_lock,
@@ -755,6 +817,7 @@ unsafe fn fake_prepare_common(
                     processed_blocks: id as u64 * 7,
                     bypassed_blocks: id as u64 * 2,
                     failed_blocks: id as u64,
+                    ..UrpAstLinkObservation::default()
                 },
             },
         );
@@ -817,6 +880,13 @@ unsafe extern "C" fn fake_process(
     samples: *mut i16,
     sample_count: u32,
 ) -> i32 {
+    if direction == URP_AST_LINK_DIRECTION_SILENCE {
+        // SAFETY: SILENCE supplies a nonempty workspace of the declared bounded length.
+        let zero = unsafe { std::slice::from_raw_parts(samples, sample_count as usize) }
+            .iter()
+            .all(|sample| *sample == 0);
+        with_state(|state| state.silence_inputs.push(zero));
+    }
     let id = graph as usize;
     with_state(|state| {
         state
@@ -827,7 +897,7 @@ unsafe extern "C" fn fake_process(
         // SAFETY: the callback supplied at least one writable sample.
         unsafe { *samples = i16::try_from(id).unwrap() };
     }
-    URP_AST_OK
+    with_state(|state| state.process_result)
 }
 
 unsafe extern "C" fn fake_observe(graph: *mut c_void, output: *mut UrpAstLinkObservation) -> i32 {
@@ -930,6 +1000,9 @@ unsafe fn fake_datastore_free(datastore: *mut ffi::ast_datastore) {
 
 unsafe fn fake_channel_lock(_channel: *mut ffi::ast_channel) {}
 unsafe fn fake_channel_unlock(_channel: *mut ffi::ast_channel) {}
+unsafe fn fake_channel_wake(_channel: *mut ffi::ast_channel) {
+    with_state(|state| state.wakes += 1);
+}
 
 unsafe fn fake_datastore_find(
     channel: *mut ffi::ast_channel,
@@ -1050,6 +1123,7 @@ fn retain(host: &LinkHost, channel: &mut FakeChannel) -> Option<LinkHookRef> {
 fn detach(host: &LinkHost, channel: &mut FakeChannel) {
     // SAFETY: the fake channel remains live and owns its attached datastore.
     unsafe { host.detach_channel(channel.raw()) };
+    timing_support::drain(channel.raw());
 }
 
 fn stage(
@@ -1247,6 +1321,567 @@ fn callback_processes_voice_without_control_plane_work() {
     assert_eq!(with_state(|state| state.process_calls.len()), 1);
 }
 
+fn timer_tick(channel: &mut FakeChannel) {
+    // SAFETY: a zeroed aggregate is a valid empty Asterisk frame.
+    let mut frame: ffi::ast_frame = unsafe { std::mem::zeroed() };
+    let returned = timing_support::event(
+        channel.raw(),
+        &raw mut frame,
+        ffi::AST_FRAMEHOOK_EVENT_READ,
+        true,
+    );
+    assert_eq!(returned, &raw mut frame);
+}
+
+#[test]
+fn restarted_framehook_traversal_acknowledges_only_one_timer_quantum() {
+    struct Replacement {
+        frame: *mut ffi::ast_frame,
+        replaced: bool,
+    }
+    unsafe extern "C" fn replace_once(
+        _: *mut ffi::ast_channel,
+        frame: *mut ffi::ast_frame,
+        event: ffi::ast_framehook_event,
+        data: *mut c_void,
+    ) -> *mut ffi::ast_frame {
+        if event == ffi::AST_FRAMEHOOK_EVENT_READ {
+            // SAFETY: this fixture retains its replacement state through detachment.
+            let state = unsafe { &mut *data.cast::<Replacement>() };
+            if !state.replaced {
+                state.replaced = true;
+                return state.frame;
+            }
+        }
+        frame
+    }
+    let _fixture = HostFixture::new();
+    reset();
+    let mut channel = FakeChannel::eligible("IAX2/restarted-read", 8_000);
+    assert_eq!(attach(&fake_host(), &mut channel, "alpha"), Ok(true));
+    // SAFETY: empty C frame/interface representations have valid null optional fields.
+    let (mut first, mut replacement, mut interface): (
+        ffi::ast_frame,
+        ffi::ast_frame,
+        ffi::ast_framehook_interface,
+    ) = unsafe { std::mem::zeroed() };
+    let mut state = Replacement {
+        frame: &raw mut replacement,
+        replaced: false,
+    };
+    interface.version = ffi::AST_FRAMEHOOK_INTERFACE_VERSION as u16;
+    interface.event_cb = Some(replace_once);
+    interface.data = (&raw mut state).cast();
+    // SAFETY: the fixture retains this complete downstream framehook and its stack data.
+    let id = unsafe { ffi::ast_framehook_attach(channel.raw(), &raw mut interface) };
+    let result = timing_support::event(
+        channel.raw(),
+        &raw mut first,
+        ffi::AST_FRAMEHOOK_EVENT_READ,
+        true,
+    );
+    assert_eq!(result, &raw mut replacement);
+    assert_eq!(with_state(|state| state.process_calls.len()), 1);
+    assert_eq!(timing_support::counts().2, 1);
+    // SAFETY: detach is requested before the retained stack callback state leaves scope.
+    unsafe { ffi::ast_framehook_detach(channel.raw(), id) };
+    timing_support::drain(channel.raw());
+}
+
+fn notify_datastore_move(
+    datastore: *mut ffi::ast_datastore,
+    old: *mut ffi::ast_channel,
+    new: *mut ffi::ast_channel,
+) {
+    // SAFETY: the serialized fixture retains this registered datastore and both channel owners.
+    unsafe {
+        if let Some(fixup) = (*(*datastore).info).chan_fixup {
+            fixup((*datastore).data, old, new);
+        }
+    }
+}
+
+fn assert_masquerade_teardown(attach_fails: bool) {
+    let _fixture = HostFixture::new();
+    reset();
+    let mut source = FakeChannel::eligible("IAX2/move-source", 8_000);
+    let mut destination = FakeChannel::eligible("IAX2/move-destination", 8_000);
+    assert_eq!(attach(&fake_host(), &mut source, "alpha"), Ok(true));
+    if attach_fails {
+        timing_support::fail(timing_support::Failure::Attach);
+    } else {
+        timing_support::fail(timing_support::Failure::Ack);
+        timer_tick(&mut source);
+        timing_support::fail(timing_support::Failure::None);
+    }
+    let old = source.raw();
+    let new = destination.raw();
+    let datastore = source.datastore;
+    timing_support::masquerade(old, new, || notify_datastore_move(datastore, old, new));
+    timing_support::drain(new);
+    assert_eq!(timing_support::counts().1, 1);
+    // SAFETY: both fixture channels remain retained after the copied timer lease is destroyed.
+    unsafe {
+        assert_eq!(ffi::ast_channel_fd(old, 0), -1);
+        assert_eq!(ffi::ast_channel_fd(new, 0), -1);
+    }
+    assert_eq!(with_native_state(|state| state.module_references), 0);
+}
+
+#[test]
+fn masquerade_attach_failure_removes_copied_timer_fd_before_close() {
+    assert_masquerade_teardown(true);
+}
+
+#[test]
+fn masquerade_preserves_pending_asynchronous_detach() {
+    assert_masquerade_teardown(false);
+}
+
+#[test]
+fn idle_timer_advances_only_read_pcm_deficit() {
+    let _fixture = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/idle", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    assert_eq!(with_state(|state| state.wakes), 1);
+
+    timer_tick(&mut channel);
+    assert_eq!(
+        with_state(|state| state.process_calls.clone()),
+        [(1, 3, 8_000, 160)]
+    );
+    let mut samples = [0_i16; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(
+        &mut channel,
+        &raw mut frame,
+        ffi::AST_AUDIOHOOK_DIRECTION_READ,
+    );
+    timer_tick(&mut channel);
+    assert_eq!(
+        with_state(|state| state.process_calls.clone()),
+        [(1, 3, 8_000, 160), (1, 1, 8_000, 160)]
+    );
+    invoke(
+        &mut channel,
+        &raw mut frame,
+        ffi::AST_AUDIOHOOK_DIRECTION_WRITE,
+    );
+    timer_tick(&mut channel);
+    assert_eq!(
+        with_state(|state| state.process_calls.clone()),
+        [
+            (1, 3, 8_000, 160),
+            (1, 1, 8_000, 160),
+            (1, 2, 8_000, 160),
+            (1, 3, 8_000, 160),
+        ]
+    );
+}
+
+#[test]
+fn idle_clock_preserves_fractional_rates_and_bounds_work_and_credit() {
+    for rate in [8_000, 11_025, 44_100, 48_000, 96_000, 192_000, 384_000] {
+        let _fixture = HostFixture::new();
+        reset();
+        let mut channel = FakeChannel::eligible("IAX2/fractional", rate);
+        assert_eq!(attach(&fake_host(), &mut channel, "alpha"), Ok(true));
+        let hz = rate.div_ceil(960).max(50);
+        assert_eq!(timing_support::rates(), [hz]);
+        for _ in 0..hz {
+            timer_tick(&mut channel);
+        }
+        let counts = with_state(|state| {
+            state
+                .process_calls
+                .iter()
+                .map(|call| call.3)
+                .collect::<Vec<_>>()
+        });
+        assert!(counts.iter().all(|count| *count <= 960));
+        assert_eq!(counts.iter().sum::<u32>(), rate);
+    }
+    let mut clock = IdleClock::new(8_000);
+    for _ in 0..10 {
+        clock.credit(8_000, 960);
+    }
+    for _ in 0..6 {
+        assert_eq!(clock.tick(), 0);
+    }
+    assert_eq!(clock.tick(), 160);
+    clock.credit(48_000, 960);
+    clock.credit(8_000, 961);
+    assert_eq!(clock.tick(), 160);
+    clock.credit(8_000, 160);
+    clock.set_rate(8_000);
+    assert_eq!(clock.tick(), 0);
+    clock.credit(8_000, 160);
+    clock.set_rate(48_000);
+    assert_eq!(clock.tick(), 960);
+}
+
+#[test]
+fn idle_setup_failures_balance_timer_graph_and_module_ownership() {
+    use timing_support::Failure;
+    for failure in [
+        Failure::Open,
+        Failure::Fd,
+        Failure::Rate,
+        Failure::Register,
+        Failure::Attach,
+    ] {
+        let _fixture = HostFixture::new();
+        reset();
+        let mut channel = FakeChannel::eligible("IAX2/setup-failure", 8_000);
+        timing_support::fail(failure);
+        let host = fake_host();
+        assert_eq!(
+            attach(&host, &mut channel, "alpha"),
+            Err(LinkHostError::Asterisk)
+        );
+        // SAFETY: the same retained peer also exercises explicit binding's failure unwind.
+        let bound = unsafe { host.bind_channel(channel.raw(), "alpha") };
+        assert_eq!(bound, Err(LinkHostError::Asterisk));
+        assert!(channel.datastore.is_null());
+        assert!(with_state(|state| state.graphs.is_empty()));
+        let (opened, closed, _) = timing_support::counts();
+        assert_eq!(opened, closed);
+        assert_eq!(with_native_state(|state| state.module_references), 0);
+    }
+}
+
+#[test]
+fn datastore_teardown_during_timer_setup_prevents_late_publication() {
+    unsafe extern "C" fn teardown_during_open() -> *mut ffi::ast_timer {
+        // SAFETY: the fixture's ordinary timer provider owns its returned allocation.
+        let timer = unsafe { ffi::ast_timer_open() };
+        TEARDOWN_CHANNEL.with(|owner| {
+            // SAFETY: this serialized fixture retains the supplied channel through timer setup.
+            let channel = unsafe { &mut *owner.get() };
+            let datastore = channel.datastore;
+            channel.datastore = ptr::null_mut();
+            // SAFETY: simulate external destruction after audiohook attachment, before clock publication.
+            unsafe { fake_datastore_free(datastore) };
+        });
+        timer
+    }
+    let _fixture = HostFixture::new();
+    reset();
+    let mut host = fake_host();
+    host.asterisk.timer_open = teardown_during_open;
+    let mut channel = FakeChannel::eligible("IAX2/setup-teardown", 8_000);
+    TEARDOWN_CHANNEL.with(|owner| owner.set(ptr::from_mut(channel.as_mut())));
+    assert_eq!(
+        attach(&host, &mut channel, "alpha"),
+        Err(LinkHostError::Asterisk)
+    );
+    TEARDOWN_CHANNEL.with(|owner| owner.set(ptr::null_mut()));
+    assert!(channel.datastore.is_null());
+    assert!(with_state(|state| state.graphs.is_empty()));
+    assert_eq!(timing_support::counts(), (1, 1, 0));
+    assert_eq!(with_native_state(|state| state.module_references), 0);
+}
+
+#[test]
+fn idle_guards_reject_unregistered_superseded_or_detaching_callbacks() {
+    let _fixture = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut source = FakeChannel::eligible("IAX2/guard-source", 8_000);
+    let mut recipient = FakeChannel::eligible("IAX2/guard-recipient", 8_000);
+    assert_eq!(attach(&host, &mut source, "alpha"), Ok(true));
+    assert_eq!(attach(&host, &mut recipient, "alpha"), Ok(true));
+    let source_ref = retain(&host, &mut source).unwrap();
+    let recipient_ref = retain(&host, &mut recipient).unwrap();
+    // SAFETY: these independent retained references keep both hook allocations live.
+    let (source_hook, recipient_hook) =
+        unsafe { (source_ref.raw.as_ref(), recipient_ref.raw.as_ref()) };
+    source_hook
+        .attachment
+        .store(LINK_DETACHED, Ordering::Release);
+    let mut samples = [0; 160];
+    let mut frame = voice_frame(&mut samples);
+    invoke(
+        &mut source,
+        &raw mut frame,
+        ffi::AST_AUDIOHOOK_DIRECTION_READ,
+    );
+    assert!(with_state(|state| state.process_calls.is_empty()));
+    source_hook
+        .attachment
+        .store(LINK_ATTACHED, Ordering::Release);
+    with_state(|state| state.prepare_result = URP_AST_NOT_READY);
+    let mut reload = LinkReload::default();
+    stage(&host, &mut source, Some("alpha"), &mut reload).unwrap();
+    reload.finish(true);
+    timer_tick(&mut source);
+    assert!(with_state(|state| state.process_calls.is_empty()));
+    let source_lease = source_hook.idle.load(Ordering::Acquire);
+    let recipient_lease = recipient_hook.idle.load(Ordering::Acquire);
+    let old = source.raw();
+    let new = recipient.raw();
+    let datastore = source.datastore;
+    timing_support::fail(timing_support::Failure::Register);
+    timing_support::masquerade(old, new, || notify_datastore_move(datastore, old, new));
+    let acknowledgements = timing_support::counts().2;
+    // SAFETY: emulate provider callbacks while retained leases are pending asynchronous teardown.
+    unsafe {
+        ffi::ast_channel_fdno_set(old, 0);
+        idle_event(
+            old,
+            ptr::null_mut(),
+            ffi::AST_FRAMEHOOK_EVENT_READ,
+            source_lease.cast(),
+        );
+        ffi::ast_channel_fdno_set(new, -1);
+        idle_event(
+            new,
+            ptr::null_mut(),
+            ffi::AST_FRAMEHOOK_EVENT_READ,
+            recipient_lease.cast(),
+        );
+        (*source_lease).detach(new);
+        ffi::ast_channel_fdno_set(new, 0);
+        idle_event(
+            new,
+            ptr::null_mut(),
+            ffi::AST_FRAMEHOOK_EVENT_READ,
+            source_lease.cast(),
+        );
+    }
+    assert_eq!(timing_support::counts().2, acknowledgements);
+    timing_support::drain(new);
+    // SAFETY: empty/clockless datastores remain valid no-op fixup inputs after lease destruction.
+    unsafe {
+        link_datastore_fixup(ptr::null_mut(), old, new);
+        link_datastore_fixup((*datastore).data, old, new);
+    }
+    assert_eq!(with_native_state(|state| state.module_references), 0);
+}
+
+#[test]
+fn asynchronous_idle_detach_retains_graph_and_module_until_destroy() {
+    let _fixture = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/asynchronous", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    assert_eq!(with_native_state(|state| state.module_references), 1);
+    // SAFETY: the fixture retains the channel through explicit asynchronous teardown.
+    unsafe { host.detach_channel(channel.raw()) };
+    assert_eq!(with_state(|state| state.graphs.len()), 1);
+    assert_eq!(with_native_state(|state| state.module_references), 1);
+    timing_support::drain(channel.raw());
+    assert!(with_state(|state| state.graphs.is_empty()));
+    assert_eq!(with_native_state(|state| state.module_references), 0);
+    assert_eq!(timing_support::counts(), (1, 1, 0));
+}
+
+#[test]
+fn timer_events_preserve_controls_and_fail_without_replay_or_output() {
+    let _fixture = HostFixture::new();
+    reset();
+    let mut channel = FakeChannel::eligible("IAX2/events", 8_000);
+    assert_eq!(attach(&fake_host(), &mut channel, "alpha"), Ok(true));
+    let mut data = [123_i16; 160];
+    let mut frame = voice_frame(&mut data);
+    frame.frametype = ffi::AST_FRAME_CONTROL;
+    frame.subclass.integer = ffi::AST_CONTROL_RADIO_UNKEY as c_int;
+    timing_support::event(
+        channel.raw(),
+        &raw mut frame,
+        ffi::AST_FRAMEHOOK_EVENT_READ,
+        false,
+    );
+    timing_support::event(
+        channel.raw(),
+        &raw mut frame,
+        ffi::AST_FRAMEHOOK_EVENT_WRITE,
+        true,
+    );
+    assert!(with_state(|state| state.process_calls.is_empty()));
+    assert_eq!(data, [123; 160]);
+    assert_eq!(frame.frametype, ffi::AST_FRAME_CONTROL);
+    assert_eq!(
+        frame.subclass.integer,
+        ffi::AST_CONTROL_RADIO_UNKEY as c_int
+    );
+    timing_support::continuous(true);
+    timer_tick(&mut channel);
+    assert_eq!(timing_support::counts().2, 0);
+    timing_support::continuous(false);
+    timing_support::fail(timing_support::Failure::Ack);
+    timer_tick(&mut channel);
+    assert!(with_state(|state| state.process_calls.is_empty()));
+    assert_eq!(timing_support::rates(), [0]);
+    timing_support::drain(channel.raw());
+    assert_eq!(timing_support::counts(), (1, 1, 1));
+}
+
+#[test]
+fn idle_callback_allocates_nothing_and_discards_failure_output() {
+    let _fixture = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/no-allocation", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    let retained = retain(&host, &mut channel).unwrap();
+    // SAFETY: the retained hook and framehook own this lease until fixture teardown.
+    let lease = unsafe { retained.raw.as_ref() }
+        .idle
+        .load(Ordering::Acquire);
+    with_state(|state| {
+        state.events.reserve(1_000);
+        state.process_calls.reserve(300);
+        state.silence_inputs.reserve(300);
+        state.process_result = -9;
+    });
+    AUDIO_ALLOCS.with(|count| count.set(0));
+    AUDIO_ACTIVE.with(|active| active.set(true));
+    for _ in 0..250 {
+        timing_support::select_timer(channel.raw());
+        // SAFETY: the fixture selects the retained lease's timer and serializes this callback.
+        unsafe {
+            idle_event(
+                channel.raw(),
+                ptr::null_mut(),
+                ffi::AST_FRAMEHOOK_EVENT_READ,
+                lease.cast(),
+            )
+        };
+    }
+    AUDIO_ACTIVE.with(|active| active.set(false));
+    AUDIO_ALLOCS.with(|count| assert_eq!(count.get(), 0));
+    assert_eq!(with_state(|state| state.process_calls.len()), 250);
+    assert!(with_state(|state| state
+        .silence_inputs
+        .iter()
+        .all(|zero| *zero)));
+    assert!(
+        // SAFETY: this control-plane check holds the retained lease after callbacks have stopped.
+        unsafe { &(*lease).scratch }
+            .iter()
+            .all(|sample| *sample == 0)
+    );
+}
+
+#[test]
+fn idle_reload_preserves_credit_or_adopts_new_fractional_clock() {
+    let _fixture = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut channel = FakeChannel::eligible("IAX2/rate-reload", 8_000);
+    assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+    let mut samples = [0; 160];
+    let mut frame = voice_frame(&mut samples);
+    with_state(|state| {
+        state.process_result = -7;
+        state.reload_unchanged = true;
+    });
+    invoke(
+        &mut channel,
+        &raw mut frame,
+        ffi::AST_AUDIOHOOK_DIRECTION_READ,
+    );
+    let mut reload = LinkReload::default();
+    stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+    reload.finish(true);
+    timer_tick(&mut channel);
+    assert_eq!(with_state(|state| state.process_calls.len()), 1);
+    with_state(|state| {
+        state.process_result = 0;
+        state.reload_unchanged = false;
+    });
+    channel.sample_rate_hz = 96_001;
+    let mut reload = LinkReload::default();
+    stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+    reload.finish(true);
+    timer_tick(&mut channel);
+    assert_eq!(timing_support::rates(), [101]);
+    assert_eq!(
+        with_state(|state| state.process_calls.last().copied()),
+        Some((2, 3, 96_001, 950))
+    );
+    channel.sample_rate_hz = 192_000;
+    let mut reload = LinkReload::default();
+    stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+    reload.finish(false);
+    timer_tick(&mut channel);
+    assert_eq!(timing_support::rates(), [101]);
+    let mut reload = LinkReload::default();
+    stage(&host, &mut channel, Some("alpha"), &mut reload).unwrap();
+    reload.finish(true);
+    let before = with_state(|state| state.process_calls.len());
+    timing_support::fail(timing_support::Failure::Rate);
+    timer_tick(&mut channel);
+    assert_eq!(with_state(|state| state.process_calls.len()), before);
+    assert_eq!(timing_support::rates(), [0]);
+    timing_support::drain(channel.raw());
+    assert_eq!(with_native_state(|state| state.module_references), 0);
+}
+
+#[test]
+fn masquerade_rebinds_recipient_timer_and_retains_both_leases() {
+    for registration_fails in [false, true] {
+        let _fixture = HostFixture::new();
+        reset();
+        let host = fake_host();
+        let mut source = FakeChannel::eligible("IAX2/source", 8_000);
+        let mut recipient = FakeChannel::eligible("IAX2/recipient", 8_000);
+        assert_eq!(attach(&host, &mut source, "alpha"), Ok(true));
+        assert_eq!(attach(&host, &mut recipient, "alpha"), Ok(true));
+        if registration_fails {
+            timing_support::fail(timing_support::Failure::Register);
+        }
+        let old = source.raw();
+        let new = recipient.raw();
+        let datastore = source.datastore;
+        timing_support::masquerade(old, new, || notify_datastore_move(datastore, old, new));
+        assert_eq!(timing_support::counts().1, 0);
+        assert_eq!(with_native_state(|state| state.module_references), 2);
+        timing_support::drain(recipient.raw());
+        assert_eq!(timing_support::counts().1, usize::from(registration_fails));
+        timer_tick(&mut recipient);
+        assert_eq!(
+            with_state(|state| state.process_calls.last().copied()),
+            Some((1, 3, 8_000, 160))
+        );
+        timing_support::destroy(recipient.raw());
+        assert_eq!(timing_support::counts().1, 2);
+        assert_eq!(with_native_state(|state| state.module_references), 0);
+    }
+}
+
+#[test]
+fn recipient_pending_detach_preserves_incoming_timer_registration() {
+    let _fixture = HostFixture::new();
+    reset();
+    let host = fake_host();
+    let mut source = FakeChannel::eligible("IAX2/source-pending-recipient", 8_000);
+    let mut recipient = FakeChannel::eligible("IAX2/pending-recipient", 8_000);
+    assert_eq!(attach(&host, &mut source, "alpha"), Ok(true));
+    assert_eq!(attach(&host, &mut recipient, "alpha"), Ok(true));
+    timing_support::fail(timing_support::Failure::Ack);
+    timer_tick(&mut recipient);
+    timing_support::fail(timing_support::Failure::None);
+    let old = source.raw();
+    let new = recipient.raw();
+    let datastore = source.datastore;
+    timing_support::masquerade(old, new, || notify_datastore_move(datastore, old, new));
+    timing_support::drain(new);
+    assert_eq!(timing_support::counts().1, 1);
+    timer_tick(&mut recipient);
+    assert_eq!(
+        with_state(|state| state.process_calls.last().copied()),
+        Some((1, 3, 8_000, 160))
+    );
+    timing_support::destroy(new);
+    assert_eq!(timing_support::counts().1, 2);
+    assert_eq!(with_native_state(|state| state.module_references), 0);
+}
+
 #[test]
 fn retained_hook_survives_datastore_destruction_until_callback_is_quiescent() {
     let _guard = HostFixture::new();
@@ -1263,6 +1898,8 @@ fn retained_hook_survives_datastore_destruction_until_callback_is_quiescent() {
     assert_eq!(with_state(|state| state.detach_calls), 1);
     assert_eq!(with_state(|state| state.destroy_hook_calls), 0);
     assert_eq!(with_state(|state| state.graphs.len()), 1);
+    timer_tick(&mut channel);
+    timer_tick(&mut channel);
     drop(retained);
     assert_eq!(with_state(|state| state.destroy_hook_calls), 1);
     assert!(with_state(|state| state.graphs.is_empty()));
@@ -1298,6 +1935,10 @@ fn staged_reload_survives_channel_masquerade_and_swaps_in_place() {
     let mut replacement = FakeChannel::eligible("IAX2/506316-after", 8_000);
     replacement.datastore = original.datastore;
     replacement.audiohook = original.audiohook;
+    let old = original.raw();
+    let new = replacement.raw();
+    let datastore = replacement.datastore;
+    timing_support::masquerade(old, new, || notify_datastore_move(datastore, old, new));
     original.datastore = ptr::null_mut();
     original.audiohook = ptr::null_mut();
 
@@ -1358,6 +1999,27 @@ fn observation_reads_the_active_graph_while_quiesced() {
                 ]
         })
     }));
+}
+
+#[test]
+fn invalid_link_observation_records_are_rejected_before_meter_tail() {
+    for (size, abi) in [(32, 1), (72, 2), (80, 1)] {
+        let _fixture = HostFixture::new();
+        reset();
+        let host = fake_host();
+        let mut channel = FakeChannel::eligible("IAX2/observation-contract", 8_000);
+        assert_eq!(attach(&host, &mut channel, "alpha"), Ok(true));
+        with_state(|state| {
+            let observation = &mut state.graphs.get_mut(&1).unwrap().observation;
+            observation.struct_size = size;
+            observation.abi_version = abi;
+        });
+        // SAFETY: the fixture retains this channel and its complete observer output storage.
+        let result = unsafe { host.observe_channel(channel.raw()) };
+        assert!(
+            matches!(result, Err(LinkHostError::Product(status)) if status == crate::URP_AST_INCOMPATIBLE_ABI)
+        );
+    }
 }
 
 #[test]
@@ -1479,6 +2141,7 @@ fn explicit_peer_binding_retains_its_radio_profile_even_when_disabled() {
     );
     stop();
     assert!(peer.datastore.is_null());
+    timing_support::drain(peer.raw());
     assert_eq!(with_state(|state| state.detach_calls), 1);
     assert!(with_state(|state| state.graphs.is_empty()));
     assert_eq!(
@@ -1515,6 +2178,8 @@ fn process_host_scans_periodically_and_stop_detaches_every_hook() {
     wait_until(|| attachment_count() == 1);
     stop();
 
+    timing_support::drain(eligible.raw());
+    timing_support::drain(ineligible.raw());
     assert!(eligible.datastore.is_null());
     assert!(ineligible.datastore.is_null());
     assert_eq!(with_state(|state| state.detach_calls), 1);

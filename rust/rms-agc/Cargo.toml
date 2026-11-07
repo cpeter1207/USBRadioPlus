@@ -4,7 +4,7 @@ version = "0.1.0-alpha19"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
-description = "FFmpeg-hosted USBRadioPlus RMS gain rider with the stable LADSPA interface"
+description = "FFmpeg-hosted USBRadioPlus LUFS gain rider with the stable LADSPA interface"
 publish = false
 
 [lib]
@@ -16,3 +16,6 @@ missing_docs = "deny"
 
 [lints.clippy]
 undocumented_unsafe_blocks = "deny"
+
+[dependencies]
+ebur128 = "=0.1.11"

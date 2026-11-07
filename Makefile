@@ -92,15 +92,15 @@ else
 ifeq ($(shell $(PKG_CONFIG) --exists rptadvradio && echo yes),)
 $(error USBRadioPlus requires the librptadvradio development package)
 endif
-ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),4)
-$(error USBRadioPlus requires librptadvradio descriptor ABI 4 from alpha.4 or newer)
+ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),5)
+$(error USBRadioPlus requires librptadvradio descriptor ABI 5 from alpha.10 or newer)
 endif
-RPTADV_RADIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadvradio)),0.1.0-alpha.9,0.1.0~alpha9)
+RPTADV_RADIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadvradio)),0.1.0-alpha.10,0.1.0~alpha10)
 ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(RPTADV_RADIO_MIN_VERSION) rptadvradio && echo yes),)
-$(error USBRadioPlus requires librptadvradio alpha9 or newer for independent/open carrier signaling)
+$(error USBRadioPlus requires librptadvradio alpha10 or newer for neural speech admission)
 endif
 RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
-RPTADV_RADIO_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadvradio)/librptadvradio.so.4
+RPTADV_RADIO_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadvradio)/librptadvradio.so.5
 RPTADV_RADIO_BUILD_DEP :=
 endif
 # USBRadioPlus routes its current mono conversion through
@@ -304,7 +304,7 @@ $(MODULE): $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD
 	$(READELF) -d $@ | grep -F 'Shared library: [$(ASTERISK_ADAPTER_SONAME)]'
 	$(READELF) -d $@ | grep -F 'Shared library: [$(PRODUCT_SONAME)]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librate_adjusting_pcm_ring3.so.3]'
-	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.4]'
+	$(READELF) -d $@ | grep -F 'Shared library: [librptadvradio.so.5]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_samplerate_adapter.so.2]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_ffmpeg_adapter.so.1]'
 	$(READELF) -d $@ | grep -F 'Shared library: [librptadv_portaudio_alsa_adapter.so.2]'
@@ -394,8 +394,7 @@ lint:
 		rust/asterisk/src/host/tests/variadic.c \
 		tests/test_chan_usbradioplus_shim.c \
 		$(shell find tests/fixtures/shim-host -type f -name '*.h') \
-		tests/test_rms_agc_ladspa.c tests/fixtures/rms_agc_ladspa.h \
-		tests/fixtures/rms_agc_reference.c
+		tests/test_rms_agc_ladspa.c tests/fixtures/rms_agc_ladspa.h
 	$(SHELLCHECK) install.sh scripts/*.sh tests/*.sh \
 		packaging/repository/install-usbradioplus.sh
 

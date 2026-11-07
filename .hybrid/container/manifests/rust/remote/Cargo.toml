@@ -1,0 +1,22 @@
+[package]
+name = "usbradioplus-remote"
+version = "0.1.0-alpha19"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-2.0-only"
+description = "Dynamic remote-base and Hamlib dependency clients"
+publish = false
+
+[dependencies]
+libloading = "0.8"
+usbradioplus-core = { path = "../core" }
+
+[build-dependencies]
+bindgen = "0.72.1"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"

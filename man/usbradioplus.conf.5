@@ -1,4 +1,4 @@
-.TH USBRADIOPLUS.CONF 5 "September 2026" "USBRadioPlus alpha" "File Formats Manual"
+.TH USBRADIOPLUS.CONF 5 "November 2026" "USBRadioPlus alpha" "File Formats Manual"
 .SH NAME
 usbradioplus.conf \- USBRadioPlus channel, hardware, and audio-processing configuration
 .SH SYNOPSIS
@@ -229,12 +229,25 @@ Select the receiver audio connection. Default is \fBflat\fR.
 .TP
 .B cos_assignment = no|usb|usbinvert|dsp|vox|pp|ppinvert
 Select the carrier-operated-squelch source. Default is \fBdsp\fR.
-.TP
-.B cpu_saver_enabled = yes|no
-Reduce optional local receive processing while the receiver is unqualified.
-When disabled, enabled local RNNoise and dynamics run on every native interval.
-This control does not stop sound-device reads or writes. Default is \fBno\fR.
 .SS Receiver and squelch
+.TP
+.B vad_mode = off|kerchunk|on
+Select neural speech qualification independently of the audio-level VOX
+carrier detector. Default is \fBoff\fR, preserving existing receive behavior.
+\fBkerchunk\fR requires fresh speech once per RF-qualified burst, then admits
+that burst until its carrier or required tone qualification closes.
+\fBon\fR requires speech or its configured hang while retaining every enabled
+carrier and tone requirement. Without a carrier or required tone capable of
+ending the burst, \fBkerchunk\fR warns and uses \fBon\fR.
+Active VAD treats an ignored carrier source as continuously open; disabled
+receive audio, duplex restrictions and receive guards still apply.
+.TP
+.B vad_hang_ms = 0..32767
+Set the speech release hold in milliseconds. Default is 1000 ms. This does not
+change \fBvox_hang_ms\fR. Active VAD uses at least 160 ms of the existing
+receive delay, preserving a larger configured value. The standalone and
+app_rpt_advanced controllers own that same delay in their local PCM ring;
+legacy app_rpt uses the radio receive delay. No second delay is added.
 .TP
 .B vox_hang_ms = 0..32767
 Set nonnegative VOX hang time in milliseconds. Default is 2000 ms.
@@ -279,10 +292,6 @@ squelch code. CTCSS requires one supported \fB[ctcss]\fR
 code. A reload rejects a selected signaling method whose required inputs are
 absent or invalid, including a CTCSS or DCS method without a hardware output
 assigned to carry transmit signaling. Default is \fBcarrier\fR.
-.TP
-.B cpu_saver_enabled = yes|no
-Reduce optional transmit signaling DSP activity while the transmitter is idle.
-This control does not stop sound-device writes. Default is \fBno\fR.
 .TP
 .B preemphasis_enabled = yes|no
 Enable transmitter pre-emphasis for a direct modulator connection. Disable it
@@ -580,19 +589,26 @@ rejection at the +/-0.5 percent CTCSS encoder tolerance limits.
 .B ctcss_highpass_hz = 50..500
 Set the cutoff for ctcss_filter_mode=highpass. Default is 300 Hz.
 .SH AUTOMATIC GAIN CONTROL
-AGC levels active speech using detector-band RMS and a smooth gain change.
-Its two-pole FFmpeg detector filters do not filter the program audio. The
-stage adds no lookahead or audio buffering, peak limiter, clipping, or
-hardware gain adjustment. Existing compressor and limiter stages remain
-separate. Inactive audio retains the last gain; it is not muted.
+AGC levels active speech using K-weighted LUFS measured on the full program
+at its position in the shared FFmpeg graph. The stage adds no lookahead or
+audio buffering and does not adjust hardware gains. Inactive audio retains
+the last gain without muting or resetting gain to unity. Existing compressor
+and limiter stages remain separate; AGC is not a true-peak limiter and does
+not itself guarantee a -1 dBTP ceiling.
+.PP
+A complete initial loudness window is required after activation, a new
+instance, or a window change. Analysis advances with each delivered sample,
+using zero during inactivity; renewed activity preserves the history.
+Short transmissions and configured gain limits can prevent
+convergence to the target; this causal rider does not guarantee exact
+integrated program loudness. Verify representative output independently.
 .TP
 .B agc_enabled = yes|no
 Enable automatic gain control. Default is no.
 .TP
-.B agc_target_dbfs = -40..-3
-Set the filtered detector-band RMS target after applied gain, not a
-full-band RMS or peak target. Default is -24 dBFS. The target must be above
-agc_activity_threshold_dbfs.
+.B agc_target_lufs = -40..-3
+Set the full-program K-weighted loudness target after applied gain.
+Default is -23 LUFS. This is separate from the raw dBFS activity threshold.
 .TP
 .B agc_max_gain_db = 0..30
 Limit gain applied to active weak audio. Default is 6 dB.
@@ -600,44 +616,45 @@ Limit gain applied to active weak audio. Default is 6 dB.
 .B agc_max_attenuation_db = 0..60
 Limit attenuation applied to active strong audio. Default is 6 dB.
 .TP
-.B agc_rms_averaging_ms = 10..5000
-Set RMS detector averaging time. Default is 200 ms. Longer averaging reduces
-gain movement between syllables; it does not delay program audio.
+.B agc_loudness_window_ms = 400..3000
+Set the rolling loudness measurement window. Default is 400 ms. A complete
+initial window is required before gain changes; this does not delay program
+audio. Inactivity advances the window without resetting its history.
 .TP
 .B agc_gain_increase_db_per_second = 0.1..100
-Limit how quickly gain rises for active weak audio after the hold interval.
+Limit how quickly gain rises after a fresh measurement and the hold interval.
 Default is 2 dB per second.
 .TP
 .B agc_gain_decrease_db_per_second = 0.1..100
-Limit how quickly gain falls for active loud audio. Reduction begins without
-the gain-increase hold. Default is 6 dB per second.
+Limit how quickly gain falls for active loud audio after a fresh measurement.
+Reduction does not wait for the gain-increase hold. Default is 6 dB per second.
 .TP
 .B agc_activity_threshold_dbfs = -100..-3
-Set the input activity threshold, strictly below agc_target_dbfs. Default is
--50 dBFS. A separate 10 ms detector opens at or above this threshold and
-closes below the threshold minus agc_activity_hysteresis_db. Inactivity
-freezes gain without muting audio or resetting gain to unity.
+Set the separate raw 10 ms RMS activity threshold. Default is -50 dBFS.
+The gate opens at or above this threshold and closes below the threshold
+minus agc_activity_hysteresis_db. Inactivity freezes gain without muting
+audio or resetting gain to unity. This gate is not the LUFS target.
 .TP
 .B agc_activity_hysteresis_db = 0..12
 Set the activity detector's closing margin. Default is 3 dB.
 .TP
 .B agc_hold_ms = 0..10000
-Require continuously active audio below target minus deadband for this long
-before increasing gain. Inactivity, gain reduction, or return to the deadband
-restarts the wait. This never delays gain reduction. Default is 500 ms.
+After a complete initial loudness window, require continuously active audio
+below target minus deadband for this long before increasing gain. Inactivity,
+gain reduction, or return to the deadband restarts the wait. This does not
+add a hold to gain reduction. Default is 500 ms.
 .TP
 .B agc_deadband_db = 0..6
-Hold gain when the detector-band output is within this distance either side
-of target. Default is 1 dB.
-.TP
-.B agc_sidechain_highpass_hz = 0|50..2000
-Set the two-pole detector high-pass cutoff, or 0 to disable it.
-Default is 800 Hz.
-.TP
-.B agc_sidechain_lowpass_hz = 0..3500
-Set the two-pole detector low-pass cutoff, or 0 to disable it.
-Any positive frequency through 3500 Hz is accepted. When both detector
-filters are enabled, low-pass must be above high-pass. Default is 1500 Hz.
+Hold gain when measured loudness after applied gain is within this distance
+either side of target. Default is 1 dB.
+.PP
+Migrate agc_target_dbfs to agc_target_lufs and agc_rms_averaging_ms to
+agc_loudness_window_ms, using the new units and defaults rather than renaming
+old values. Remove agc_sidechain_highpass_hz and agc_sidechain_lowpass_hz;
+there are no compatibility aliases. The effect label is
+usbradioplus_agc_lufs; the packaged usbradioplus_agc.so.1 filename and
+13-port LADSPA interface retain their positions. Install matching application
+and plugin artifacts together.
 .SH DOWNWARD EXPANDER
 .TP
 .B expander_enabled = yes|no
@@ -854,28 +871,53 @@ Set high-band attack. Default is 0.5 ms.
 .TP
 .B limiter_high_release_ms = 1..1000
 Set high-band release. Default is 25 ms.
-.SH FIXED TRANSMITTER PROCESSING
-These options apply only to [voice_telemetry]. They do not belong in
-stage_order and run in a fixed transmitter-tail order.
+.SH PEAK LIMITER AND OUTPUT METERS
+Peak Limiter is available in [local], [link], and [voice_telemetry]. It runs
+after optional dynamics, software gain, and source-specific filtering or
+preemphasis. It does not belong in stage_order. The reorderable Multiband
+Limiter is a separate stage.
+.PP
+Each chain has a separate, always-active gated integrated loudness and
+maximum true-peak meter after Peak Limiter, including audible graph handoffs.
+The transmit meter precedes calibration signals, access tones, and hardware
+mixer scaling. Processing statistics expose receive_* and transmit_* meter
+fields, plus per-link observations: loudness_epoch, loudness_sample_count,
+loudness_valid, true_peak_valid, integrated_lufs, and true_peak_dbtp.
+Initial readings need at least 400 ms; silence advances analysis and retains
+history. An unchanged complete path retains its epoch across reloads;
+a changed path starts a new epoch. Setup warmup is excluded.
+.PP
+Remove loudness_meter_enabled and receive/transmit CPU-saver settings.
+These retired keys produce normal unknown-option warnings and are ignored.
+Output analysis cannot be disabled by CPU saving.
 .TP
 .B lookahead_limiter_enabled = yes|no
-Enable or explicitly disable the final limiter. When omitted, the channel
-transmit limiter settings determine whether it runs and its ceiling.
+Enable or explicitly disable Peak Limiter. Default is no.
 .TP
 .B lookahead_limiter_ceiling_dbfs = -30..-0.1
-Set the final-limiter ceiling. Default is -3 dBFS.
+Set the Peak Limiter ceiling. Default is -3 dBFS.
+.TP
+.B lookahead_limiter_oversample = 1|2|4
+Set Peak Limiter oversampling. Default is 4, giving four times the source
+rate and then a return to that rate (192 kHz then 48 kHz on the native path).
+One disables oversampling. The
+ceiling remains the internal sample ceiling; -2 dBFS provides reconstruction
+headroom for the -1 dBTP reference. Check true peak after downsampling.
 .TP
 .B lookahead_limiter_lookahead_ms = 0.1..20
-Set final-limiter lookahead. Default is 5 ms.
+Set Peak Limiter lookahead. Default is 5 ms.
 .TP
 .B lookahead_limiter_attack_ms = 0.1..20
 Set limiter attack. Default is 1 ms.
 .TP
 .B lookahead_limiter_release_ms = 1..5000
 Set limiter release. Default is 100 ms.
+.SS Voice/telemetry band-pass
+These band-pass options apply only to [voice_telemetry].
 .TP
 .B post_limiter_bandpass_enabled = yes|no
-Enable the fixed brick-wall band-pass after final limiting. Default is no.
+Enable the fixed band-pass after the main dynamics stages and before the
+oversampled Peak Limiter. Default is no.
 .TP
 .B post_limiter_bandpass_highpass_hz = 0..300
 Set the post-limiter band-pass low-frequency cutoff. Zero disables the lower
@@ -886,7 +928,9 @@ Set the post-limiter band-pass high-frequency cutoff. Default is 8000 Hz.
 .SH ORDER OF PROCESSING
 Local receiver audio is de-emphasized and squelch-gated, passed through the
 receive band-pass and one selected PL filter, optionally passed through RNNoise,
-and then passed through the selected dynamics order. Link audio uses only its dynamics graph;
+and then passed through the selected dynamics order, software output gain,
+Peak Limiter, and mandatory output meter. Link audio uses its dynamics graph,
+output gain, Peak Limiter, and mandatory output meter;
 source-specific brick-wall filtering is not available. RNNoise and PL removal
 are not available on link or transmitter sources.
 .PP
@@ -898,11 +942,15 @@ preparation and reload occur outside the callback. A format or capacity
 mismatch, unavailable graph, or graph-processing error leaves the current
 frame unchanged rather than rebuilding the graph or replaying older audio.
 .B radioplus processing stats
-reports processed, bypassed, and failed link blocks. Link processing never
+reports processed, bypassed, and failed link blocks and their output-meter
+observations. Normal idle intervals advance analysis with silence. A stalled
+Asterisk channel reader resumes with one current interval rather than replaying
+elapsed silence. Link processing never
 asserts or releases PTT.
 .PP
 The transmitter combines voice and telemetry, applies the voice/telemetry
-dynamics graph, and then applies its fixed filtering and peak-control tail.
+dynamics graph, preemphasis and output gain, optional band-pass,
+oversampled Peak Limiter, and mandatory output meter.
 .SH EXAMPLE
 .nf
 [usb]
@@ -915,12 +963,16 @@ stage_order = equalizer,expander,agc,deesser,compressor,limiter
 expander_enabled = yes
 agc_enabled = yes
 ctcss_filter_mode = notch
+lookahead_limiter_enabled = yes
+lookahead_limiter_ceiling_dbfs = -2
 
 [link]
 enabled = yes
 stage_order = equalizer,agc,deesser,compressor
 agc_enabled = yes
 compressor_enabled = yes
+lookahead_limiter_enabled = yes
+lookahead_limiter_ceiling_dbfs = -2
 
 [voice_telemetry]
 enabled = yes
@@ -928,6 +980,8 @@ input_gain_db = 6.0
 stage_order = equalizer,deesser,compressor,limiter
 compressor_enabled = yes
 limiter_enabled = yes
+lookahead_limiter_enabled = yes
+lookahead_limiter_ceiling_dbfs = -2
 post_limiter_bandpass_enabled = yes
 post_limiter_bandpass_highpass_hz = 0
 post_limiter_bandpass_lowpass_hz = 5000

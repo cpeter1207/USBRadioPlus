@@ -1,3 +1,28 @@
+usbradioplus (0.1.0~alpha31-1) unstable; urgency=medium
+
+  * Add Earshot receiver VAD with Off, Kerchunk filter and On modes.
+  * Preserve receive onset in the existing PCM delay line.
+  * Require matched radio ABI5 and direct receive callback ABI6.
+  * Default all LUFS AGCs to 400 ms; retain 6/2 dB per second attack/release.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sat, 07 Nov 2026 11:18:15 -0600
+
+usbradioplus (0.1.0~alpha30-1+bs1770.20261106) unstable; urgency=medium
+
+  * Share the fixed Peak Limiter across local, link, and transmit profiles.
+  * Make output integrated loudness and true-peak metering mandatory.
+  * Advance legacy Asterisk incoming-link graphs through idle silence.
+  * Require matching sized link observations and continuous processing clocks.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 06 Nov 2026 15:30:00 -0600
+
+usbradioplus (0.1.0~alpha29-1+bs1770.20261106) unstable; urgency=medium
+
+  * Replace RMS with LUFS in the AGC.
+  * Target -23 LUFS using BS.1770 metering in the existing processing graph.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 06 Nov 2026 09:28:40 -0600
+
 usbradioplus (0.1.0~alpha28-1) unstable; urgency=medium
 
   * Share Hamlib and parallel remote-base control across radio hosts.

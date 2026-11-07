@@ -13,6 +13,8 @@ mod abi_tests;
 
 #[path = "link_support.rs"]
 mod link_support;
+#[path = "timing_support.rs"]
+pub(crate) mod timing_support;
 
 #[path = "product_support.rs"]
 pub(crate) mod product_support;
@@ -193,6 +195,7 @@ impl Drop for Fixture {
         for worker in workers {
             worker.join().expect("test taskprocessor worker panicked");
         }
+        timing_support::reset();
         with_state(|state| *state = State::default());
     }
 }

@@ -10,6 +10,58 @@ use usbradioplus_driver::{HardwareMaintenance, HardwareStationDiagnostics, Hardw
 use usbradioplus_gpio::EepromImage;
 use usbradioplus_radio::SessionSnapshot;
 
+/// Render mandatory output measurements for the actual RX and TX generations.
+/// Integrated loudness and true peak have independent validity.
+pub(crate) fn processing_status_text(
+    observation: usbradioplus_station::CallbackStatistics,
+    receive: Option<usbradioplus_core::OutputLoudnessSnapshot>,
+    transmit: Option<usbradioplus_core::OutputLoudnessSnapshot>,
+) -> String {
+    let mut output = format!(
+        "radio_receive_calls={}\nradio_transmit_calls={}\nradio_receive_failures={}\nradio_transmit_failures={}\n",
+        observation.receive_calls,
+        observation.transmit_calls,
+        observation.receive_failures,
+        observation.transmit_failures,
+    );
+    append_output_loudness(&mut output, "receive", receive);
+    append_output_loudness(&mut output, "transmit", transmit);
+    output
+}
+
+fn append_output_loudness(
+    output: &mut String,
+    role: &str,
+    measurement: Option<usbradioplus_core::OutputLoudnessSnapshot>,
+) {
+    let snapshot = measurement.unwrap_or_default();
+    for (name, value) in [
+        ("loudness_meter_enabled", u64::from(measurement.is_some())),
+        ("loudness_epoch", snapshot.epoch),
+        ("loudness_sample_count", snapshot.sample_count),
+        (
+            "loudness_valid",
+            u64::from(snapshot.integrated_lufs.is_some()),
+        ),
+        (
+            "true_peak_valid",
+            u64::from(snapshot.true_peak_dbtp.is_some()),
+        ),
+    ] {
+        writeln!(output, "{role}_{name}={value}").expect("writing to String cannot fail");
+    }
+    for (name, value) in [
+        ("integrated_lufs", snapshot.integrated_lufs),
+        ("true_peak_dbtp", snapshot.true_peak_dbtp),
+    ] {
+        match value {
+            Some(value) => writeln!(output, "{role}_{name}={value:.2}"),
+            None => writeln!(output, "{role}_{name}=unavailable"),
+        }
+        .expect("writing to String cannot fail");
+    }
+}
+
 /// Physical-only native station measurements; controller rings remain with the controller.
 #[repr(C)]
 #[derive(Clone, Copy, Default)]

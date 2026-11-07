@@ -21,7 +21,7 @@ pub(crate) const RECEIVE_FAILING_GENERATION: u64 = 97;
 pub(crate) const TRANSMIT_FAILING_GENERATION: u64 = 98;
 pub(crate) const RECEIVE_UPDATE_FAILING_GENERATION: u64 = 96;
 pub(crate) const TRANSMIT_UPDATE_FAILING_GENERATION: u64 = 95;
-const ABI_VERSION: u32 = 4;
+const ABI_VERSION: u32 = 5;
 const CHANNELS: usize = 2;
 
 thread_local! {
@@ -67,6 +67,13 @@ struct FakeReceiveResult {
     output_rms: f32,
     output_rail_samples: u64,
     periodic_status_due: u32,
+    raw_receiver_keyed: u32,
+    rf_burst_id: u64,
+    vad_mode: u32,
+    vad_voice_active: u32,
+    vad_score: f32,
+    vad_voice_sample_index: u64,
+    vad_preroll_frames: u32,
 }
 
 #[repr(C)]
@@ -136,6 +143,13 @@ struct FakeSnapshot {
     ctcss_decoded_index: i32,
     dcs_valid: u32,
     program_ring: RingObservation,
+    raw_receiver_keyed: u32,
+    rf_burst_id: u64,
+    vad_mode: u32,
+    vad_voice_active: u32,
+    vad_score: f32,
+    vad_voice_sample_index: u64,
+    vad_preroll_frames: u32,
 }
 
 type Create =
@@ -336,6 +350,7 @@ unsafe extern "C" fn receive(
         carrier_active: controls.hardware_carrier,
         subaudible_active: controls.hardware_subaudible,
         receiver_keyed: controls.hardware_carrier & controls.hardware_subaudible,
+        raw_receiver_keyed: controls.hardware_carrier & controls.hardware_subaudible,
         ctcss_decoded_index: if controls.hardware_subaudible != 0 {
             0
         } else {

@@ -104,7 +104,7 @@ fn native_normalized_menu_gain_keeps_raw_graph_and_original_profile_absence() {
 }
 
 #[test]
-fn native_radio_aliases_preserve_asymmetric_ctcss_and_independent_cpu_savers() {
+fn native_radio_aliases_preserve_asymmetric_ctcss() {
     let resolved = resolve(
         "[1000]\n[radio]\nreceive_signaling=ctcss\ntransmit_signaling=ctcss\nreceive_ctcss_tones_hz=100.0,103.5\ntransmit_ctcss_tones_hz=123.0,127.3\nreceive_cpu_saver_enabled=yes\ntransmit_cpu_saver_enabled=no\nreceive_input_gain_db=-2\n[radio 1000]\nsquelch_level=650\n",
     );
@@ -121,10 +121,31 @@ fn native_radio_aliases_preserve_asymmetric_ctcss_and_independent_cpu_savers() {
         config.station.ctcss.transmit_frequencies[0].tenths_hz(),
         1230
     );
-    assert!(config.station.receive.cpu_saver_enabled);
-    assert!(!config.station.transmit.cpu_saver_enabled);
+    assert_eq!(resolved.warnings().len(), 2);
+    assert!(
+        resolved
+            .warnings()
+            .iter()
+            .all(|warning| warning.kind == ResolutionWarningKind::UnknownOption)
+    );
     assert_eq!(config.station.receive.squelch_level, 650);
     assert_eq!(config.local.input_gain_db, -2.0);
+}
+
+#[test]
+fn retired_native_cpu_savers_warn_at_both_radio_overlays() {
+    for value in ["yes", "no", "invalid"] {
+        let resolved = resolve(&format!(
+            "[1000]\n[radio]\nreceive_cpu_saver_enabled={value}\ntransmit_cpu_saver_enabled={value}\n[radio 1000]\nreceive_cpu_saver_enabled={value}\ntransmit_cpu_saver_enabled={value}\n"
+        ));
+        assert_eq!(resolved.warnings().len(), 4);
+        assert!(
+            resolved
+                .warnings()
+                .iter()
+                .all(|warning| warning.kind == ResolutionWarningKind::UnknownOption)
+        );
+    }
 }
 
 #[test]
@@ -357,4 +378,38 @@ fn native_aliases_keep_shared_conflicting_assignment_errors() {
             .is_err()
         );
     }
+}
+
+#[test]
+fn native_vad_aliases_use_receive_profiles_and_keep_diagnostic_origins() {
+    for (section, key) in [("receive", "vad_mode"), ("receive", "vad_hang_ms")] {
+        assert_eq!(native_radio_setting_destination(section, key), Some(key));
+    }
+    let resolved = resolve(
+        "[1000]\n[radio]\nvad_mode=kerchunk\nvad_hang_ms=333\ncarrier_source=dsp\n[radio 1000]\nvad_hang_ms=1200\n",
+    );
+    assert_eq!(
+        resolved.config().station.receive.vad_mode,
+        VadMode::Kerchunk
+    );
+    assert_eq!(resolved.config().station.receive.vad_hang_ms, 1200);
+    assert!(resolved.warnings().is_empty());
+    let fallback = resolve(
+        "[1000]\n[radio 1000]\ncarrier_source=disabled\nvad_mode=kerchunk\nvad_hang_ms=32768\n",
+    );
+    assert_eq!(fallback.config().station.receive.vad_mode, VadMode::On);
+    assert_eq!(fallback.config().station.receive.vad_hang_ms, 1000);
+    assert_eq!(fallback.warnings().len(), 2);
+    assert!(
+        fallback
+            .warnings()
+            .iter()
+            .all(|w| w.source == "native.conf" && w.section == "radio 1000")
+    );
+    assert!(
+        fallback
+            .warnings()
+            .iter()
+            .any(|w| w.name == "vad_mode" && w.supplied_value == "kerchunk" && w.fallback == "on")
+    );
 }

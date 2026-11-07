@@ -13,6 +13,12 @@ fn shipped_profiles_match_each_source_role() {
     assert_eq!(link.receive.pl_filter, PlFilter::Disabled);
     assert_eq!(transmit.input_gain_db, 6.0);
     assert_eq!(transmit.output_gain_db, 0.0);
+    for chain in [&local, &link, &transmit] {
+        assert_eq!(chain.agc.loudness_window_ms, 400.0);
+        assert_eq!(chain.agc.gain_increase_db_per_second, 2.0);
+        assert_eq!(chain.agc.gain_decrease_db_per_second, 6.0);
+    }
+    assert_eq!(transmit.peak_limiter.oversample, 4);
     assert!(local.validate().is_ok());
     assert!(link.validate().is_ok());
     assert!(transmit.validate().is_ok());
@@ -44,13 +50,8 @@ fn source_specific_stages_are_rejected_elsewhere() {
         Err(ProcessingConfigError::StageNotAllowed(ChainRole::Link))
     );
     let mut local = ProcessingChain::shipped(ChainRole::LocalReceive);
-    local.transmit_tail.limiter_enabled = true;
-    assert_eq!(
-        local.validate(),
-        Err(ProcessingConfigError::StageNotAllowed(
-            ChainRole::LocalReceive
-        ))
-    );
+    local.peak_limiter.enabled = true;
+    assert_eq!(local.validate(), Ok(()));
 
     let mut link_bandpass = ProcessingChain::shipped(ChainRole::Link);
     link_bandpass.receive.bandpass_enabled = true;
@@ -96,11 +97,12 @@ fn every_numeric_family_rejects_invalid_and_non_finite_values() {
         |c| c.receive.bandpass_lowpass_hz = 20.0,
         |c| c.equalizer.low_slope = 0.0,
         |c| c.deesser.ratio = 21.0,
-        |c| c.agc.activity_threshold_dbfs = c.agc.target_dbfs,
+        |c| c.agc.loudness_window_ms = 399.0,
         |c| c.expander.sidechain_lowpass_hz = c.expander.sidechain_highpass_hz,
         |c| c.compressor.high_crossover_hz = c.compressor.low_crossover_hz,
         |c| c.limiter.high.attack_ms = 101.0,
-        |c| c.transmit_tail.ceiling_dbfs = 0.0,
+        |c| c.peak_limiter.ceiling_dbfs = 0.0,
+        |c| c.peak_limiter.oversample = 3,
     ];
     for mutate in cases {
         let mut chain = ProcessingChain::shipped(ChainRole::VoiceTelemetry);
@@ -110,13 +112,13 @@ fn every_numeric_family_rejects_invalid_and_non_finite_values() {
 }
 
 #[test]
-fn disabled_agc_sidechain_edges_are_valid_but_inverted_edges_are_not() {
+fn expander_sidechain_edges_are_valid_but_inverted_edges_are_not() {
     let mut chain = ProcessingChain::shipped(ChainRole::LocalReceive);
-    chain.agc.sidechain_highpass_hz = 0.0;
-    chain.agc.sidechain_lowpass_hz = 0.0;
+    chain.expander.sidechain_highpass_hz = 800.0;
+    chain.expander.sidechain_lowpass_hz = 1_500.0;
     assert!(chain.validate().is_ok());
-    chain.agc.sidechain_highpass_hz = 1_000.0;
-    chain.agc.sidechain_lowpass_hz = 500.0;
+    chain.expander.sidechain_highpass_hz = 1_000.0;
+    chain.expander.sidechain_lowpass_hz = 500.0;
     assert!(matches!(
         chain.validate(),
         Err(ProcessingConfigError::Ordering { .. })
@@ -125,6 +127,10 @@ fn disabled_agc_sidechain_edges_are_valid_but_inverted_edges_are_not() {
 
 #[test]
 fn validation_errors_have_stable_contextual_messages() {
+    assert_eq!(
+        ProcessingConfigError::InvalidOversample.to_string(),
+        "lookahead_limiter_oversample requires 1, 2, or 4"
+    );
     assert_eq!(
         ProcessingConfigError::Range {
             field: "gain",

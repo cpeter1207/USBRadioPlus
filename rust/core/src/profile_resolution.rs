@@ -419,30 +419,7 @@ fn apply_setting(
         ($target:expr) => {{ assign_boolean(&mut $target, warnings, overlay, setting) }};
     }
     macro_rules! number {
-        ($target:expr, $minimum:expr, $maximum:expr) => {{
-            assign_number(
-                &mut $target,
-                $minimum,
-                $maximum,
-                false,
-                warnings,
-                overlay,
-                setting,
-            )
-        }};
-    }
-    macro_rules! disabled_number {
-        ($target:expr, $minimum:expr, $maximum:expr) => {{
-            assign_number(
-                &mut $target,
-                $minimum,
-                $maximum,
-                true,
-                warnings,
-                overlay,
-                setting,
-            )
-        }};
+        ($target:expr, $minimum:expr, $maximum:expr) => {{ assign_number(&mut $target, $minimum, $maximum, warnings, overlay, setting) }};
     }
 
     match name {
@@ -485,10 +462,10 @@ fn apply_setting(
         "deesser_attack_ms" => number!(chain.deesser.attack_ms, 0.1, 100.0),
         "deesser_release_ms" => number!(chain.deesser.release_ms, 1.0, 2_000.0),
         "agc_enabled" => boolean!(chain.agc.enabled),
-        "agc_target_dbfs" => number!(chain.agc.target_dbfs, -40.0, -3.0),
+        "agc_target_lufs" => number!(chain.agc.target_lufs, -40.0, -3.0),
         "agc_max_gain_db" => number!(chain.agc.max_gain_db, 0.0, 30.0),
         "agc_max_attenuation_db" => number!(chain.agc.max_attenuation_db, 0.0, 60.0),
-        "agc_rms_averaging_ms" => number!(chain.agc.rms_averaging_ms, 10.0, 5_000.0),
+        "agc_loudness_window_ms" => number!(chain.agc.loudness_window_ms, 400.0, 3_000.0),
         "agc_gain_increase_db_per_second" => {
             number!(chain.agc.gain_increase_db_per_second, 0.1, 100.0)
         }
@@ -503,12 +480,6 @@ fn apply_setting(
         }
         "agc_hold_ms" => number!(chain.agc.hold_ms, 0.0, 10_000.0),
         "agc_deadband_db" => number!(chain.agc.deadband_db, 0.0, 6.0),
-        "agc_sidechain_highpass_hz" => {
-            disabled_number!(chain.agc.sidechain_highpass_hz, 50.0, 2_000.0)
-        }
-        "agc_sidechain_lowpass_hz" => {
-            disabled_number!(chain.agc.sidechain_lowpass_hz, 0.0, 3_500.0)
-        }
         "expander_enabled" => boolean!(chain.expander.enabled),
         "expander_threshold_dbfs" => number!(chain.expander.threshold_dbfs, -100.0, -10.0),
         "expander_ratio" => number!(chain.expander.ratio, 1.0, 10.0),
@@ -646,20 +617,28 @@ fn apply_setting(
         | "ctcss_filter_mode"
         | "ctcss_notch_width_hz"
         | "ctcss_highpass_hz" => unsupported_warning(warnings, overlay, setting),
-        "lookahead_limiter_enabled" if chain.role == ChainRole::VoiceTelemetry => {
-            boolean!(chain.transmit_tail.limiter_enabled)
+        "lookahead_limiter_enabled" => {
+            boolean!(chain.peak_limiter.enabled)
         }
-        "lookahead_limiter_ceiling_dbfs" if chain.role == ChainRole::VoiceTelemetry => {
-            number!(chain.transmit_tail.ceiling_dbfs, -30.0, -0.1)
+        "lookahead_limiter_oversample" => {
+            oversample_factor(
+                &mut chain.peak_limiter.oversample,
+                warnings,
+                overlay,
+                setting,
+            );
         }
-        "lookahead_limiter_lookahead_ms" if chain.role == ChainRole::VoiceTelemetry => {
-            number!(chain.transmit_tail.lookahead_ms, 0.1, 20.0)
+        "lookahead_limiter_ceiling_dbfs" => {
+            number!(chain.peak_limiter.ceiling_dbfs, -30.0, -0.1)
         }
-        "lookahead_limiter_attack_ms" if chain.role == ChainRole::VoiceTelemetry => {
-            number!(chain.transmit_tail.attack_ms, 0.1, 20.0)
+        "lookahead_limiter_lookahead_ms" => {
+            number!(chain.peak_limiter.lookahead_ms, 0.1, 20.0)
         }
-        "lookahead_limiter_release_ms" if chain.role == ChainRole::VoiceTelemetry => {
-            number!(chain.transmit_tail.release_ms, 1.0, 5_000.0)
+        "lookahead_limiter_attack_ms" => {
+            number!(chain.peak_limiter.attack_ms, 0.1, 20.0)
+        }
+        "lookahead_limiter_release_ms" => {
+            number!(chain.peak_limiter.release_ms, 1.0, 5_000.0)
         }
         "post_limiter_bandpass_enabled" if chain.role == ChainRole::VoiceTelemetry => {
             boolean!(chain.transmit_tail.bandpass_enabled)
@@ -670,12 +649,7 @@ fn apply_setting(
         "post_limiter_bandpass_lowpass_hz" if chain.role == ChainRole::VoiceTelemetry => {
             number!(chain.transmit_tail.bandpass_lowpass_hz, 2_500.0, 20_000.0)
         }
-        "lookahead_limiter_enabled"
-        | "lookahead_limiter_ceiling_dbfs"
-        | "lookahead_limiter_lookahead_ms"
-        | "lookahead_limiter_attack_ms"
-        | "lookahead_limiter_release_ms"
-        | "post_limiter_bandpass_enabled"
+        "post_limiter_bandpass_enabled"
         | "post_limiter_bandpass_highpass_hz"
         | "post_limiter_bandpass_lowpass_hz" => unsupported_warning(warnings, overlay, setting),
         _ => unknown_warning(warnings, overlay, setting),
@@ -706,13 +680,12 @@ fn assign_number(
     target: &mut f64,
     minimum: f64,
     maximum: f64,
-    zero_disables: bool,
     warnings: &mut Vec<ResolutionWarning>,
     overlay: &RawOverlay,
     setting: &RawSetting,
 ) {
     let fallback = format_number(*target);
-    match parse_number(&setting.value, minimum, maximum, zero_disables) {
+    match parse_number(&setting.value, minimum, maximum) {
         Ok(value) => *target = value,
         Err(reason) => invalid_warning(warnings, overlay, setting, fallback, reason),
     }
@@ -728,28 +701,37 @@ fn parse_boolean(value: &str) -> Option<bool> {
     }
 }
 
-fn parse_number(
-    value: &str,
-    minimum: f64,
-    maximum: f64,
-    zero_disables: bool,
-) -> Result<f64, String> {
+fn parse_number(value: &str, minimum: f64, maximum: f64) -> Result<f64, String> {
     let parsed = value
         .trim()
         .parse::<f64>()
         .map_err(|_| format!("requires a finite number from {minimum} through {maximum}"))?;
-    if parsed.is_finite()
-        && ((zero_disables && parsed == 0.0) || (parsed >= minimum && parsed <= maximum))
-    {
+    if parsed.is_finite() && parsed >= minimum && parsed <= maximum {
         Ok(parsed)
-    } else if zero_disables {
-        Err(format!(
-            "requires zero or a finite number from {minimum} through {maximum}"
-        ))
     } else {
         Err(format!(
             "requires a finite number from {minimum} through {maximum}"
         ))
+    }
+}
+
+fn oversample_factor(
+    target: &mut u8,
+    warnings: &mut Vec<ResolutionWarning>,
+    overlay: &RawOverlay,
+    setting: &RawSetting,
+) {
+    match setting.value.trim() {
+        "1" => *target = 1,
+        "2" => *target = 2,
+        "4" => *target = 4,
+        _ => invalid_warning(
+            warnings,
+            overlay,
+            setting,
+            target.to_string(),
+            "requires 1, 2, or 4".to_owned(),
+        ),
     }
 }
 
