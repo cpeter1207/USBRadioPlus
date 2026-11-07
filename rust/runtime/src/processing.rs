@@ -886,15 +886,12 @@ impl ProcessingGeneration {
             && Arc::ptr_eq(&self.receive_deemphasis.0, &old.receive_deemphasis.0)
             && Arc::ptr_eq(&self.receive_filter.0, &old.receive_filter.0)
             && Arc::ptr_eq(&self.receive_dynamics.0, &old.receive_dynamics.0)
+            // Equal bank leases also retain the mask's fixed-width 55 Hz tail.
             && self
                 .receive_ctcss_notch
                 .iter()
                 .zip(&old.receive_ctcss_notch)
                 .all(|(left, right)| same_optional_graph(left, right))
-            && same_optional_graph(
-                &self.receive_ctcss_tail_notch,
-                &old.receive_ctcss_tail_notch,
-            )
             && match (&self.receive_noise_reduction, &old.receive_noise_reduction) {
                 (Some(left), Some(right)) => Arc::ptr_eq(&left.0, &right.0),
                 (None, None) => true,

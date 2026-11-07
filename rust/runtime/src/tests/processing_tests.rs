@@ -2009,3 +2009,55 @@ fn mandatory_receive_meter_tracks_complete_path_and_independent_transmit_history
     assert!(raw.receive_loudness().is_some());
     assert!(raw.transmit_loudness().is_some());
 }
+
+#[test]
+fn optional_receive_stages_preserve_history_on_transmit_edits_and_reset_on_mask_changes() {
+    let mut selected: ExplicitNativeProcessingPlan = plan().into();
+    let local = selected.local.as_mut().unwrap();
+    local.receive.pl_filter = PlFilter::DecodedToneNotch;
+    local.rnnoise_enabled = true;
+    selected.receive_ctcss_mask = 1;
+    let current = factory().prepare(&selected).unwrap();
+    let stage = current.receive_loudness.as_ref().unwrap();
+    let mut output = [0.0; 960];
+    assert_eq!(
+        // SAFETY: this test is the sole RX owner of the prepared meter and complete spans.
+        unsafe {
+            metered_graph_process(
+                NonNull::from(stage.as_ref()).cast().as_ptr(),
+                [0.1; 960].as_ptr(),
+                output.as_mut_ptr(),
+                960,
+            )
+        },
+        PORT_OK
+    );
+    let measured = current.receive_loudness().unwrap();
+    assert_eq!(measured.sample_count, 960);
+    let mut changed = selected.clone();
+    changed.voice_telemetry.as_mut().unwrap().output_gain_db -= 1.0;
+    let transmit_changed =
+        // SAFETY: replacement retains the same sole serial RX/TX owners.
+        unsafe { factory().prepare_replacement(&changed, &selected, &current) }.unwrap();
+    assert_eq!(
+        transmit_changed.receive_loudness().unwrap().epoch,
+        measured.epoch
+    );
+    assert_eq!(
+        transmit_changed.receive_loudness().unwrap().sample_count,
+        960
+    );
+    let tx_epoch = transmit_changed.transmit_loudness().unwrap().epoch;
+    selected = changed;
+    let mut changed = selected.clone();
+    changed.receive_ctcss_mask = 0;
+    let mask_changed =
+        // SAFETY: this successor also retains both original serial owners.
+        unsafe { factory().prepare_replacement(&changed, &selected, &transmit_changed) }.unwrap();
+    assert_ne!(
+        mask_changed.receive_loudness().unwrap().epoch,
+        measured.epoch
+    );
+    assert_eq!(mask_changed.receive_loudness().unwrap().sample_count, 0);
+    assert_eq!(mask_changed.transmit_loudness().unwrap().epoch, tx_epoch);
+}

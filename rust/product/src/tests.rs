@@ -1064,6 +1064,30 @@ fn incoming_link_boundary_prepares_processes_observes_and_destroys() {
     assert_eq!(observation.bypassed_blocks, 2);
     assert_eq!(observation.failed_blocks, 0);
 
+    let measured = observation.loudness_sample_count;
+    samples.fill(321);
+    assert_eq!(
+        // SAFETY: the prepared link and complete signed-linear scratch are exclusively owned.
+        unsafe {
+            link_process(
+                link,
+                URP_AST_LINK_DIRECTION_SILENCE,
+                8_000,
+                samples.as_mut_ptr(),
+                samples.len() as u32,
+            )
+        },
+        URP_AST_OK
+    );
+    assert_eq!(samples, [0; 160]);
+    assert_eq!(
+        // SAFETY: processing is quiescent and the complete observation is writable.
+        unsafe { link_observe(link, &mut observation) },
+        URP_AST_OK
+    );
+    assert_eq!(observation.processed_blocks, 2);
+    assert_eq!(observation.loudness_sample_count, measured + 160);
+
     provider_support::set_failure(provider_support::FAIL_GRAPH);
     let mut failed_link = ptr::null_mut();
     // SAFETY: graph construction failure is injected with otherwise complete arguments.

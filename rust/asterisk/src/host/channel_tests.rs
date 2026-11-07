@@ -2156,7 +2156,12 @@ fn receive_policy_option_rejects_foreign_commands_and_forwards_unaligned_payload
     descriptor.channel_command = Some(capture_command);
     let calls = Mutex::new(DriverCalls::default());
     let (_channel, mut owner) = callback_channel(&descriptor, &calls);
-    for defect in 0..6 {
+    for defect in 0..7 {
+        calls.lock().unwrap().result = if defect == 6 {
+            URP_AST_CHANNEL_BUSY
+        } else {
+            URP_AST_OK
+        };
         // SAFETY: the command contains only integers and a fixed integer array.
         let mut command: UrpAstChannelCommand = unsafe { zeroed() };
         command.struct_size = size_of::<UrpAstChannelCommand>() as u32;
@@ -2186,7 +2191,14 @@ fn receive_policy_option_rejects_foreign_commands_and_forwards_unaligned_payload
                 length,
             )
         };
-        assert_eq!(result, if defect == 5 { 0 } else { -1 });
+        assert_eq!(
+            result,
+            match defect {
+                5 => URP_AST_OK,
+                6 => URP_AST_CHANNEL_BUSY,
+                _ => -1,
+            }
+        );
         assert_eq!(
             // SAFETY: setoption has returned; storage still contains the full record.
             unsafe { data.read_unaligned().value },
