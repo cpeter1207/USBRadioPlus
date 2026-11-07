@@ -2060,4 +2060,20 @@ fn optional_receive_stages_preserve_history_on_transmit_edits_and_reset_on_mask_
     );
     assert_eq!(mask_changed.receive_loudness().unwrap().sample_count, 0);
     assert_eq!(mask_changed.transmit_loudness().unwrap().epoch, tx_epoch);
+
+    let previous_epoch = mask_changed.receive_loudness().unwrap().epoch;
+    let mut tail_only = changed.clone();
+    // This public mask is accepted even though it selects no supported decoded tone.
+    tail_only.receive_ctcss_mask = 1_u64 << CTCSS_TONE_COUNT;
+    let tail_changed =
+        // SAFETY: this immediate successor retains the same two serial owners.
+        unsafe { factory().prepare_replacement(&tail_only, &changed, &mask_changed) }.unwrap();
+    assert!(tail_changed.receive_ctcss_notch.iter().all(Option::is_none));
+    assert!(tail_changed.receive_ctcss_tail_notch.is_some());
+    assert_ne!(
+        tail_changed.receive_loudness().unwrap().epoch,
+        previous_epoch
+    );
+    assert_eq!(tail_changed.receive_loudness().unwrap().sample_count, 0);
+    assert_eq!(tail_changed.transmit_loudness().unwrap().epoch, tx_epoch);
 }
