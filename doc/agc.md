@@ -10,7 +10,7 @@ or low-pass filters, and hardware gain settings are unchanged.
 ## Settings and timing
 
 `agc_loudness_window_ms` selects a 400-3000 ms measurement window; its default
-is 3000 ms. The rolling analysis advances with each delivered sample, using
+is 400 ms. The rolling analysis advances with each delivered sample, using
 zero during inactivity. Renewed activity preserves the measurement history.
 A complete initial window is required after activation, a new instance, or
 a window change before gain can change. Increasing gain then requires
@@ -19,7 +19,11 @@ continuously active audio below target minus the deadband for `agc_hold_ms`, def
 that qualification. Reductions do not wait for the gain-increase hold.
 
 The default rates are 2 dB/s for increases and 6 dB/s for reductions, with
-6 dB maximum boost, 6 dB maximum attenuation, and a 1 dB deadband. The gain
+6 dB maximum boost, 6 dB maximum attenuation, and a 1 dB deadband. Gain
+reduction is attack; gain increase is release/recovery. The 6/2 dB/s defaults
+lie within the 1-10 dB/s wideband-AGC range described in
+[Audio Processing In Mobile Radio](https://www.repeater-builder.com/tech-info/audio-processing.html);
+the article does not prescribe an exact pair or hold interval. The gain
 policy updates at a sample-derived 1 kHz cadence and interpolates gain
 between updates. Measurement history delays the response of the gain
 controller; it does not queue or delay program audio. Processing uses
@@ -96,7 +100,7 @@ noise against the -1 dBTP reference. Measure the actual output when changing
 the ceiling or oversampling; 1 disables oversampling.
 
 The integrated meter uses BS.1770's gated measurement, including its 400 ms
-gating blocks. This is independent of the AGC's three-second rolling window.
+gating blocks. This is independent of the AGC's configurable rolling window.
 The meter and limiter reference the digital program, not the final RF waveform.
 
 ## Migration
@@ -109,7 +113,7 @@ warnings and are ignored. Output analysis cannot be disabled by CPU saving.
 Replace `agc_target_dbfs` with `agc_target_lufs` and
 `agc_rms_averaging_ms` with `agc_loudness_window_ms`; these are different
 measurements, not aliases with renamed units. Start from the new -23 LUFS
-and 3000 ms defaults, then verify the result. Remove
+and 400 ms defaults, then verify the result. Remove
 `agc_sidechain_highpass_hz` and `agc_sidechain_lowpass_hz`. The old keys have
 no compatibility aliases.
 

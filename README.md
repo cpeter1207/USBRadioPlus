@@ -20,7 +20,8 @@ metadata for consumers; the shared product has no Asterisk dependency.
 Local receive, incoming link, and voice/telemetry processing each have a
 configurable Peak Limiter followed by mandatory integrated loudness and true
 peak metering. The existing `lookahead_limiter_*` keys configure Peak Limiter.
-The rolling LUFS AGC retains its three-second window during PTT gaps; legacy
+The rolling LUFS AGC defaults to a configurable 400 ms window and preserves
+its rolling history during PTT gaps; legacy
 Asterisk links advance silence through their existing graph using a channel
 timer. See [loudness and gain control](doc/agc.md) for settings and diagnostics.
 
@@ -28,7 +29,10 @@ SDK alpha30 extends the sized link observation record with loudness readings
 and adds the silence direction to the existing processing calls. Consumers
 must use the matching header, verify the returned record size and ABI version,
 and retain the provider while an observer is live. rpt_advanced alpha21 is the
-matching standalone consumer.
+matching standalone consumer. SDK alpha31 adds Earshot receive VAD with
+Off, Kerchunk filter, and On modes, retaining speech onset in the existing
+PCM delay line. It requires radio ABI 5 and direct callback ABI 6;
+rpt_advanced alpha22 is its matching standalone consumer.
 
 This is alpha software. Test it on a non-critical node, retain a working
 `chan_usbradio` installation for rollback, and verify radio levels and deviation

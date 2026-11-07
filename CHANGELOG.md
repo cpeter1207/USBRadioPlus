@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0~alpha31 - 2026-11-07
+
+- Add Earshot receive VAD with Off, Kerchunk filter, and On modes.
+- Preserve speech onset in the existing PCM delay line and retain RF qualifiers.
+- Default all three LUFS AGCs to a configurable 400 ms window, with 6 dB/s
+  gain reduction and 2 dB/s gain increase. Keep the configurable 3000 ms maximum.
+- Require matching radio ABI 5 and direct receive callback ABI 6.
+
 ## 0.1.0~alpha30 - 2026-11-06
 
 - Share Peak Limiter across all three source chains; retain its fixed final position.

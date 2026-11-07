@@ -203,6 +203,7 @@ fn disconnected_ports_defaults_and_reset() {
 fn gain_law_caps_freezing_and_continuous_window_reduction() {
     for rate in [8000, 16000, 48000] {
         let mut f = Fixture::new(rate);
+        f.controls[1] = 3000.0;
         let r = rate as usize;
         assert!((f.drive(3 * r, 0.01, 0.1) - 1.0).abs() < 1e-6);
         assert!((f.drive(2 * r / 5, 0.01, 0.1) - 1.0).abs() < 1e-6);
@@ -357,12 +358,12 @@ fn initial_three_second_acquisition_includes_inactive_samples() {
 
 #[test]
 fn lufs_requires_a_complete_fresh_window() {
-    assert_eq!(SPECS[1].2, 3000.0);
+    assert_eq!(SPECS[1].2, 400.0);
     let sample_rate = SampleRate::new(48000u32).unwrap();
     let settings = Settings::from_ports([None; CONTROL_COUNT]);
     let mut gain_rider = GainRider::new(sample_rate);
     gain_rider.configure(settings);
-    for index in 0..143999 {
+    for index in 0..19199 {
         let detector = 0.5 * f32::sin(std::f32::consts::TAU * 1000.0 * index as f32 / 48000.0);
         let output = gain_rider.process(0.25, detector);
         assert_eq!(output, 0.25);
@@ -372,7 +373,7 @@ fn lufs_requires_a_complete_fresh_window() {
 #[test]
 fn lufs_controls_and_window_change_reacquisition() {
     assert_eq!(SPECS[0].2, -23.0);
-    assert_eq!(SPECS[1], (400.0, 3000.0, 3000.0));
+    assert_eq!(SPECS[1], (400.0, 3000.0, 400.0));
     let mut f = Fixture::new(48000);
     f.controls[1] = 400.0;
     f.controls[8] = 0.0;

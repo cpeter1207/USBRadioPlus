@@ -1,8 +1,9 @@
-usbradioplus (0.1.0~alpha31-1+vad.20261106) unstable; urgency=medium
+usbradioplus (0.1.0~alpha31-1) unstable; urgency=medium
 
   * Add Earshot receiver VAD with Off, Kerchunk filter and On modes.
   * Preserve receive onset in the existing PCM delay line.
   * Require matched radio ABI5 and direct receive callback ABI6.
+  * Default all LUFS AGCs to 400 ms; retain 6/2 dB per second attack/release.
 
  -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 06 Nov 2026 20:00:00 -0600
 

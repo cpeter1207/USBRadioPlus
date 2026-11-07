@@ -10,7 +10,7 @@ pub(crate) const CONTROL_COUNT: usize = 10;
 /// A control's finite range and fallback, matching the published LADSPA contract.
 pub(crate) const SPECS: [(f64, f64, f64); CONTROL_COUNT] = [
     (-40.0, -3.0, -23.0),
-    (400.0, 3000.0, 3000.0),
+    (400.0, 3000.0, 400.0),
     (0.1, 100.0, 2.0),
     (0.1, 100.0, 6.0),
     (0.0, 30.0, 6.0),

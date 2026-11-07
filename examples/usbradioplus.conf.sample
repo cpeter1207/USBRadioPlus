@@ -301,7 +301,7 @@ agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
 ; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
-agc_loudness_window_ms = 3000.0
+agc_loudness_window_ms = 400.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
@@ -538,7 +538,7 @@ agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
 ; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
-agc_loudness_window_ms = 3000.0
+agc_loudness_window_ms = 400.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.
@@ -772,7 +772,7 @@ agc_max_gain_db = 6.0
 ; Maximum attenuation for active loud speech, 0 through 60 dB.
 agc_max_attenuation_db = 6.0
 ; Rolling loudness window, 400 through 3000 ms; adds no program audio buffering.
-agc_loudness_window_ms = 3000.0
+agc_loudness_window_ms = 400.0
 ; Maximum gain increase rate, 0.1 through 100 dB per second.
 agc_gain_increase_db_per_second = 2.0
 ; Maximum gain decrease rate, 0.1 through 100 dB per second.

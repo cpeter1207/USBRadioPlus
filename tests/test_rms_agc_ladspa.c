@@ -39,7 +39,7 @@ struct fixture {
 static void initialize_descriptor(struct fixture *fixture, unsigned long rate,
 				  const LADSPA_Descriptor *descriptor)
 {
-	static const float defaults[CONTROLS] = {-23, 3000, 2, 6, 6, 6, -50, 3, 500, 1};
+	static const float defaults[CONTROLS] = {-23, 400, 2, 6, 6, 6, -50, 3, 500, 1};
 	memset(fixture, 0, sizeof(*fixture));
 	fixture->descriptor = descriptor;
 	fixture->handle = fixture->descriptor->instantiate(fixture->descriptor, rate);
@@ -172,6 +172,7 @@ static void test_gain_policy(unsigned long rate)
 	double gain;
 	double frozen;
 	initialize(&fixture, rate);
+	control(&fixture, USBRADIOPLUS_AGC_LOUDNESS_WINDOW_MS, 3000);
 	/* An unreachable target still reaches the gain cap with a one-dB deadband. */
 	control(&fixture, USBRADIOPLUS_AGC_DEADBAND_DB, 1);
 	gain = drive(&fixture, 3 * rate, 0.01F, 0.1F);
@@ -216,7 +217,7 @@ static void test_activity_and_detector(void)
 	previous = drive(&fixture, 48000, 0.001F, 0.1F);
 	gain = drive(&fixture, 48000, 0.001F, 0.1F);
 	assert(gain == previous);
-	/* A louder rekey uses the retained three-second window without fresh acquisition. */
+	/* A louder rekey uses the retained rolling window without fresh acquisition. */
 	gain = drive(&fixture, 24000, 0.5F, 0.1F);
 	assert(gain < previous);
 	fixture.descriptor->activate(fixture.handle);
