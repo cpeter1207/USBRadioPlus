@@ -469,8 +469,9 @@ coverage: $(RPCR_BUILD_DEP) $(RPTADV_RADIO_BUILD_DEP) $(RPTADV_SAMPLERATE_BUILD_
 	$(MAKE) rust-coverage
 
 # Keep Rust and GCC counters separate. The validator uses LCOV source lines and
-# merges JSON branches by source span so generic monomorphizations cannot create
-# false gaps; dedicated test modules remain outside the production report.
+# merges compiled copies by lexical function start, branch span, and occurrence.
+# Distinct same-span decisions stay separate; dedicated test modules are excluded.
+# Every production file branch span requires function metadata in the combined report.
 rust-coverage: $(PRODUCT_VERSIONED)
 	mkdir -p $(BUILD_DIR)/coverage/rust
 	RUSTUP_TOOLCHAIN=$(COVERAGE_TOOLCHAIN) \

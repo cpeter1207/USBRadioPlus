@@ -305,15 +305,20 @@ fn remote_wiring_uses_available_parallel_qualifiers_and_rejects_missing_carriers
     }
     let settings = [setting(20, true, true)];
     plan.parallel.as_mut().unwrap().ctcss_mask = 0;
-    let wiring = RemotePhysicalWiring::select(
-        &config,
-        &plan,
-        CarrierSource::Parallel,
+    for decode in [
         SubaudibleSource::Parallel,
-        &settings,
-    )
-    .unwrap();
-    assert_eq!(wiring.external_decode, SubaudibleSource::Disabled);
+        SubaudibleSource::ParallelInverted,
+    ] {
+        let wiring = RemotePhysicalWiring::select(
+            &config,
+            &plan,
+            CarrierSource::Parallel,
+            decode,
+            &settings,
+        )
+        .unwrap();
+        assert_eq!(wiring.external_decode, SubaudibleSource::Disabled);
+    }
     plan.parallel.as_mut().unwrap().carrier_mask = 0;
     assert!(
         RemotePhysicalWiring::select(

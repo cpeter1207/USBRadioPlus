@@ -1,3 +1,10 @@
+usbradioplus (0.1.0~alpha32-1) unstable; urgency=medium
+
+  * Preserve distinct same-span branch decisions across compiled copies.
+  * Cover unavailable inverted parallel CTCSS without runtime behavior changes.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Sat, 07 Nov 2026 12:19:45 -0600
+
 usbradioplus (0.1.0~alpha31-1) unstable; urgency=medium
 
   * Add Earshot receiver VAD with Off, Kerchunk filter and On modes.

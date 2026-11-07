@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0~alpha32 - 2026-11-07
+
+- Preserve distinct same-span branch decisions when combining compiled copies.
+- Cover unavailable inverted parallel CTCSS without changing runtime behavior.
+
 ## 0.1.0~alpha31 - 2026-11-07
 
 - Add Earshot receive VAD with Off, Kerchunk filter, and On modes.
