@@ -177,6 +177,12 @@ fn every_missing_operation_reports_host_failure() {
         ControlOperation::Dtmf(true),
         ControlOperation::Echo(true),
         ControlOperation::Direct(support::product_support::direct_callbacks()),
+        ControlOperation::Feedback(crate::UrpRadioFeedbackPort {
+            struct_size: size_of::<crate::UrpRadioFeedbackPort>() as u32,
+            abi_version: 1,
+            context: ptr::null_mut(),
+            publish: None,
+        }),
         ControlOperation::Site(crate::UrpAstSiteControl {
             operation: 0,
             ..Default::default()

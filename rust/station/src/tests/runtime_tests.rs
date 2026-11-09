@@ -356,6 +356,181 @@ fn native_media_opens_without_any_asterisk_controller_or_ring_provider() {
 }
 
 #[test]
+fn feedback_binding_is_serial_stopped_only_and_does_not_retag_off_as_readback() {
+    use crate::{
+        FEEDBACK_ACQUISITION_VALID, FEEDBACK_DUPLEX_VALID, FEEDBACK_PHASE_VALID,
+        FEEDBACK_READBACK_VALID, FEEDBACK_SERVICE_VALID, RadioFeedback, RadioFeedbackPort,
+    };
+    let (mut runtime, _) = runtime(20);
+    let mut received = [RadioFeedback::default(); 8];
+    let mut calls = 0usize;
+    let mut context = (&mut received, &mut calls);
+    unsafe extern "C" fn publish(context: *mut c_void, record: *const RadioFeedback) {
+        let (records, calls) =
+            // SAFETY: this fixture retains exact output slots through stopped unbind.
+            unsafe { &mut *context.cast::<(&mut [RadioFeedback; 8], &mut usize)>() };
+        // SAFETY: publication lends a complete immutable record for this call.
+        records[**calls] = unsafe { *record };
+        **calls += 1;
+    }
+    let port = RadioFeedbackPort {
+        struct_size: size_of::<RadioFeedbackPort>() as u32,
+        abi_version: 1,
+        context: ptr::from_mut(&mut context).cast(),
+        publish: Some(publish),
+    };
+    // SAFETY: context lives until this test unbinds after successful stop.
+    unsafe { runtime.bind_feedback(Some(port)) }.unwrap();
+    runtime.start().unwrap();
+    // SAFETY: the rejected running bind retains no new context.
+    assert!(unsafe { runtime.bind_feedback(None) }.is_err());
+    let request = runtime.hardware.feedback_request().unwrap();
+    runtime
+        .hardware
+        .publish_physical_feedback(request, Some(false), None, true);
+    crate::allocation::without_heap(|| {
+        remote_dsp_render(&mut runtime, true);
+        remote_dsp_render(&mut runtime, true);
+    });
+    runtime.stop().unwrap();
+    // SAFETY: successful stop has quiesced the callback, so None releases its borrow.
+    unsafe { runtime.bind_feedback(None) }.unwrap();
+    runtime.start().unwrap();
+    runtime.stop().unwrap();
+    assert_eq!(calls, 3);
+    assert_eq!(received[0].flags, FEEDBACK_DUPLEX_VALID);
+    assert_eq!(received[0].generation_id, 20);
+    assert_eq!(received[1].flags & FEEDBACK_READBACK_VALID, 0);
+    assert_ne!(received[1].flags & FEEDBACK_SERVICE_VALID, 0);
+    assert_ne!(received[1].flags & FEEDBACK_PHASE_VALID, 0);
+    assert_ne!(received[1].flags & FEEDBACK_ACQUISITION_VALID, 0);
+    assert_eq!(received[1].acquisition_age_frames, 0);
+    assert_eq!(received[2].acquisition_age_frames, 960);
+}
+
+#[test]
+fn feedback_failed_start_keeps_context_bound_until_actual_stop_succeeds() {
+    let (mut runtime, _) = runtime(20);
+    let mut calls = 0usize;
+    unsafe extern "C" fn publish(context: *mut c_void, _: *const crate::RadioFeedback) {
+        // SAFETY: the test retains this counter until confirmed stop and unbind.
+        unsafe { *context.cast::<usize>() += 1 };
+    }
+    let port = crate::RadioFeedbackPort {
+        struct_size: size_of::<crate::RadioFeedbackPort>() as u32,
+        abi_version: 1,
+        context: ptr::from_mut(&mut calls).cast(),
+        publish: Some(publish),
+    };
+    // SAFETY: the serial endpoint and context stay alive through eventual confirmed stop.
+    unsafe { runtime.bind_feedback(Some(port)) }.unwrap();
+    PARTIAL_START_ERROR.set(true);
+    PARTIAL_STOP_ERROR.set(true);
+    assert!(runtime.start().is_err());
+    assert!(!runtime.started());
+    assert!(
+        runtime.running(),
+        "a failed start cannot prove callback quiescence"
+    );
+    assert!(runtime.stop().is_err());
+    // SAFETY: rejected stopped-only mutation must retain the original binding.
+    assert!(unsafe { runtime.bind_feedback(None) }.is_err());
+    let before = calls;
+    let mut output = [0.0; 1920];
+    assert_eq!(
+        // SAFETY: the fake adapter remains active after failed start/stop; this test is its sole TX owner.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                960,
+            )
+        },
+        0
+    );
+    assert_eq!(calls, before + 1);
+    PARTIAL_STOP_ERROR.set(false);
+    runtime.stop().unwrap();
+    assert!(!runtime.running());
+    // SAFETY: successful provider stop now permits releasing this borrowed context.
+    unsafe { runtime.bind_feedback(None) }.unwrap();
+    let before = calls;
+    PARTIAL_START_ERROR.set(false);
+    runtime.start().unwrap();
+    assert!(runtime.started());
+    runtime.stop().unwrap();
+    assert_eq!(calls, before);
+}
+
+#[test]
+fn feedback_forwards_only_existing_phases_and_exhausted_identity_stays_unknown() {
+    use crate::media::tests::{TRANSMIT_INDEX_OVERRIDE, TRANSMIT_STATE_OVERRIDE};
+    let (mut runtime, _) = runtime(20);
+    let mut observed = crate::RadioFeedback::default();
+    unsafe extern "C" fn publish(context: *mut c_void, record: *const crate::RadioFeedback) {
+        // SAFETY: both records stay live for the bounded synchronous fixture call.
+        unsafe { *context.cast::<crate::RadioFeedback>() = *record };
+    }
+    let mut port = crate::RadioFeedbackPort {
+        struct_size: size_of::<crate::RadioFeedbackPort>() as u32,
+        abi_version: 1,
+        context: ptr::from_mut(&mut observed).cast(),
+        publish: Some(publish),
+    };
+    // SAFETY: capture outlives confirmed stop and stopped unbind.
+    unsafe { runtime.bind_feedback(Some(port)) }.unwrap();
+    runtime.start().unwrap();
+    for state in [0, 1, 2, 4, 5] {
+        TRANSMIT_STATE_OVERRIDE.set(Some(state));
+        runtime.hardware.publish_requests(ControllerRequests {
+            transmit: matches!(state, 1 | 2 | 4),
+            render_admitted: true,
+            ..Default::default()
+        });
+        remote_dsp_render(&mut runtime, true);
+        remote_dsp_render(&mut runtime, true);
+        assert_eq!(observed.transmitter_state, state);
+        assert_ne!(observed.flags & crate::FEEDBACK_PHASE_VALID, 0);
+    }
+    runtime.stop().unwrap();
+    port.publish = None;
+    // SAFETY: a missing publisher is a valid stopped no-op binding.
+    unsafe { runtime.bind_feedback(Some(port)) }.unwrap();
+    let before = observed;
+    runtime.start().unwrap();
+    assert_eq!(observed, before);
+    // SAFETY: this fake adapter has no worker thread; the test owns its TX context.
+    let context = unsafe { &mut *runtime._transmit_context.get() };
+    context.feedback_record.request_id = u64::MAX;
+    context.feedback_record.requested_ptt = 0;
+    context.feedback_record.rendered_ptt = 0;
+    runtime.hardware.publish_requests(ControllerRequests {
+        transmit: true,
+        render_admitted: true,
+        ..Default::default()
+    });
+    remote_dsp_render(&mut runtime, true);
+    assert_eq!(runtime.hardware.feedback_request(), None);
+    assert_eq!(
+        // SAFETY: serial test access follows the completed fake callback above.
+        unsafe { (*runtime._transmit_context.get()).feedback_record.flags },
+        crate::FEEDBACK_DUPLEX_VALID
+    );
+    // SAFETY: the same serial fixture can prepare the source-position boundary.
+    unsafe {
+        (*runtime._transmit_context.get())
+            .feedback_record
+            .request_id = 0
+    };
+    TRANSMIT_INDEX_OVERRIDE.set(Some(u64::MAX));
+    remote_dsp_render(&mut runtime, true);
+    assert_eq!(runtime.hardware.feedback_request(), None);
+    TRANSMIT_INDEX_OVERRIDE.set(None);
+    TRANSMIT_STATE_OVERRIDE.set(None);
+    runtime.stop().unwrap();
+}
+
+#[test]
 fn native_media_rejects_an_incompatible_direct_callback_descriptor() {
     let prepared = prepared(crate::ControllerTransport::RptAdvanced, 7);
     let (plan, processing) = prepared.into_parts();
@@ -785,6 +960,8 @@ fn update_errors_explain_every_failure() {
 const AUDIO_ABI: u32 = 2;
 const AUDIO_OK: c_int = 0;
 thread_local! {
+    static PARTIAL_START_ERROR: Cell<bool> = const { Cell::new(false) };
+    static PARTIAL_STOP_ERROR: Cell<bool> = const { Cell::new(false) };
     static CREATES: Cell<u32> = const { Cell::new(0) };
     static STARTS: Cell<u32> = const { Cell::new(0) };
     static STOPS: Cell<u32> = const { Cell::new(0) };
@@ -897,6 +1074,7 @@ struct AudioDescriptor {
 unsafe impl Sync for AudioDescriptor {}
 
 struct FakeStream {
+    active: bool,
     receive: ReceiveWorker,
     receive_context: *mut c_void,
     transmit: TransmitWorker,
@@ -928,6 +1106,7 @@ unsafe extern "C" fn stream_create(
         return -1;
     };
     *output = Box::into_raw(Box::new(FakeStream {
+        active: false,
         receive,
         receive_context: config.receive_worker_context,
         transmit,
@@ -941,6 +1120,7 @@ unsafe extern "C" fn stream_start(stream: *mut c_void) -> c_int {
     STARTS.set(STARTS.get() + 1);
     // SAFETY: create returns this live FakeStream allocation.
     let stream = unsafe { &mut *stream.cast::<FakeStream>() };
+    stream.active = true;
     let mut output = [f32::NAN; ADVANCED_FRAME_SAMPLES * 2];
     // SAFETY: both worker contexts and buffers remain live for these calls.
     let transmit = unsafe {
@@ -960,11 +1140,17 @@ unsafe extern "C" fn stream_start(stream: *mut c_void) -> c_int {
             ADVANCED_FRAME_SAMPLES as u32,
         )
     };
-    u32::from(transmit != AUDIO_OK || receive != AUDIO_OK) as c_int
+    u32::from(transmit != AUDIO_OK || receive != AUDIO_OK || PARTIAL_START_ERROR.get()) as c_int
 }
 
-unsafe extern "C" fn stream_stop(_stream: *mut c_void) -> c_int {
+unsafe extern "C" fn stream_stop(stream: *mut c_void) -> c_int {
     STOPS.set(STOPS.get() + 1);
+    // SAFETY: the stopped or possibly active fake stream is exclusively retained here.
+    let stream = unsafe { &mut *stream.cast::<FakeStream>() };
+    if PARTIAL_STOP_ERROR.get() && stream.active {
+        return -1;
+    }
+    stream.active = false;
     AUDIO_OK
 }
 

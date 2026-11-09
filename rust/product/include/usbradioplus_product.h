@@ -6,6 +6,7 @@
 #define USBRADIOPLUS_PRODUCT_H
 
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -591,6 +592,80 @@ typedef struct UrpNativeReceiveMetadata {
 /** Process one exact span while this immutable metadata remains borrowed. */
 typedef int (*UrpNativeReceive)(void *, const UrpNativeReceiveMetadata *, float *, uint32_t);
 
+/** Optional radio feedback contract, independent of the exact PCM callback ABI. */
+#define URP_RADIO_FEEDBACK_ABI_VERSION 1U
+/** Explicit hardware radio-duplex declaration is available. */
+#define URP_RADIO_FEEDBACK_DUPLEX_VALID 1U
+/** Controller/rendered PTT and request identity are available. */
+#define URP_RADIO_FEEDBACK_REQUEST_VALID 2U
+/** Device output service succeeded; this is not independent readback. */
+#define URP_RADIO_FEEDBACK_SERVICE_VALID 4U
+/** Independent PTT readback succeeded. */
+#define URP_RADIO_FEEDBACK_READBACK_VALID 8U
+/** Existing radio transmitter state is available; finer phase is unavailable. */
+#define URP_RADIO_FEEDBACK_PHASE_VALID 16U
+/** Acquisition position and age share this generation's TX sample clock. */
+#define URP_RADIO_FEEDBACK_ACQUISITION_VALID 32U
+
+/** Immutable prefix borrowed immediately before the serial controller TX call.
+ * Positions refer to completed radio renders, not DAC or measured RF time.
+ * GPIO completed writes remain service evidence; offline/default false never
+ * becomes observed OFF. Acquisition age advances without refreshing cached facts.
+ * Transmitter state is the existing 0/1/2/4/5 state after the preceding render;
+ * fine STE, receiver settling and rekey completion are not measured here.
+ * Consumers require matching lifecycle/request identities and their own freshness
+ * policy before interpreting service or readback as current-request evidence.
+ */
+typedef struct UrpRadioFeedback {
+	uint32_t struct_size;		 /**< Published prefix size; may grow. */
+	uint32_t abi_version;		 /**< URP_RADIO_FEEDBACK_ABI_VERSION. */
+	uint64_t generation_id;		 /**< Physical radio lifecycle generation. */
+	uint64_t sample_index;		 /**< End of the latest successful native TX render. */
+	uint32_t frame_count;		 /**< Upcoming controller callback frame count. */
+	uint32_t flags;			 /**< Independent URP_RADIO_FEEDBACK_* validity bits. */
+	uint64_t request_id;		 /**< Changes with controller or rendered PTT demand. */
+	uint64_t service_request_id;	 /**< Request associated with service; zero if unknown. */
+	uint64_t readback_request_id;	 /**< Request current at independent readback. */
+	uint64_t service_generation;	 /**< Service lifecycle generation, zero if absent. */
+	uint64_t readback_generation;	 /**< Readback lifecycle generation, zero if absent. */
+	uint64_t acquired_sample_index;	 /**< TX position sampled before acquisition. */
+	uint64_t acquisition_age_frames; /**< Native frames since that acquisition. */
+	uint32_t physical_duplex;	 /**< Configured hardware duplex: half0, full1. */
+	uint32_t requested_ptt;		 /**< Controller demand, before signaling tails. */
+	uint32_t rendered_ptt;		 /**< Radio demand, including signaling tails. */
+	uint32_t serviced_ptt;		 /**< Completed output service value when valid. */
+	uint32_t observed_ptt;		 /**< Independent readback value when valid. */
+	int32_t transmitter_state;	 /**< Existing radio state after prior render. */
+} UrpRadioFeedback;
+
+/** Bounded allocation-free no-unwind TX-owner callback; never retain the record. */
+typedef void (*UrpRadioFeedbackPublish)(void *, const UrpRadioFeedback *);
+
+/** Borrowed stopped-only binding. A null publish callback unbinds. */
+typedef struct UrpRadioFeedbackPort {
+	uint32_t struct_size; /**< Complete readable prefix; larger tails are ignored. */
+	uint32_t abi_version; /**< URP_RADIO_FEEDBACK_ABI_VERSION. */
+	void *context;	      /**< Borrowed serial TX context, permitted to be null. */
+	UrpRadioFeedbackPublish
+		publish; /**< Retained until stopped unbind/rebind or destruction. */
+} UrpRadioFeedbackPort;
+
+/** Acknowledged stopped-only feedback option on an existing Asterisk radio channel. */
+#define URP_AST_OPTION_RADIO_FEEDBACK 0x52504642U
+/** Exact feedback option envelope ABI; the nested binding remains sized. */
+#define URP_AST_FEEDBACK_OPTION_ABI_VERSION 1U
+/** Borrowed ast_channel_setoption(block=0) envelope. Require zero return and
+ * accepted_abi_version=1: older Asterisk technologies can accept unknown options.
+ * The taskprocessor copies the port synchronously before acknowledging retention.
+ */
+typedef struct UrpAstFeedbackBinding {
+	uint32_t struct_size;	       /**< Exact size of this envelope. */
+	uint32_t abi_version;	       /**< URP_AST_FEEDBACK_OPTION_ABI_VERSION. */
+	UrpRadioFeedbackPort port;     /**< Sized prefix copied only after stopped admission. */
+	uint32_t accepted_abi_version; /**< Initialize zero; set to one only on successful bind. */
+	uint32_t reserved;	       /**< Must be zero. */
+} UrpAstFeedbackBinding;
+
 /** Exact native PCM/metadata callback contract shared by every host adapter. */
 #define URP_AST_DIRECT_CALLBACKS_ABI_VERSION 6U
 
@@ -1040,7 +1115,7 @@ typedef struct UrpNativePhysicalStatus {
 	uint32_t struct_size;
 	/** Must equal the adapter ABI version. */
 	uint32_t abi_version;
-	/** Nonzero while the physical station is started. */
+	/** Nonzero while audio callbacks may remain active after a start attempt. */
 	uint32_t running;
 	/** Latest raw receive peak. */
 	float receive_input_peak;
@@ -1452,7 +1527,22 @@ typedef struct UrpAstDescriptor {
 	 * the reported graph meter epoch; unavailable values are explicit text. */
 	int (*channel_processing_status_text)(void *channel, UrpNativeProcessingDiagnostic sink,
 					      void *context);
+	/** Optional stopped-only binding; copies the readable port prefix. Does no I/O.
+	 * Null/short/version-mismatched records fail without changing the prior binding.
+	 * Any start attempt fences rebinding until successful synchronous stop.
+	 * The callback runs on the existing serial TX owner before controller rendering.
+	 * Callback/context remain live until stopped unbind/rebind or quiescent destruction;
+	 * successful stop retains the binding for a subsequent restart.
+	 */
+	int (*native_feedback_bind)(void *native, const struct UrpRadioFeedbackPort *port);
+	/** Same capability on an existing serialized Asterisk station; survives reload. */
+	int (*channel_feedback_bind)(void *channel, const struct UrpRadioFeedbackPort *port);
 } UrpAstDescriptor;
+
+/** Complete optional feedback capability, preserving every preceding descriptor field. */
+#define URP_AST_DESCRIPTOR_FEEDBACK_MIN_SIZE                                                       \
+	(offsetof(UrpAstDescriptor, channel_feedback_bind) +                                       \
+	 sizeof(((UrpAstDescriptor *)0)->channel_feedback_bind))
 
 #ifdef __cplusplus
 extern "C" {

@@ -9,6 +9,12 @@
 #![cfg_attr(coverage, feature(coverage_attribute))]
 
 mod control;
+mod feedback;
+pub use feedback::{
+    FEEDBACK_ACQUISITION_VALID, FEEDBACK_DUPLEX_VALID, FEEDBACK_PHASE_VALID,
+    FEEDBACK_READBACK_VALID, FEEDBACK_REQUEST_VALID, FEEDBACK_SERVICE_VALID, RadioFeedback,
+    RadioFeedbackPort, RadioFeedbackRequest,
+};
 mod hardware;
 mod media;
 mod program;
@@ -306,3 +312,7 @@ fn output_config(assignment: HardwareOutputAssignment) -> OutputConfig {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "tests/allocation.rs"]
+pub(crate) mod allocation;

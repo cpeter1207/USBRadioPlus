@@ -3,6 +3,99 @@ use std::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
 
 thread_local! {
     static BUFFER_REQUESTS: std::cell::Cell<(u32, u32)> = const { std::cell::Cell::new((0, 0)) };
+    static PARTIAL_ACTIVE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static PARTIAL_STOP_FAILS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static PARTIAL_START_RESULT: std::cell::Cell<c_int> = const { std::cell::Cell::new(-3) };
+    static PARTIAL_CALLS: std::cell::Cell<(u32,u32)> = const { std::cell::Cell::new((0,0)) };
+}
+
+unsafe extern "C" fn partial_active_start(_: *mut OpaqueStream) -> c_int {
+    PARTIAL_ACTIVE.set(true);
+    PARTIAL_CALLS.with(|calls| {
+        let (start, stop) = calls.get();
+        calls.set((start + 1, stop));
+    });
+    PARTIAL_START_RESULT.get()
+}
+
+unsafe extern "C" fn partial_active_stop(_: *mut OpaqueStream) -> c_int {
+    PARTIAL_CALLS.with(|calls| {
+        let (start, stop) = calls.get();
+        calls.set((start, stop + 1));
+    });
+    if PARTIAL_STOP_FAILS.get() {
+        return -3;
+    }
+    PARTIAL_ACTIVE.set(false);
+    0
+}
+
+#[test]
+fn failed_start_requires_real_stop_before_quiescence_or_retry() {
+    let _guard = STREAM_LOCK.lock().unwrap();
+    PARTIAL_ACTIVE.set(false);
+    PARTIAL_STOP_FAILS.set(true);
+    PARTIAL_START_RESULT.set(-3);
+    PARTIAL_CALLS.set((0, 0));
+    let mut descriptor = VALID;
+    descriptor.stream_start = Some(partial_active_start);
+    descriptor.stream_stop = Some(partial_active_stop);
+    let (mut rx, mut tx) = (0_u8, 0_u8);
+    let (rx, tx) = endpoints(&mut rx, &mut tx);
+    let mut stream = provider(Box::leak(Box::new(descriptor)))
+        .unwrap()
+        .open_stream(stream_config(1, 1), rx, tx)
+        .unwrap();
+    assert!(!stream.started());
+    assert_eq!(stream.start(), Err(AudioError::PortAudio));
+    assert!(PARTIAL_ACTIVE.get());
+    assert!(!stream.started());
+    assert_eq!(
+        stream.stop(),
+        Err(AudioError::PortAudio),
+        "failed start left an active endpoint: stop must call the provider"
+    );
+    assert_eq!(PARTIAL_CALLS.get(), (1, 1));
+    assert_eq!(stream.start(), Err(AudioError::PortAudio));
+    assert_eq!(
+        PARTIAL_CALLS.get(),
+        (1, 2),
+        "a retry cannot start again until stop succeeds"
+    );
+    PARTIAL_STOP_FAILS.set(false);
+    PARTIAL_START_RESULT.set(0);
+    stream.start().unwrap();
+    assert!(stream.started());
+    assert_eq!(PARTIAL_CALLS.get(), (2, 3));
+    assert!(PARTIAL_ACTIVE.get());
+    stream.stop().unwrap();
+    assert!(!stream.started());
+    assert!(!PARTIAL_ACTIVE.get());
+    stream.stop().unwrap();
+    drop(stream);
+    assert_eq!(PARTIAL_CALLS.get(), (2, 4));
+}
+
+#[test]
+fn failed_start_drop_still_stops_a_possibly_active_endpoint() {
+    let _guard = STREAM_LOCK.lock().unwrap();
+    PARTIAL_ACTIVE.set(false);
+    PARTIAL_STOP_FAILS.set(false);
+    PARTIAL_START_RESULT.set(-3);
+    PARTIAL_CALLS.set((0, 0));
+    let mut descriptor = VALID;
+    descriptor.stream_start = Some(partial_active_start);
+    descriptor.stream_stop = Some(partial_active_stop);
+    let (mut rx, mut tx) = (0_u8, 0_u8);
+    let (rx, tx) = endpoints(&mut rx, &mut tx);
+    let mut stream = provider(Box::leak(Box::new(descriptor)))
+        .unwrap()
+        .open_stream(stream_config(1, 1), rx, tx)
+        .unwrap();
+    assert_eq!(stream.start(), Err(AudioError::PortAudio));
+    drop(stream);
+    assert!(!PARTIAL_ACTIVE.get());
+    assert_eq!(PARTIAL_CALLS.get(), (1, 1));
 }
 
 static STARTS: AtomicU32 = AtomicU32::new(0);
@@ -813,7 +906,7 @@ fn abi_two_failure_results_and_callback_lifetimes_are_owned() {
         },
         // SAFETY: `handle` is non-null and remains live until reclaimed below.
         handle: unsafe { NonNull::new_unchecked(handle.cast()) },
-        started: true,
+        state: StreamState::Started,
         _workers: PhantomData,
     };
     drop(stream);

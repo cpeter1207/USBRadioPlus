@@ -744,7 +744,7 @@ impl AudioProvider {
         Ok(AudioStream {
             provider: self,
             handle,
-            started: false,
+            state: StreamState::Stopped,
             _workers: PhantomData,
         })
     }
@@ -846,33 +846,54 @@ impl AudioProvider {
 pub struct AudioStream<'receive, 'transmit> {
     provider: AudioProvider,
     handle: NonNull<OpaqueStream>,
-    started: bool,
+    state: StreamState,
     _workers: PhantomData<(
         ReceiveWorkerEndpoint<'receive>,
         TransmitWorkerEndpoint<'transmit>,
     )>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum StreamState {
+    Stopped,
+    Started,
+    NeedsStop,
+}
+
 impl AudioStream<'_, '_> {
+    /// Whether the provider successfully started without a confirmed stop.
+    /// A failed start can remain active while still lacking command readiness.
+    #[must_use]
+    pub fn started(&self) -> bool {
+        self.state == StreamState::Started
+    }
+
     /// Start callbacks at the adapter's highest supported priority.
+    /// A failed attempt may remain active; stop must succeed before retrying it.
     pub fn start(&mut self) -> Result<(), AudioError> {
-        if self.started {
-            return Ok(());
+        match self.state {
+            StreamState::Started => return Ok(()),
+            StreamState::NeedsStop => self.stop()?,
+            StreamState::Stopped => {}
         }
         let start = self
             .provider
             .descriptor
             .stream_start
             .ok_or(AudioError::IncompatibleAdapter)?;
+        // A failed start can leave native endpoints active if its abort fails.
+        // Only an actual successful stop can release that callback obligation.
+        self.state = StreamState::NeedsStop;
         // SAFETY: This object exclusively owns the live stream handle.
         map_result(unsafe { start(self.handle.as_ptr()) })?;
-        self.started = true;
+        self.state = StreamState::Started;
         Ok(())
     }
 
-    /// Stop callbacks; repeated calls are harmless.
+    /// Stop callbacks, including a possibly active failed start. A failure keeps
+    /// the callback lifetime obligation; repeated confirmed stops are harmless.
     pub fn stop(&mut self) -> Result<(), AudioError> {
-        if !self.started {
+        if self.state == StreamState::Stopped {
             return Ok(());
         }
         let stop = self
@@ -882,7 +903,7 @@ impl AudioStream<'_, '_> {
             .ok_or(AudioError::IncompatibleAdapter)?;
         // SAFETY: This object exclusively serializes stream lifecycle calls.
         map_result(unsafe { stop(self.handle.as_ptr()) })?;
-        self.started = false;
+        self.state = StreamState::Stopped;
         Ok(())
     }
 
@@ -927,7 +948,7 @@ impl AudioStream<'_, '_> {
 
 impl Drop for AudioStream<'_, '_> {
     fn drop(&mut self) {
-        if self.started {
+        if self.state != StreamState::Stopped {
             if let Some(stop) = self.provider.descriptor.stream_stop {
                 // SAFETY: Drop is the final exclusive stream owner.
                 let _ = unsafe { stop(self.handle.as_ptr()) };

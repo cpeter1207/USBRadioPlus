@@ -205,6 +205,53 @@ fn native_create_accepts_the_current_processing_configuration_abi() {
 }
 
 #[test]
+fn feedback_native_binding_validates_without_mutation_and_quiesces_before_unbind() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    let mut capture = FeedbackCapture::default();
+    let mut port = feedback_binding(&mut capture);
+    // SAFETY: owned native handle and capture remain valid until stopped unbind.
+    unsafe {
+        assert_eq!(
+            api.native_feedback_bind.unwrap()(ptr::null_mut(), &port),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(api.native_feedback_bind.unwrap()(handle, &port), URP_AST_OK);
+        port.struct_size -= 1;
+        assert_ne!(api.native_feedback_bind.unwrap()(handle, &port), URP_AST_OK);
+        port.struct_size += 1;
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!((capture.calls, capture.generation), (1, 8));
+        assert_eq!(
+            api.native_feedback_bind.unwrap()(handle, &port),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        port.publish = None;
+        assert_eq!(api.native_feedback_bind.unwrap()(handle, &port), URP_AST_OK);
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!(capture.calls, 1);
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        port.publish = Some(capture_feedback);
+        assert_eq!(api.native_feedback_bind.unwrap()(handle, &port), URP_AST_OK);
+        fixture::set_failure(fixture::FAIL_START_ONCE);
+        assert_ne!(api.native_start.unwrap()(handle), URP_AST_OK);
+        port.publish = None;
+        assert_eq!(
+            api.native_feedback_bind.unwrap()(handle, &port),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_feedback_bind.unwrap()(handle, &port), URP_AST_OK);
+        api.native_destroy.unwrap()(handle);
+    }
+}
+
+#[test]
 fn remote_native_requires_metadata_before_opening_any_device() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     fixture::clear_failure();
@@ -1557,6 +1604,76 @@ fn native_partial_preparation_releases_device_and_clears_output() {
     }
     fixture::clear_failure();
     fixture::exclusive_audio(false);
+}
+
+#[test]
+fn native_failed_start_blocks_commands_and_update_admission_until_recovery() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let mut config = request(&raw);
+    config.hardware_gain_mask = 7;
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    let providers = fixture::manifest();
+    let callbacks = direct_callbacks();
+    let args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &config,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 9,
+        maximum_frames: 960,
+    };
+    // SAFETY: all retained handles and borrowed request records outlive confirmed shutdown.
+    unsafe {
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        let mut prepared = ptr::null_mut();
+        assert_eq!(
+            api.native_prepare_update.unwrap()(handle, &args, &mut prepared),
+            URP_AST_OK
+        );
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        fixture::set_failure(fixture::FAIL_START);
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_SETUP_FAILED);
+        fixture::clear_failure();
+        let mut command: UrpAstChannelCommand = std::mem::zeroed();
+        command.struct_size = size_of::<UrpAstChannelCommand>() as u32;
+        command.abi_version = ABI_VERSION;
+        command.command = URP_AST_COMMAND_SET_MIXER;
+        command.target = URP_AST_MIXER_RECEIVE;
+        command.value = 123;
+        let mut extra = ptr::null_mut();
+        let results = [
+            api.native_set_transmit.unwrap()(handle, 1, 0),
+            crate::native::command(handle, &mut command),
+            api.native_prepare_update.unwrap()(handle, &args, &mut extra),
+            api.native_begin_update.unwrap()(handle, prepared),
+        ];
+        fixture::restored_mixer_levels([750, 795, 245]);
+        fixture::set_failure(fixture::FAIL_STOP);
+        let retry = api.native_start.unwrap()(handle);
+        let levels_after_failed_stop = fixture::mixer_levels();
+        fixture::clear_failure();
+        api.native_destroy_update.unwrap()(extra);
+        api.native_destroy_update.unwrap()(prepared);
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        assert_eq!(api.native_set_transmit.unwrap()(handle, 0, 0), URP_AST_OK);
+        api.native_destroy.unwrap()(handle);
+        assert_eq!(
+            results, [URP_AST_NOT_READY; 4],
+            "failed startup is not command readiness"
+        );
+        assert_eq!(retry, URP_AST_SETUP_FAILED);
+        assert_eq!(
+            levels_after_failed_stop,
+            [750, 795, 245],
+            "failed retry stop cannot reinitialize gains"
+        );
+    }
 }
 
 #[test]

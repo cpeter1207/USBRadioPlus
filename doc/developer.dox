@@ -165,6 +165,16 @@ prepare the restored generation.
 
 @section verification Verification
 
+The optional sized `UrpRadioFeedbackPort` is bound through the native or channel
+descriptor tail while stopped. It publishes an immutable `UrpRadioFeedback`
+before the existing serial TX callback without changing direct PCM ABI six.
+Physical duplex is the configured radio declaration. Logical PTT, completed
+device service and actual readback remain distinct; cached GPIO service has
+unknown request correlation and acquisition age, and never becomes observed OFF.
+Existing Hamlib readback retains its actual validity. Fine settling/rekey phase
+is unavailable; consumers must not count unknown evidence as usable reception.
+See `doc/shared-maintenance-ownership.md` for borrowing and reload lifetime.
+
 `make lint static-analysis` runs the platform-independent checks. `make check`
 builds the module and Rust artifacts, runs the Rust workspace and the LADSPA
 LUFS host-contract tests, and validates release artifacts. `make docs` requires warning-
