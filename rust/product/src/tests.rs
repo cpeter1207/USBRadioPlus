@@ -8,6 +8,161 @@ mod native;
 #[path = "tests/link_observer.rs"]
 mod link_observer;
 
+#[test]
+fn descriptor_exposes_stopped_native_and_channel_feedback_bindings() {
+    let existing = std::mem::offset_of!(UrpAstDescriptor, channel_processing_status_text)
+        + std::mem::size_of::<Option<unsafe extern "C" fn()>>();
+    assert!(
+        DESCRIPTOR.struct_size as usize >= existing + 2 * std::mem::size_of::<usize>(),
+        "optional native/channel radio feedback bindings are missing"
+    );
+}
+
+#[derive(Default)]
+struct FeedbackCapture {
+    calls: u64,
+    generation: u64,
+}
+
+unsafe extern "C" fn capture_feedback(context: *mut c_void, record: *const UrpRadioFeedback) {
+    // SAFETY: these fixtures retain the capture until stopped unbind/destruction.
+    let capture = unsafe { &mut *context.cast::<FeedbackCapture>() };
+    // SAFETY: the SDK lends one complete immutable record only during this call.
+    let record = unsafe { &*record };
+    assert_eq!(record.struct_size as usize, size_of::<UrpRadioFeedback>());
+    assert_eq!(record.abi_version, 1);
+    capture.calls += 1;
+    capture.generation = record.generation_id;
+}
+
+fn feedback_binding(capture: &mut FeedbackCapture) -> UrpRadioFeedbackPort {
+    UrpRadioFeedbackPort {
+        struct_size: size_of::<UrpRadioFeedbackPort>() as u32,
+        abi_version: 1,
+        context: ptr::from_mut(capture).cast(),
+        publish: Some(capture_feedback),
+    }
+}
+
+#[test]
+fn feedback_port_validation_accepts_only_complete_versioned_prefixes() {
+    let mut capture = FeedbackCapture::default();
+    let mut port = feedback_binding(&mut capture);
+    // SAFETY: each record advertises only its actually readable complete prefix.
+    unsafe {
+        assert!(feedback_port(ptr::null()).is_err());
+        port.struct_size -= 1;
+        assert!(feedback_port(&port).is_err());
+        port.struct_size += 1;
+        port.abi_version = 0;
+        assert!(feedback_port(&port).is_err());
+        port.abi_version = 1;
+        #[repr(C)]
+        struct Larger {
+            port: UrpRadioFeedbackPort,
+            tail: [u8; 11],
+        }
+        let mut larger = Larger {
+            port,
+            tail: [0x5a; 11],
+        };
+        larger.port.struct_size = size_of::<Larger>() as u32;
+        assert!(feedback_port(&larger.port).unwrap().is_some());
+        assert_eq!(larger.tail, [0x5a; 11]);
+        port.publish = None;
+        assert!(feedback_port(&port).unwrap().is_none());
+    }
+    assert_eq!(capture.calls, 0);
+}
+
+#[test]
+fn feedback_channel_binding_survives_replacement_then_unbinds_after_stop() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    let mut capture = FeedbackCapture::default();
+    let mut port = feedback_binding(&mut capture);
+    // SAFETY: channel and callback storage remain live until synchronous destruction.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(
+            channel_feedback_bind(ptr::null_mut(), &port),
+            URP_AST_INVALID_ARGUMENT
+        );
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_OK);
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        assert_eq!(capture.calls, 1);
+        let original = capture.generation;
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_CHANNEL_BUSY);
+        assert_eq!(
+            stage_reload(
+                driver,
+                b"[usb]\n[hardware]\nhardware_output_extra_buffer_ms = 20\n"
+            ),
+            URP_AST_OK
+        );
+        assert_eq!(prepare_reload(channel), URP_AST_OK);
+        port.publish = None;
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_CHANNEL_BUSY);
+        port.publish = Some(capture_feedback);
+        assert_eq!(activate_reload(channel), URP_AST_OK);
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_CHANNEL_BUSY);
+        assert_eq!(finish_reload(channel, 1), URP_AST_OK);
+        assert_eq!(driver_reload_finish(driver, 1), URP_AST_OK);
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        assert!(capture.calls > 1);
+        assert_ne!(capture.generation, original);
+        assert_eq!(channel_stop(channel), URP_AST_OK);
+        let calls = capture.calls;
+        port.publish = None;
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_OK);
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        assert_eq!(capture.calls, calls);
+        assert_eq!(channel_stop(channel), URP_AST_OK);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+}
+
+#[test]
+fn feedback_binding_cannot_change_during_a_stopped_prepared_reload_or_rollback() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    let mut capture = FeedbackCapture::default();
+    let mut port = feedback_binding(&mut capture);
+    // SAFETY: all stopped reservations and borrowed capture remain retained until destruction.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_OK);
+        assert_eq!(
+            stage_reload(
+                driver,
+                b"[usb]\n[hardware]\nhardware_output_extra_buffer_ms = 20\n"
+            ),
+            URP_AST_OK
+        );
+        assert_eq!(prepare_reload(channel), URP_AST_OK);
+        port.publish = None;
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_CHANNEL_BUSY);
+        assert_eq!(activate_reload(channel), URP_AST_OK);
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_CHANNEL_BUSY);
+        assert_eq!(finish_reload(channel, 1), URP_AST_OK);
+        assert_eq!(driver_reload_finish(driver, 1), URP_AST_OK);
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        assert_eq!(
+            capture.calls, 1,
+            "rejected unbind retained the original callback"
+        );
+        assert_eq!(channel_stop(channel), URP_AST_OK);
+        assert_eq!(channel_feedback_bind(channel, &port), URP_AST_OK);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+}
+
 unsafe extern "C" fn append_processing_text(context: *mut c_void, text: *const u8, length: u32) {
     // SAFETY: synchronous diagnostics retain the owned output and complete span.
     let (output, text) = unsafe {

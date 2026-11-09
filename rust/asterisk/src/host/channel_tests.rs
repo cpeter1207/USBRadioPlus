@@ -1217,6 +1217,108 @@ unsafe extern "C" fn retain_direct(
     unsafe { *channel.cast::<c_int>() }
 }
 
+unsafe extern "C" fn retain_feedback(
+    channel: *mut c_void,
+    _: *const crate::UrpRadioFeedbackPort,
+) -> c_int {
+    // SAFETY: the fixture keeps this injected status live through synchronous dispatch.
+    unsafe { *channel.cast::<c_int>() }
+}
+
+#[test]
+fn feedback_option_acknowledges_only_a_valid_retained_binding() {
+    let _fixture = Fixture::new();
+    // SAFETY: descriptor fields are flat nullable function pointers and scalars.
+    let mut descriptor: UrpAstDescriptor = unsafe { zeroed() };
+    descriptor.channel_feedback_bind = Some(retain_feedback);
+    let mut retention = URP_AST_OK;
+    let mut channel = Channel {
+        _name: "usb".into(),
+        descriptor: &descriptor,
+        rust_channel: AtomicPtr::new(ptr::from_mut(&mut retention).cast()),
+        control: ptr::null_mut(),
+        dsp: ptr::null_mut(),
+        format: ptr::null_mut(),
+        sample_rate_hz: ADVANCED_RATE_HZ,
+        frame_samples: 960,
+        owner: AtomicPtr::new(ptr::null_mut()),
+        worker: Mutex::new(None),
+        delivery_stop: AtomicBool::new(false),
+        service_failed: AtomicBool::new(false),
+        jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
+        pending_transmit: AtomicU64::new(0),
+        direct: AtomicBool::new(false),
+    };
+    let mut owner = FakeChannel::new(ptr::from_mut(&mut channel).cast());
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct Envelope {
+        struct_size: u32,
+        abi_version: u32,
+        port: crate::UrpRadioFeedbackPort,
+        accepted_abi_version: u32,
+        reserved: u32,
+    }
+    unsafe extern "C" fn publish(_: *mut c_void, _: *const crate::UrpRadioFeedback) {}
+    for case in 0..12 {
+        descriptor.channel_feedback_bind = if case == 11 {
+            None
+        } else {
+            Some(retain_feedback)
+        };
+        with_state(|state| state.taskprocessor_push_result = if case == 9 { -1 } else { 0 });
+        retention = if case == 4 { -1 } else { URP_AST_OK };
+        channel
+            .rust_channel
+            .store(ptr::from_mut(&mut retention).cast(), Ordering::Release);
+        let mut envelope = Envelope {
+            struct_size: size_of::<Envelope>() as u32,
+            abi_version: 1,
+            port: crate::UrpRadioFeedbackPort {
+                struct_size: size_of::<crate::UrpRadioFeedbackPort>() as u32,
+                abi_version: 1,
+                context: ptr::null_mut(),
+                publish: None,
+            },
+            accepted_abi_version: 0,
+            reserved: 0,
+        };
+        match case {
+            0 => envelope.struct_size -= 1,
+            1 => envelope.abi_version = 0,
+            2 => envelope.port.struct_size -= 1,
+            3 => envelope.port.abi_version = 0,
+            8 => envelope.reserved = 1,
+            10 => envelope.port.struct_size += 8,
+            _ => {}
+        }
+        if case == 5 {
+            envelope.port.publish = Some(publish);
+        }
+        let mut storage = [0u8; size_of::<Envelope>() + 1];
+        // SAFETY: the byte-aligned test envelope occupies the complete reserved span.
+        let data = unsafe { storage.as_mut_ptr().add(1).cast::<Envelope>() };
+        // SAFETY: the test owns the complete writable option payload.
+        unsafe { data.write_unaligned(envelope) };
+        // SAFETY: owner and the sized payload remain live through taskprocessor dispatch.
+        let result = unsafe {
+            setoption(
+                owner.as_ptr(),
+                0x5250_4642,
+                data.cast(),
+                size_of::<Envelope>() as c_int - i32::from(case == 7),
+            )
+        };
+        // SAFETY: the synchronous call returned without retaining this envelope.
+        let accepted = unsafe { data.read_unaligned().accepted_abi_version };
+        let success = matches!(case, 5 | 6 | 10);
+        assert_eq!(result == 0, success, "case {case}");
+        assert_eq!(accepted, u32::from(success), "case {case}");
+    }
+    assert_eq!(with_state(|state| state.taskprocessor_push_calls), 6);
+}
+
 #[test]
 fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
     let _fixture = Fixture::new();

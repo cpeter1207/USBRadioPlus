@@ -53,6 +53,9 @@ use usbradioplus_samplerate::SampleRateAdapter;
 /// Private initial-alpha direct callback descriptor; contexts remain caller-owned.
 pub use usbradioplus_station::DirectCallbacks as UrpAstDirectCallbacks;
 pub use usbradioplus_station::DirectReceiveMetadata as UrpNativeReceiveMetadata;
+pub use usbradioplus_station::{
+    RadioFeedback as UrpRadioFeedback, RadioFeedbackPort as UrpRadioFeedbackPort,
+};
 use usbradioplus_station::{StationMedia, StationPlan, StationUpdate, StationUpdateError};
 
 const ABI_VERSION: u32 = 1;
@@ -840,12 +843,20 @@ pub struct UrpAstDescriptor {
             *mut c_void,
         ) -> c_int,
     >,
+    /// Optional stopped-only native feedback binding; the port prefix is copied.
+    pub native_feedback_bind:
+        Option<unsafe extern "C" fn(*mut c_void, *const UrpRadioFeedbackPort) -> c_int>,
+    /// Same borrowed serial-TX binding on an existing ASL channel owner.
+    pub channel_feedback_bind:
+        Option<unsafe extern "C" fn(*mut c_void, *const UrpRadioFeedbackPort) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_feedback_bind: Some(native::feedback_bind),
+    channel_feedback_bind: Some(channel_feedback_bind),
     channel_processing_status_text: Some(channel_processing_status_text),
     native_activation_status: Some(remote::native_activation_status),
     channel_activation_status: Some(remote::channel_activation_status),
@@ -1134,6 +1145,7 @@ struct ChannelControl {
     reload: Option<PreparedChannelReload>,
     running: bool,
     direct: Option<UrpAstDirectCallbacks>,
+    feedback: Option<UrpRadioFeedbackPort>,
 }
 
 enum PreparedChannelReload {
@@ -1894,6 +1906,7 @@ unsafe extern "C" fn channel_reserve(
                 reload: None,
                 running: false,
                 direct: None,
+                feedback: None,
             }),
             rollback: Mutex::new(None),
         });
@@ -1936,6 +1949,8 @@ unsafe extern "C" fn channel_start(channel: *mut c_void) -> c_int {
                 .bind_remote(setup, dsp)
                 .map_err(|error| command_error(channel, error))?;
         }
+        // SAFETY: the retained feedback port outlives this channel's callbacks.
+        unsafe { hardware.bind_feedback(control.feedback) }.map_err(|_| Status::InvalidArgument)?;
         let result = hardware.start().map_err(|error| {
             channel.log_error(&error.to_string());
             Status::SetupFailed
@@ -2321,6 +2336,8 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
             prepared.preflight,
         )
         .and_then(|mut hardware| {
+            // SAFETY: replacement retains the same channel-scoped borrowed port.
+            unsafe { hardware.bind_feedback(control.feedback) }?;
             if let Some((setup, dsp)) = remote {
                 hardware.bind_remote(setup, dsp)?;
             }
@@ -2662,6 +2679,54 @@ unsafe extern "C" fn channel_set_direct_callbacks(
         // station shutdown; this operation only copies their addresses.
         unsafe { media.set_direct_callbacks(callbacks) }.map_err(|_| Status::InvalidArgument)?;
         control.direct = Some(callbacks);
+        Ok(())
+    })
+}
+
+/// Copy only the sized binding prefix; validation never invokes or retains it.
+unsafe fn feedback_port(
+    raw: *const UrpRadioFeedbackPort,
+) -> Result<Option<UrpRadioFeedbackPort>, Status> {
+    if raw.is_null() {
+        return Err(Status::InvalidArgument);
+    }
+    // SAFETY: the caller lends the readable size/version prefix during binding.
+    let size = unsafe { raw.cast::<u32>().read_unaligned() };
+    if (size as usize) < size_of::<UrpRadioFeedbackPort>() {
+        return Err(Status::IncompatibleAbi);
+    }
+    // SAFETY: the advertised size covers this complete prefix; no tail is read.
+    let port = unsafe { raw.read_unaligned() };
+    if port.abi_version != 1 {
+        return Err(Status::IncompatibleAbi);
+    }
+    Ok(port.publish.map(|_| port))
+}
+
+unsafe extern "C" fn channel_feedback_bind(
+    channel: *mut c_void,
+    port: *const UrpRadioFeedbackPort,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the serialized caller lends the sized port and existing channel.
+        let port = unsafe { feedback_port(port)? };
+        // SAFETY: channel control is borrowed only by this serial control task.
+        let (channel, control) = unsafe { channel_control(channel)? };
+        if control.running
+            || control.reload.is_some()
+            || channel
+                .rollback
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .is_some()
+        {
+            return Err(Status::ChannelBusy);
+        }
+        if let Some(hardware) = control.hardware.as_mut() {
+            // SAFETY: the binding retains its context through synchronous shutdown.
+            unsafe { hardware.bind_feedback(port) }.map_err(|_| Status::ChannelBusy)?;
+        }
+        control.feedback = port;
         Ok(())
     })
 }

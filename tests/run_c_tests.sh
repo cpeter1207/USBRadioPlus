@@ -12,6 +12,17 @@ else
 	trap 'rm -rf -- "$out"' EXIT HUP INT TERM
 fi
 
+# Public optional-tail/layout checks use the built shared object without hardware.
+if [ -z "${URP_PRODUCT_DSO:-}" ]; then
+	make -s -C "$root" build/libusbradioplus_product.so
+	URP_PRODUCT_DSO="$root/build/libusbradioplus_product.so"
+fi
+# shellcheck disable=SC2086
+cc -std=c11 -Wall -Wextra -Werror ${C_TEST_CFLAGS:-} \
+	-I"$root/rust/product/include" "$root/tests/test_radio_feedback.c" "$URP_PRODUCT_DSO" \
+	-Wl,-rpath,"$(dirname -- "$URP_PRODUCT_DSO")" -o "$out/radio-feedback"
+"$out/radio-feedback"
+
 if [ -z "${URP_AGC_PLUGIN:-}" ]; then
 	make -s -C "$root" build/usbradioplus_agc.so
 	URP_AGC_PLUGIN="$root/build/usbradioplus_agc.so.1"

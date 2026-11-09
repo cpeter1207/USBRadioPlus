@@ -25,6 +25,7 @@ pub(super) enum ControlOperation {
     Dtmf(bool),
     Echo(bool),
     Direct(super::super::UrpAstDirectCallbacks),
+    Feedback(super::super::UrpRadioFeedbackPort),
     Site(super::super::UrpAstSiteControl),
     Remote(super::super::UrpAstRemoteControl),
     Jitter,
@@ -129,6 +130,11 @@ unsafe fn execute(
                 descriptor
                     .channel_set_direct_callbacks
                     .map(|call| call(channel, &callbacks)),
+            )),
+            ControlOperation::Feedback(port) => ControlResult::Status(status(
+                descriptor
+                    .channel_feedback_bind
+                    .map(|call| call(channel, &port)),
             )),
             ControlOperation::Site(mut request) => {
                 let result = match request.operation {

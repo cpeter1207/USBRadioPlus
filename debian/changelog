@@ -1,3 +1,13 @@
+usbradioplus (0.1.0~alpha33-1) unstable; urgency=medium
+
+  * Add sized native/channel radio feedback bindings and acknowledged RPFB options.
+  * Preserve separate request, serviced output, and independent readback evidence.
+  * Require confirmed callback quiescence after partial audio startup failures.
+  * Keep TX, maintenance, and update commands unavailable until startup succeeds.
+  * Prepare controller receive-window integration without enabling RF checks.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Mon, 09 Nov 2026 21:48:04 +0000
+
 usbradioplus (0.1.0~alpha32-1) unstable; urgency=medium
 
   * Preserve distinct same-span branch decisions across compiled copies.

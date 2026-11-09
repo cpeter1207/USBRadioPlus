@@ -70,7 +70,7 @@ pub struct UrpNativePhysicalStatus {
     pub struct_size: u32,
     /// Must equal the adapter ABI version.
     pub abi_version: u32,
-    /// Nonzero while the physical station is started.
+    /// Nonzero while audio callbacks may remain active after a start attempt.
     pub running: u32,
     /// Latest raw receive peak.
     pub receive_input_peak: f32,

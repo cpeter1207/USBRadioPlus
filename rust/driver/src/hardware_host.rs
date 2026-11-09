@@ -613,6 +613,19 @@ pub struct HardwareStation {
 }
 
 impl HardwareStation {
+    /// Bind a borrowed serial-TX feedback endpoint while audio is quiescent.
+    ///
+    /// # Safety
+    /// The bounded no-unwind callback and context remain live until stopped
+    /// unbind/rebind or quiescent destruction; stop alone retains the binding.
+    pub unsafe fn bind_feedback(
+        &mut self,
+        port: Option<usbradioplus_station::RadioFeedbackPort>,
+    ) -> Result<(), HardwareStationError> {
+        // SAFETY: forwarded to the same stopped runtime without another owner.
+        unsafe { self.runtime.bind_feedback(port) }.map_err(Into::into)
+    }
+
     /// Select one canonical USB identity and read its optional tuning EEPROM.
     ///
     /// This pre-audio operation temporarily owns only the CM119 HID handle and
@@ -3389,6 +3402,7 @@ impl ServiceWorker {
                     }
                     Err(failure) => {
                         self.statistics.failure(failure);
+                        self.state.invalidate_physical_feedback();
                         self.state.publish_inputs(HardwareInputs::default());
                         thread::park_timeout(RETRY_INTERVAL);
                         continue;
@@ -3418,6 +3432,7 @@ impl ServiceWorker {
             match result {
                 Ok(()) => thread::park_timeout(self.interval()),
                 Err(failure) => {
+                    self.state.invalidate_physical_feedback();
                     self.statistics.failure(failure);
                     if let Some(remote) = &mut remote {
                         if let Err(error) = remote.unkey(&self, current, &mut outputs) {
@@ -3489,6 +3504,7 @@ impl ServiceWorker {
             let _ = control.apply(false);
         }
         self.state.publish_inputs(HardwareInputs::default());
+        self.state.invalidate_physical_feedback();
         ServiceExit {
             sidetone,
             retiring: if failure.is_some() {
@@ -3593,6 +3609,7 @@ fn service_once(
     worker
         .state
         .publish_inputs(collected_inputs(devices, worker, snapshot, parallel)?);
+    publish_gpio_feedback(devices, worker, snapshot);
     input_tracker.publish(
         snapshot.map_or_else(Cm119Inputs::default, |(inputs, _)| inputs),
         worker.cm119_input_mask,
@@ -3829,6 +3846,7 @@ fn service_native_once(
     // Physical PTT is serviced feedback, never newly queued demand.
     worker.state.publish_inputs(inputs);
     parallel?;
+    publish_gpio_feedback(devices, worker, snapshot);
     worker
         .statistics
         .success(snapshots?.map(|(_, statistics)| statistics));
@@ -3837,6 +3855,51 @@ fn service_native_once(
 
 #[derive(Clone, Copy, Debug)]
 struct ServiceFailure(HardwareOperation, GpioError);
+
+/// Cached GPIO statistics certify completed service, never independent readback
+/// or a freshly acquired electrical timestamp. Asynchronous adapter statistics
+/// provide no request correlation, so the associated request identity is zero.
+/// Call only after the existing synchronous service succeeded: cm119_snapshot
+/// services before reading its snapshot; service_parallel_once does the same.
+/// Online flags and write-attempt counters alone never establish this receipt.
+fn publish_gpio_feedback(
+    devices: &ServiceDevices,
+    worker: &ServiceWorker,
+    snapshot: Option<(Cm119Inputs, Cm119Statistics)>,
+) {
+    if worker.state.remote_signals().ptt_selected {
+        return;
+    }
+    let Some(mut request) = worker.state.feedback_request() else {
+        worker.state.invalidate_physical_feedback();
+        return;
+    };
+    request.request_id = 0;
+    let serviced = if devices.cm119.is_some() {
+        snapshot
+            .filter(|(input, statistics)| input.online && statistics.online)
+            .map(|(_, statistics)| statistics.ptt_applied)
+    } else {
+        devices
+            .parallel
+            .as_ref()
+            .zip(worker.parallel.as_ref())
+            .and_then(|(device, plan)| {
+                device
+                    .statistics()
+                    .ok()
+                    .filter(|statistics| statistics.online)
+                    .and_then(|statistics| {
+                        let levels = statistics.applied_output_mask & plan.ptt_mask;
+                        (plan.ptt_mask != 0 && (levels == 0 || levels == plan.ptt_mask))
+                            .then_some((levels != 0) != devices.ptt_inverted)
+                    })
+            })
+    };
+    worker
+        .state
+        .publish_physical_feedback(request, serviced, None, false);
+}
 
 impl From<ServiceFailure> for HardwareStationError {
     fn from(failure: ServiceFailure) -> Self {

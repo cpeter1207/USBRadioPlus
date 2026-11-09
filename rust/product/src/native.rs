@@ -151,7 +151,12 @@ struct NativeStation {
 
 impl NativeStation {
     fn start(&mut self) -> Result<(), Status> {
-        if self.runtime.running() {
+        if self.runtime.running() && !self.runtime.started() {
+            // Failed startup can leave callbacks active. Confirm stop before
+            // hardware initialization, including configured gain reapplication.
+            self.runtime.stop().map_err(|_| Status::SetupFailed)?;
+        }
+        if self.runtime.started() {
             self.maintenance.start_preserving_gains()
         } else {
             self.maintenance.start()
@@ -450,6 +455,21 @@ pub(crate) unsafe extern "C" fn get_status(
     })
 }
 
+pub(crate) unsafe extern "C" fn feedback_bind(
+    handle: *mut c_void,
+    port: *const crate::UrpRadioFeedbackPort,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: both records are lent by this existing serialized native owner.
+        let port = unsafe { crate::feedback_port(port)? };
+        // SAFETY: this control call has exclusive access to the live native handle.
+        let station = unsafe { handle.cast::<NativeStation>().as_mut() };
+        let station = station.ok_or(Status::InvalidArgument)?;
+        // SAFETY: the caller retains this borrowed port through synchronous shutdown.
+        unsafe { station.runtime.bind_feedback(port) }.map_err(|_| Status::ChannelBusy)
+    })
+}
+
 /// Forward the existing lock-free callback observations, without introducing
 /// another processing counter or reading callback-owned graph state.
 pub(crate) unsafe extern "C" fn processing_status_text(
@@ -489,7 +509,7 @@ pub(crate) unsafe extern "C" fn command(
                 copy_abi(command.cast_const())?,
             )
         };
-        if !station.runtime.running() {
+        if !station.runtime.started() {
             return Err(Status::NotReady);
         }
         crate::maintenance::execute(
@@ -512,7 +532,7 @@ pub(crate) unsafe extern "C" fn set_transmit(
         // SAFETY: the serialized caller retains the native station through return.
         let station = unsafe { handle.cast::<NativeStation>().as_mut() };
         let station = station.ok_or(Status::InvalidArgument)?;
-        if !station.runtime.running() {
+        if !station.runtime.started() {
             return Err(Status::NotReady);
         }
         let keyed = crate::switch(i64::from(keyed))?;
@@ -581,7 +601,7 @@ pub(crate) unsafe extern "C" fn prepare_update(
             let args = copy_abi(args)?;
             (station, args, copy_native_config(args.config)?)
         };
-        if !station.runtime.running() {
+        if !station.runtime.started() {
             return Err(Status::NotReady);
         }
         if args.generation_id == 0
@@ -663,7 +683,7 @@ pub(crate) unsafe extern "C" fn begin_update(handle: *mut c_void, update: *mut c
                     .ok_or(Status::InvalidArgument)?,
             )
         };
-        if !station.runtime.running() {
+        if !station.runtime.started() {
             return Err(Status::NotReady);
         }
         if station.pending.is_some() {

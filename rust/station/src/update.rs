@@ -117,6 +117,7 @@ impl StationUpdatePreparation {
 }
 
 struct UpdateOwner {
+    physical_duplex: bool,
     radio: PreparedUpdate<'static>,
     processing: Box<ProcessingGeneration>,
     controller_ctcss: [Option<CtcssTone>; CTCSS_TONE_COUNT],
@@ -140,6 +141,7 @@ impl UpdateOwner {
             unsafe { std::mem::transmute::<PreparedUpdate<'_>, PreparedUpdate<'static>>(radio) };
         Ok(Self {
             radio,
+            physical_duplex: plan.radio().qualification.radio_duplex,
             processing,
             controller_ctcss: controller_ctcss_table(plan),
             voter_reporting: plan.configuration().station.hardware.voter_reporting != 0,
@@ -231,6 +233,7 @@ impl UpdateMailbox {
         let owner = unsafe { &*pointer };
         let result = station.radio().apply_update(&owner.radio);
         if result.is_ok() {
+            station.physical_duplex = owner.physical_duplex;
             self.transmit_processing.store(
                 ptr::from_ref(owner.processing.as_ref()).cast_mut(),
                 Ordering::Release,

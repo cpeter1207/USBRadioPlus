@@ -17,6 +17,12 @@ station library also used by the standalone rpt_advanced controller. The
 `libusbradioplus-product-dev` package supplies the C header and pkg-config
 metadata for consumers; the shared product has no Asterisk dependency.
 
+The alpha33 SDK adds radio-output feedback for controller receive-window
+integration. It distinguishes requested PTT, completed output service and
+independent readback. Failed audio startup keeps transmit and maintenance
+commands unavailable until recovery confirms a successful stop and start.
+Receive-window scheduling is being implemented in rpt_advanced.
+
 Local receive, incoming link, and voice/telemetry processing each have a
 configurable Peak Limiter followed by mandatory integrated loudness and true
 peak metering. The existing `lookahead_limiter_*` keys configure Peak Limiter.

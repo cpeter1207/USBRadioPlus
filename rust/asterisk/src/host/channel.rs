@@ -1420,6 +1420,31 @@ unsafe extern "C" fn setoption(
         channel.direct.store(true, Ordering::Release);
         return 0;
     }
+    if option as u32 == super::super::URP_AST_OPTION_RADIO_FEEDBACK {
+        use super::super::{
+            URP_AST_FEEDBACK_OPTION_ABI_VERSION, UrpAstFeedbackBinding, UrpRadioFeedbackPort,
+        };
+        if data_length as usize != size_of::<UrpAstFeedbackBinding>() {
+            return -1;
+        }
+        // SAFETY: Asterisk lends the entire possibly byte-aligned envelope.
+        let binding = unsafe { data.cast::<UrpAstFeedbackBinding>().read_unaligned() };
+        if binding.struct_size as usize != size_of::<UrpAstFeedbackBinding>()
+            || binding.abi_version != URP_AST_FEEDBACK_OPTION_ABI_VERSION
+            || binding.reserved != 0
+            || (binding.port.struct_size as usize) < size_of::<UrpRadioFeedbackPort>()
+            || binding.port.abi_version != 1
+            || channel.control_status(ControlOperation::Feedback(binding.port)) != URP_AST_OK
+        {
+            return -1;
+        }
+        // SAFETY: successful synchronous retention permits this one output write.
+        unsafe {
+            ptr::addr_of_mut!((*data.cast::<UrpAstFeedbackBinding>()).accepted_abi_version)
+                .write_unaligned(URP_AST_FEEDBACK_OPTION_ABI_VERSION)
+        };
+        return 0;
+    }
     if option as u32 != ffi::AST_OPTION_TONE_VERIFY {
         // SAFETY: errno is thread-local on supported Linux targets.
         unsafe { *libc::__errno_location() = libc::ENOSYS };

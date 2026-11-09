@@ -101,3 +101,65 @@ maintenance serialization and radio measurements remain in the shared owner.
 Successful tuner-originated live updates retain that connection's calibration
 key/tone intent until the frontend releases it. An external reload, termination
 or service shutdown ends maintenance ownership and performs session cleanup.
+
+## Optional serial TX feedback
+
+The sized SDK descriptor appends `native_feedback_bind` and
+`channel_feedback_bind`. Both copy a `UrpRadioFeedbackPort` prefix on their
+existing serialized control owner while stopped. The borrowed callback and
+context remain live until a stopped unbind/rebind or destruction. A start
+attempt closes rebinding even if startup fails; successful synchronous stop
+opens it again. Channel replacement and rollback retain the original binding.
+The exact direct PCM callback ABI remains six.
+
+Audio startup has three internal states: stopped, started, and failed start
+requiring stop. The last state can still have live endpoints when adapter abort
+fails. It requires an actual successful provider stop before retry, callback
+cell mutation, or feedback rebinding. A failed stop retains the owner and its
+borrowed contexts through the existing quiescence/retirement flow; an error is
+never interpreted as successful synchronous shutdown.
+
+Ordinary command/update readiness is read directly from the audio stream's
+successful-start state. Possibly active callbacks after a failed start do not
+admit manual TX, tuner commands, or new updates. Retrying such startup confirms
+audio stop before reinitializing hardware or reapplying configured gains.
+
+The Asterisk transport uses the existing taskprocessor through option
+`URP_AST_OPTION_RADIO_FEEDBACK` (RPFB), with a sized `UrpAstFeedbackBinding`
+envelope. Require both a zero option return and acknowledged ABI one. Failed
+validation, queue submission or stopped admission never acknowledges retention.
+The synchronous task reply completes bind/unbind before the caller can release
+the old callback context; in-progress replacement/rollback rejects rebinding.
+
+Immediately before controller TX rendering, the existing serial TX owner
+publishes the latest successful radio generation, native sample position,
+request identity, configured physical radio duplex, and existing transmitter
+state. A same-device update adopts its physical duplex declaration on that
+same owner. Controller logical duplex is not physical full-duplex evidence.
+Fixed atomic slots are read once without allocation, locks, I/O, a system clock,
+or an unbounded retry. There is no additional hardware owner or queue.
+
+Request, completed service, and independent readback have separate validity
+and identities. Cached CM119/parallel output statistics supply service evidence
+with request identity zero and acquisition age unavailable. They do not supply
+electrical readback. Existing synchronous remote PTT operations can associate
+their completed service with a request; actual Hamlib `get_ptt` additionally
+supplies independent readback. Acquisition is conservatively anchored before
+that operation on the existing TX sample clock; copying cached observations
+does not refresh it. Offline, failed, racing, future-position, or foreign-generation
+evidence remains unknown. Zero-valued absent fields never prove physical OFF.
+
+GPIO publication follows the existing successful synchronous service call:
+`cm119_snapshot` services before reading inputs/statistics, and
+`service_parallel_once` services before its snapshots. A failed initial output
+write cannot pass that seam. Merely online startup statistics, attempted-write
+counts, and cached default false values are not independent service receipts.
+
+This implements the feedback foundation of rpt_advanced ADR 0044, preserving
+its sole hardware owner and the requested/serviced/observed distinction.
+The existing transmitter state reports normal, tone-off, drain and idle state;
+fine STE completion, receiver settling, DAC presentation and rekey completion
+are not measured. Consumers cannot count a usable receive opportunity from
+unknown readback or settling evidence. RF scheduling and both controller host
+bridges remain separate work; this capability alone does not provide complete
+receive-window support for every radio.

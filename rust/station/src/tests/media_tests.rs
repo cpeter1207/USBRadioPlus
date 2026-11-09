@@ -25,6 +25,8 @@ const ABI_VERSION: u32 = 5;
 const CHANNELS: usize = 2;
 
 thread_local! {
+    pub(crate) static TRANSMIT_STATE_OVERRIDE: std::cell::Cell<Option<i32>> = const { std::cell::Cell::new(None) };
+    pub(crate) static TRANSMIT_INDEX_OVERRIDE: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
     pub(crate) static DESTROYED_SEVEN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static DESTROYED_FAILURE: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static PROGRAM_SAMPLE: std::cell::Cell<f32> = const { std::cell::Cell::new(0.25) };
@@ -454,7 +456,9 @@ unsafe extern "C" fn transmit(
     }
     *result = FakeTransmitResult {
         generation_id: session.generation_id,
-        first_sample_index: session.transmit_frames,
+        first_sample_index: TRANSMIT_INDEX_OVERRIDE
+            .get()
+            .unwrap_or(session.transmit_frames),
         frame_count,
         // Model a retained signaling tail during the direct failure path: the
         // host must suppress this PTT result instead of relatching hardware.
@@ -463,7 +467,7 @@ unsafe extern "C" fn transmit(
         } else {
             controls.external_ptt_request
         },
-        transmitter_state: 1,
+        transmitter_state: TRANSMIT_STATE_OVERRIDE.get().unwrap_or(1),
         selected_ctcss_tenths_hz: if controls.external_ptt_request != 0 {
             1_000
         } else {

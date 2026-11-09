@@ -5657,6 +5657,224 @@ fn parallel_only_input_reports_serviced_ptt_and_never_invents_offline_feedback()
 }
 
 #[test]
+fn feedback_gpio_service_distinguishes_complete_partial_offline_and_absent_outputs() {
+    use usbradioplus_station::{
+        FEEDBACK_ACQUISITION_VALID, FEEDBACK_READBACK_VALID, FEEDBACK_SERVICE_VALID, RadioFeedback,
+        RadioFeedbackPort,
+    };
+    let _guard = test_guard();
+    reset_test_state();
+    let mut station = open_hardware_station();
+    let mut observed = RadioFeedback::default();
+    unsafe extern "C" fn publish(context: *mut c_void, record: *const RadioFeedback) {
+        // SAFETY: the synchronous fixture retains the capture until confirmed stop.
+        unsafe { *context.cast::<RadioFeedback>() = *record };
+    }
+    let port = RadioFeedbackPort {
+        struct_size: size_of::<RadioFeedbackPort>() as u32,
+        abi_version: 1,
+        context: ptr::from_mut(&mut observed).cast(),
+        publish: Some(publish),
+    };
+    // SAFETY: capture remains live until the stopped station releases the binding.
+    unsafe { station.bind_feedback(Some(port)) }.unwrap();
+    station.start().unwrap();
+    // End the original GPIO owner before using manual successful service cycles.
+    // The fake audio endpoint has no thread; calls below are its sole serial owner.
+    station.maintenance.service.stop().unwrap();
+    let state = station.hardware_state();
+    for (mask, inverted, applied, online, present, expected) in [
+        (12, false, 0, true, true, Some(false)),
+        (12, false, 12, true, true, Some(true)),
+        (12, true, 0, true, true, Some(true)),
+        (12, true, 12, true, true, Some(false)),
+        (12, false, 4, true, true, None),
+        (0, false, 0, true, true, None),
+        (12, false, 0, false, true, None),
+        (12, false, 0, true, false, None),
+    ] {
+        let (mut plan, mut selected) = selected_hardware(present);
+        plan.cm119 = None;
+        selected.cm119 = None;
+        selected.ptt_inverted = inverted;
+        if let Some(parallel) = plan.parallel.as_mut() {
+            parallel.ptt_mask = mask;
+            parallel.config.output_enable_mask |= mask;
+        }
+        let (worker, _, _) = service_worker(&plan, &selected, state.clone());
+        let provider = if online {
+            gpio_provider()
+        } else {
+            offline_statistics_provider()
+        };
+        let mut devices =
+            ServiceDevices::open(provider, &selected, plan.parallel.as_ref()).unwrap();
+        let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+        outputs.prepare_site(&devices, &worker).unwrap();
+        PARALLEL_APPLIED_MASK.store(applied, Ordering::Release);
+        service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+        assert_eq!(
+            // SAFETY: no callback thread exists; this test exclusively owns this live endpoint.
+            unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+            OK
+        );
+        assert_eq!(
+            observed.flags & FEEDBACK_SERVICE_VALID != 0,
+            expected.is_some()
+        );
+        if let Some(expected) = expected {
+            assert_eq!(observed.serviced_ptt != 0, expected);
+        }
+        assert_eq!(
+            observed.flags & (FEEDBACK_READBACK_VALID | FEEDBACK_ACQUISITION_VALID),
+            0
+        );
+        assert_eq!(observed.service_request_id, 0);
+        devices
+            .close_outputs(plan.parallel.as_ref(), &mut outputs)
+            .unwrap();
+    }
+    // Input and statistics snapshots are separate reads. An input disconnect
+    // after completed service must invalidate older cached online output data.
+    let (plan, selected) = selected_hardware(false);
+    let (worker, _, _) = service_worker(&plan, &selected, state.clone());
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs.prepare_site(&devices, &worker).unwrap();
+    assert!(state.feedback_request().is_some());
+    GPIO_ONLINE.store(0, Ordering::Release);
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert!(state.feedback_request().is_some());
+    assert_eq!(
+        // SAFETY: this remains the sole serial owner of the fixture's live endpoint.
+        unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+        OK
+    );
+    assert_eq!(
+        observed.flags
+            & (FEEDBACK_SERVICE_VALID | FEEDBACK_READBACK_VALID | FEEDBACK_ACQUISITION_VALID),
+        0
+    );
+    GPIO_ONLINE.store(1, Ordering::Release);
+    devices.close_outputs(None, &mut outputs).unwrap();
+    station.stop().unwrap();
+}
+
+#[test]
+fn feedback_gpio_snapshots_remain_uncorrelated_service_and_never_observed_off() {
+    use usbradioplus_station::{
+        FEEDBACK_ACQUISITION_VALID, FEEDBACK_READBACK_VALID, FEEDBACK_SERVICE_VALID, RadioFeedback,
+        RadioFeedbackPort,
+    };
+    let _guard = test_guard();
+    for mode in 0..4 {
+        reset_test_state();
+        let channel = resolved_hardware_channel();
+        let plan = hardware_plan(channel.config());
+        let online = matches!(mode, 0 | 2);
+        let gpio = match mode {
+            0 => gpio_provider(),
+            1 => offline_statistics_provider(),
+            2 => shutdown_fault_provider(),
+            _ => gpio_provider(),
+        };
+        let preflight = HardwareStation::preflight(&plan, false, audio_provider(), gpio).unwrap();
+        let mut station = HardwareStation::open_preflighted(
+            station_media(channel),
+            audio_provider(),
+            gpio,
+            960,
+            preflight,
+        )
+        .unwrap();
+        let _release = ReleaseWorkerFaults;
+        let mut observed = RadioFeedback::default();
+        unsafe extern "C" fn publish(context: *mut c_void, record: *const RadioFeedback) {
+            // SAFETY: the test retains its capture through synchronous station stop.
+            unsafe { *context.cast::<RadioFeedback>() = *record };
+        }
+        let port = RadioFeedbackPort {
+            struct_size: size_of::<RadioFeedbackPort>() as u32,
+            abi_version: 1,
+            context: ptr::from_mut(&mut observed).cast(),
+            publish: Some(publish),
+        };
+        // SAFETY: the capture and executable callback outlive this stopped station.
+        unsafe { station.bind_feedback(Some(port)) }.unwrap();
+        station.start().unwrap();
+        // A device can disappear after startup/service, independently of the
+        // cached output statistics. An offline input snapshot is unknown too.
+        GPIO_ONLINE.store(u32::from(mode != 3), Ordering::Release);
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while station.maintenance.service.statistics().service_cycles < 2 {
+            assert!(
+                Instant::now() < deadline,
+                "physical fixture did not service"
+            );
+            std::thread::yield_now();
+        }
+        loop {
+            assert_eq!(
+                // SAFETY: the fake adapter has no audio thread; this is its serial TX/RX owner.
+                unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+                OK
+            );
+            if (observed.flags & FEEDBACK_SERVICE_VALID != 0) == online {
+                break;
+            }
+            assert!(Instant::now() < deadline, "no coherent service publication");
+            thread::yield_now();
+        }
+        assert_eq!(observed.flags & FEEDBACK_READBACK_VALID, 0);
+        assert_eq!(observed.flags & FEEDBACK_ACQUISITION_VALID, 0);
+        assert_eq!(observed.service_request_id, 0);
+        assert_eq!(observed.flags & FEEDBACK_SERVICE_VALID != 0, online);
+        assert_eq!(observed.observed_ptt, 0);
+        if mode == 2 {
+            let failures = station.maintenance.service.statistics().service_failures;
+            SHUTDOWN_SERVICE_FAILURES.store(100, Ordering::Release);
+            station
+                .maintenance
+                .service
+                .worker
+                .as_ref()
+                .unwrap()
+                .thread()
+                .unpark();
+            assert!(await_hardware_condition(|| station
+                .maintenance
+                .service
+                .statistics()
+                .service_failures
+                > failures));
+            let deadline = Instant::now() + Duration::from_secs(2);
+            loop {
+                assert_eq!(
+                    // SAFETY: this test remains the sole owner of the fake audio endpoint.
+                    unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+                    OK
+                );
+                if observed.flags & FEEDBACK_SERVICE_VALID == 0 {
+                    break;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "failed service retained valid evidence"
+                );
+                thread::yield_now();
+            }
+            assert_eq!(
+                observed.flags & (FEEDBACK_READBACK_VALID | FEEDBACK_ACQUISITION_VALID),
+                0
+            );
+            SHUTDOWN_SERVICE_FAILURES.store(0, Ordering::Release);
+        }
+        GPIO_ONLINE.store(1, Ordering::Release);
+        station.stop().unwrap();
+    }
+}
+
+#[test]
 fn remote_maintenance_parallel_requests_report_busy_and_retired_owners() {
     use usbradioplus_core::{CarrierSource, RemoteBackend};
     let _guard = test_guard();

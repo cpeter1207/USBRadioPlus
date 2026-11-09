@@ -120,6 +120,7 @@ pub struct StationRuntimeStatistics {
 
 #[derive(Default)]
 struct HardwareAtomics {
+    feedback: crate::feedback::FeedbackState,
     inputs: AtomicU32,
     requests: AtomicU32,
     outputs: AtomicU32,
@@ -228,6 +229,33 @@ pub struct ReceiveObservation {
 }
 
 impl SharedHardwareState {
+    /// Read one coherent current request; a racing publication is unavailable.
+    pub fn feedback_request(&self) -> Option<crate::RadioFeedbackRequest> {
+        self.0.feedback.request()
+    }
+
+    /// Publish physical-owner evidence after real acquisition or invalidation.
+    /// GPIO service must pass no independent observation. Cached values must
+    /// not be republished merely to refresh their acquisition position.
+    pub fn publish_physical_feedback(
+        &self,
+        request: crate::RadioFeedbackRequest,
+        serviced: Option<bool>,
+        observed: Option<bool>,
+        acquisition_valid: bool,
+    ) {
+        self.0
+            .feedback
+            .physical(request, serviced, observed, acquisition_valid);
+    }
+
+    /// Invalidate evidence on acquisition failure, retirement, or owner change.
+    pub fn invalidate_physical_feedback(&self) {
+        self.0
+            .feedback
+            .physical(Default::default(), None, None, false);
+    }
+
     /// Publish bounded remote tune intent independently of controller/tuner
     /// requests. Existing radio rendering owns tone generation and PTT tails.
     pub fn publish_remote_tune(&self, enabled: bool) {
@@ -427,6 +455,7 @@ impl SharedHardwareState {
         self.0.outputs.store(0, Ordering::Release);
         self.0.transmit_ctcss_ready.store(0, Ordering::Release);
         self.publish_transmit_intent(false, false, false);
+        self.0.feedback.publish_request(Default::default());
     }
 
     fn publish_receiver_keyed(&self, receiver_keyed: bool) {
@@ -532,6 +561,8 @@ struct TransmitContext {
     hardware: SharedHardwareState,
     updates: Arc<UpdateMailbox>,
     remote_burst_admitted: bool,
+    feedback: Option<crate::RadioFeedbackPort>,
+    feedback_record: crate::RadioFeedback,
 }
 
 /// One stopped, running, or reload-suspended direct PortAudio station composition.
@@ -589,10 +620,36 @@ impl StationControlHost {
 }
 
 impl StationRuntime {
-    /// Whether callbacks have started without a subsequent successful stop.
+    /// Bind or unbind a borrowed feedback endpoint only after callback quiescence.
+    ///
+    /// # Safety
+    /// The context and callback remain live until stopped unbind/rebind or
+    /// quiescent destruction. Successful stop retains the binding for restart.
+    /// The callback is bounded, allocation-free, and never unwinds.
+    pub unsafe fn bind_feedback(
+        &mut self,
+        port: Option<crate::RadioFeedbackPort>,
+    ) -> Result<(), AudioError> {
+        if self.running {
+            return Err(AudioError::InvalidArgument);
+        }
+        // SAFETY: the stopped stream has no callback accessing its TX context.
+        unsafe { (*self._transmit_context.get()).feedback = port };
+        Ok(())
+    }
+
+    /// Whether callbacks may remain active after an attempted start.
     #[must_use]
     pub fn running(&self) -> bool {
         self.running
+    }
+
+    /// Whether provider startup succeeded, for ordinary command admission.
+    /// This is distinct from possibly active callbacks after a failed start.
+    /// False is not proof of quiescence; lifetime fences must use `running`.
+    #[must_use]
+    pub fn started(&self) -> bool {
+        self.stream.as_ref().is_some_and(AudioStream::started)
     }
 
     /// Open native media using the same stereo callback workers, without an
@@ -719,6 +776,15 @@ impl StationRuntime {
             hardware: hardware.clone(),
             updates: Arc::clone(&updates),
             remote_burst_admitted: true,
+            feedback: None,
+            feedback_record: crate::RadioFeedback {
+                struct_size: std::mem::size_of::<crate::RadioFeedback>() as u32,
+                abi_version: 1,
+                generation_id: radio.generation_id,
+                flags: crate::FEEDBACK_DUPLEX_VALID,
+                physical_duplex: u32::from(radio.qualification.radio_duplex),
+                ..Default::default()
+            },
         }));
         let mut runtime = Self {
             stream: None,
@@ -769,18 +835,26 @@ impl StationRuntime {
     /// Reopen if reload-suspended, then start capture and playback callbacks.
     pub fn start(&mut self) -> Result<(), AudioError> {
         self.reopen()?;
+        // A provider may return an error with an endpoint still active. Keep all
+        // callback-owned cells and borrowed bindings fenced until actual stop.
+        self.running = true;
         self.stream
             .as_mut()
             .expect("successful reopen owns a stream")
             .start()?;
-        self.running = true;
         Ok(())
     }
 
-    /// Stop capture and playback callbacks; repeated calls are harmless.
+    /// Stop capture and playback callbacks; repeated confirmed stops are harmless.
+    /// Failure retains possibly active callbacks and does not establish quiescence.
     pub fn stop(&mut self) -> Result<(), AudioError> {
         self.stream.as_mut().map_or(Ok(()), AudioStream::stop)?;
         self.running = false;
+        self.hardware.0.feedback.publish_request(Default::default());
+        // SAFETY: successful stream stop quiesces the unique TX context.
+        unsafe {
+            (*self._transmit_context.get()).feedback_record.flags = crate::FEEDBACK_DUPLEX_VALID
+        };
         Ok(())
     }
 
@@ -988,6 +1062,12 @@ unsafe extern "C" fn transmit_callback(
     let context = unsafe { context.as_mut() };
     let frames = frame_count as usize;
     if output.is_null() || frames == 0 || frames > context.maximum_frames {
+        context.feedback_record.flags = crate::FEEDBACK_DUPLEX_VALID;
+        context
+            .hardware
+            .0
+            .feedback
+            .publish_request(Default::default());
         if context.station.native {
             context.hardware.publish_transmit_fault();
             if !output.is_null() {
@@ -1003,6 +1083,18 @@ unsafe extern "C" fn transmit_callback(
     let output = unsafe { std::slice::from_raw_parts_mut(output, frames * 2) };
     output.fill(0.0);
     context.updates.transmit(&mut context.station);
+    context.feedback_record.physical_duplex = u32::from(context.station.physical_duplex);
+    if let Some(port) = context.feedback {
+        let mut feedback = context.feedback_record;
+        feedback.frame_count = frame_count;
+        context.hardware.0.feedback.merge(&mut feedback);
+        if let Some(publish) = port.publish {
+            // SAFETY: stopped-only binding retains this no-unwind serial TX endpoint.
+            unsafe { publish(port.context, &feedback) };
+        }
+    }
+    let previous_feedback = context.feedback_record;
+    context.feedback_record.flags = crate::FEEDBACK_DUPLEX_VALID;
     let station = &mut context.station;
     let mut controls = context.hardware.transmit_controls();
     let mut direct_failed = false;
@@ -1065,6 +1157,7 @@ unsafe extern "C" fn transmit_callback(
         !controls.ctcss_inhibit,
         linked_activity,
     );
+    let requested_ptt = controls.external_ptt_request;
     let remote = context.hardware.remote_control();
     if remote.enabled && !remote.transmit_permitted {
         context.remote_burst_admitted = false;
@@ -1091,6 +1184,50 @@ unsafe extern "C" fn transmit_callback(
                 result.selected_ctcss_tenths_hz = 0;
             }
             context.hardware.publish_transmit_result(result);
+            let previous = previous_feedback;
+            let request_changed = previous.flags & crate::FEEDBACK_REQUEST_VALID == 0
+                || previous.requested_ptt != u32::from(requested_ptt)
+                || previous.rendered_ptt != u32::from(result.logical_ptt);
+            let request_id = previous.request_id.checked_add(u64::from(request_changed));
+            let end = result
+                .first_sample_index
+                .checked_add(u64::from(result.frame_count));
+            if let (Some(request_id), Some(sample_index)) = (request_id, end) {
+                context.feedback_record = crate::RadioFeedback {
+                    request_id,
+                    sample_index,
+                    requested_ptt: u32::from(requested_ptt),
+                    rendered_ptt: u32::from(result.logical_ptt),
+                    transmitter_state: match result.transmitter_state {
+                        usbradioplus_radio::TransmitterState::Idle => 0,
+                        usbradioplus_radio::TransmitterState::Active => 1,
+                        usbradioplus_radio::TransmitterState::ToneOff => 2,
+                        usbradioplus_radio::TransmitterState::Finishing => 4,
+                        usbradioplus_radio::TransmitterState::Complete => 5,
+                    },
+                    flags: crate::FEEDBACK_DUPLEX_VALID
+                        | crate::FEEDBACK_REQUEST_VALID
+                        | crate::FEEDBACK_PHASE_VALID,
+                    ..previous
+                };
+                context
+                    .hardware
+                    .0
+                    .feedback
+                    .publish_request(crate::RadioFeedbackRequest {
+                        generation: result.generation_id,
+                        sample_index,
+                        request_id,
+                        keyed: result.logical_ptt,
+                    });
+            } else {
+                context.feedback_record.flags = crate::FEEDBACK_DUPLEX_VALID;
+                context
+                    .hardware
+                    .0
+                    .feedback
+                    .publish_request(Default::default());
+            }
             context.hardware.note_transmit(false);
             CALLBACK_OK
         }

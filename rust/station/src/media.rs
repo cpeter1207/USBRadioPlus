@@ -292,6 +292,7 @@ impl NativeStationMedia {
             },
             transmit: StationTransmit {
                 radio: transmit,
+                physical_duplex: config.qualification.radio_duplex,
                 direct: Some(callbacks),
                 native: true,
                 program: direct,
@@ -376,6 +377,7 @@ impl StationReceive {
 /// Sole hardware-paced radio transmit callback owner.
 pub struct StationTransmit {
     radio: TransmitEndpoint<'static>,
+    pub(crate) physical_duplex: bool,
     pub(crate) direct: Option<DirectCallbacks>,
     pub(crate) native: bool,
     program: Arc<crate::program::DirectProgram>,
@@ -474,6 +476,7 @@ impl PreparedStation {
         // allocation, and its endpoint field is dropped before that lease.
         let (receive, transmit, control) =
             unsafe { prepare_owned_session(radio_provider, plan.radio(), resources_mut)? };
+        let physical_duplex = plan.radio().qualification.radio_duplex;
         Ok(StationMedia {
             plan,
             receive: StationReceive {
@@ -485,6 +488,7 @@ impl PreparedStation {
             },
             transmit: StationTransmit {
                 radio: transmit,
+                physical_duplex,
                 direct: None,
                 native: false,
                 program: direct_program,

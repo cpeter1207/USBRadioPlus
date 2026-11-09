@@ -533,6 +533,8 @@ impl OperatingIo for PhysicalBackend<'_> {
         Ok(())
     }
     fn set_ptt(&mut self, keyed: bool) -> Result<(), CallError> {
+        let acquisition = self.worker.state.feedback_request();
+        self.worker.state.invalidate_physical_feedback();
         if !keyed {
             self.outputs.set_encoder(false);
         }
@@ -562,6 +564,14 @@ impl OperatingIo for PhysicalBackend<'_> {
             Ok(())
         };
         gpio.and(rig)?;
+        if let Some(acquisition) = acquisition {
+            self.worker.state.publish_physical_feedback(
+                acquisition,
+                Some(keyed),
+                (self.wiring.ptt == RemotePttSource::Rig).then_some(keyed),
+                true,
+            );
+        }
         self.worker
             .state
             .publish_remote_signals(RemoteHardwareSignals {
@@ -586,6 +596,7 @@ impl RemoteDevice for PhysicalBackend<'_> {
         if self.wiring.ptt != RemotePttSource::Rig {
             return Ok(self.worker.state.remote_signals().physical_ptt == Some(false));
         }
+        let acquisition = self.worker.state.feedback_request();
         let active = self
             .rig
             .as_mut()
@@ -593,6 +604,16 @@ impl RemoteDevice for PhysicalBackend<'_> {
             .rig()
             .get(20)
             .map(|value| value != 0);
+        if let Some(acquisition) = acquisition {
+            self.worker.state.publish_physical_feedback(
+                acquisition,
+                None,
+                active.as_ref().ok().copied(),
+                true,
+            );
+        } else {
+            self.worker.state.invalidate_physical_feedback();
+        }
         self.worker
             .state
             .publish_remote_signals(RemoteHardwareSignals {
