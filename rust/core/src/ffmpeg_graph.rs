@@ -54,6 +54,84 @@ pub struct GraphDescriptionFactory {
     agc_plugin_path: String,
 }
 
+/// Programme buffering model for a typed recipe, never exact waveform provenance.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProgrammeBufferingPlan {
+    /// Raw/custom or unaudited processing cannot qualify an age bound.
+    Unknown,
+    /// Audited sample-preserving recipe under the provider's model-v1 backend.
+    Known {
+        /// Maximum accepted-minus-generated deficit in native graph frames.
+        maximum_deficit_frames: u64,
+        /// Conservative lookahead/filter/phase delay beyond observed backlog.
+        additional_delay_frames: u64,
+    },
+}
+
+/// Actual backend accounting is available for this observation.
+pub const PROGRAMME_COUNTS_VALID: u32 = 1;
+/// The typed recipe and audited backend establish the prepared maximum.
+pub const PROGRAMME_PREPARED_BOUND_VALID: u32 = 2;
+/// Current accounting establishes the last block's conservative delay bound.
+pub const PROGRAMME_CURRENT_BOUND_VALID: u32 = 4;
+/// Padding fields belong to the last successful exact-block operation.
+pub const PROGRAMME_LAST_BLOCK_VALID: u32 = 8;
+
+/// Programme buffering observation, separate from exact source coordinates.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProgrammeBuffering {
+    /// Complete readable prefix size, 64 bytes.
+    pub struct_size: u32,
+    /// Record contract, one.
+    pub abi_version: u32,
+    /// Independent PROGRAMME_* accounting and bound validity bits.
+    pub flags: u32,
+    /// Reserved zero field.
+    pub reserved: u32,
+    /// Conservative maximum delay under the prepared recipe, in graph frames.
+    pub prepared_max_delay_frames: u64,
+    /// Conservative current delay behind the original native input timeline.
+    pub current_max_delay_frames: u64,
+    /// Actual accepted input, including control-plane warmup.
+    pub accepted_frames: u64,
+    /// Actual returned graph output, excluding adapter-inserted padding.
+    pub delivered_frames: u64,
+    /// Actual current bridge output FIFO occupancy.
+    pub output_fifo_frames: u64,
+    /// Adapter-generated leading zeros, not all filter-generated silence.
+    pub zero_prefix_frames: u32,
+    /// Adapter-generated trailing zeros, not all filter-generated silence.
+    pub zero_suffix_frames: u32,
+}
+
+impl Default for ProgrammeBuffering {
+    fn default() -> Self {
+        Self {
+            struct_size: std::mem::size_of::<Self>() as u32,
+            abi_version: 1,
+            flags: 0,
+            reserved: 0,
+            prepared_max_delay_frames: 0,
+            current_max_delay_frames: 0,
+            accepted_frames: 0,
+            delivered_frames: 0,
+            output_fifo_frames: 0,
+            zero_prefix_frames: 0,
+            zero_suffix_frames: 0,
+        }
+    }
+}
+
+/// One graph description and its independently typed programme-buffering plan.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GraphRecipe {
+    /// Exact filter description consumed by the existing shared graph provider.
+    pub description: String,
+    /// No source timestamp or exact sample position is inferred from this plan.
+    pub buffering: ProgrammeBufferingPlan,
+}
+
 impl GraphDescriptionFactory {
     /// Construct a factory using the installed Rust AGC LADSPA effect.
     pub fn new(agc_plugin_path: impl Into<String>) -> Result<Self, GraphDescriptionError> {
@@ -156,6 +234,17 @@ impl GraphDescriptionFactory {
         chain: &ProcessingChain,
         sample_rate_hz: u32,
     ) -> Result<String, GraphDescriptionError> {
+        Ok(self
+            .dynamics_recipe_at_rate(chain, sample_rate_hz)?
+            .description)
+    }
+
+    /// Build the same link/local graph with its audited programme-buffering plan.
+    pub fn dynamics_recipe_at_rate(
+        &self,
+        chain: &ProcessingChain,
+        sample_rate_hz: u32,
+    ) -> Result<GraphRecipe, GraphDescriptionError> {
         if !(8_000..=384_000).contains(&sample_rate_hz) {
             return Err(GraphDescriptionError::InvalidSampleRate);
         }
@@ -169,6 +258,18 @@ impl GraphDescriptionFactory {
         preemphasis_enabled: bool,
         preemphasis_corner_hz: f64,
     ) -> Result<String, GraphDescriptionError> {
+        Ok(self
+            .transmitter_recipe(chain, preemphasis_enabled, preemphasis_corner_hz)?
+            .description)
+    }
+
+    /// Build the final TX programme recipe without claiming receive/RNNoise bounds.
+    pub fn transmitter_recipe(
+        &self,
+        chain: &ProcessingChain,
+        preemphasis_enabled: bool,
+        preemphasis_corner_hz: f64,
+    ) -> Result<GraphRecipe, GraphDescriptionError> {
         self.ordered_chain(
             chain,
             true,
@@ -185,7 +286,7 @@ impl GraphDescriptionFactory {
         preemphasis_enabled: bool,
         preemphasis_corner_hz: f64,
         sample_rate_hz: u32,
-    ) -> Result<String, GraphDescriptionError> {
+    ) -> Result<GraphRecipe, GraphDescriptionError> {
         let nyquist_hz = f64::from(sample_rate_hz) / 2.0;
         if chain.enabled
             && ((chain.compressor.enabled
@@ -260,7 +361,7 @@ impl GraphDescriptionFactory {
             if chain.peak_limiter.oversample > 1 {
                 write!(
                     graph,
-                    "aresample={},",
+                    "aresample={}:filter_size=32:phase_shift=10:linear_interp=1:exact_rational=1:cutoff=0.97:resampler=swr:async=0,",
                     sample_rate_hz * u32::from(chain.peak_limiter.oversample)
                 )?;
             }
@@ -272,13 +373,19 @@ impl GraphDescriptionFactory {
                 chain.peak_limiter.release_ms,
             )?;
             if chain.peak_limiter.oversample > 1 {
-                write!(graph, ",aresample={sample_rate_hz}")?;
+                write!(
+                    graph,
+                    ",aresample={sample_rate_hz}:filter_size=32:phase_shift=10:linear_interp=1:exact_rational=1:cutoff=0.97:resampler=swr:async=0"
+                )?;
             }
             write!(graph, "[{next}];")?;
             current = next;
         }
         write!(graph, "[{current}]anull[out]")?;
-        Ok(graph)
+        Ok(GraphRecipe {
+            description: graph,
+            buffering: programme_buffering_plan(chain, sample_rate_hz),
+        })
     }
 
     fn append_stage(
@@ -294,7 +401,7 @@ impl GraphDescriptionFactory {
         match stage {
             ProcessingStage::Equalizer => write!(
                 graph,
-                "[{input}]bass=g={:.9}:f={:.9}:t=s:w={:.9}:r=f32,equalizer=f={:.9}:t=o:w={:.9}:g={:.9}:r=f32,treble=g={:.9}:f={:.9}:t=s:w={:.9}:r=f32[{output}];",
+                "[{input}]bass=g={:.9}:f={:.9}:t=s:w={:.9}:r=f32:blocksize=0,equalizer=f={:.9}:t=o:w={:.9}:g={:.9}:r=f32:blocksize=0,treble=g={:.9}:f={:.9}:t=s:w={:.9}:r=f32:blocksize=0[{output}];",
                 chain.equalizer.low_gain_db,
                 chain.equalizer.low_frequency_hz,
                 chain.equalizer.low_slope,
@@ -428,6 +535,38 @@ impl GraphDescriptionFactory {
     }
 }
 
+fn programme_buffering_plan(
+    chain: &ProcessingChain,
+    sample_rate_hz: u32,
+) -> ProgrammeBufferingPlan {
+    if chain.validate().is_err() {
+        return ProgrammeBufferingPlan::Unknown;
+    }
+    let peak = &chain.peak_limiter;
+    let mut maximum_deficit_frames = 0;
+    let mut additional_delay_frames = 0;
+    if peak.enabled {
+        // One frame covers decimal recipe serialization and boundary rounding.
+        additional_delay_frames =
+            (peak.lookahead_ms * f64::from(sample_rate_hz) / 1000.0).ceil() as u64 + 1;
+        if peak.oversample > 1 {
+            // SWR model-v1 uses an even ceil(filter_size/factor) filter. Its
+            // initial inversion/history extent is at most 2*length+1 inputs.
+            // Convert both windows upward to native frames and add one phase
+            // boundary per conversion; this is not a measured settling margin.
+            let factor = u64::from(peak.oversample);
+            let down_length = (32 * factor * 100).div_ceil(97).next_multiple_of(2);
+            let window = 2 * 32 + 1 + (2 * down_length + 1).div_ceil(factor) + 2;
+            maximum_deficit_frames = window;
+            additional_delay_frames += window;
+        }
+    }
+    ProgrammeBufferingPlan::Known {
+        maximum_deficit_frames,
+        additional_delay_frames,
+    }
+}
+
 fn stage_enabled(chain: &ProcessingChain, stage: ProcessingStage) -> bool {
     match stage {
         ProcessingStage::Expander => chain.expander.enabled,
@@ -495,14 +634,14 @@ fn append_emphasis(
         let scale = 1.0 / inverse_at_reference;
         write!(
             graph,
-            "[{input}]biquad=b0={:.17}:b1={:.17}:b2=0:a0=1:a1=0:a2=0:precision=f32[{output}];",
+            "[{input}]biquad=b0={:.17}:b1={:.17}:b2=0:a0=1:a1=0:a2=0:precision=f32:blocksize=0[{output}];",
             scale / (1.0 - pole),
             -pole * scale / (1.0 - pole),
         )?;
     } else {
         write!(
             graph,
-            "[{input}]biquad=b0={:.17}:b1=0:b2=0:a0=1:a1={:.17}:a2=0:precision=f32[{output}];",
+            "[{input}]biquad=b0={:.17}:b1=0:b2=0:a0=1:a1={:.17}:a2=0:precision=f32:blocksize=0[{output}];",
             inverse_at_reference * (1.0 - pole),
             -pole,
         )?;
@@ -524,12 +663,12 @@ fn append_sidechain(
         prefix,
     } = edge;
     let highpass = if highpass_hz > 0.0 {
-        format!("highpass=f={highpass_hz:.9}:p=2")
+        format!("highpass=f={highpass_hz:.9}:p=2:blocksize=0")
     } else {
         "anull".to_owned()
     };
     let lowpass = if lowpass_hz > 0.0 {
-        format!("lowpass=f={lowpass_hz:.9}:p=2")
+        format!("lowpass=f={lowpass_hz:.9}:p=2:blocksize=0")
     } else {
         "anull".to_owned()
     };

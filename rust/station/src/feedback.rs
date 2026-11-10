@@ -62,6 +62,11 @@ pub struct RadioFeedback {
     pub observed_ptt: u32,
     /// Existing radio transmitter state (0, 1, 2, 4, or 5), not fine phase.
     pub transmitter_state: i32,
+    /// Optional TX-only buffering tail; the preceding physical prefix is 112 bytes.
+    /// This is a conservative programme bound, never exact source provenance.
+    pub programme_buffering: usbradioplus_core::ProgrammeBuffering,
+    /// Matching committed fresh-history request; zero is unacknowledged/invalid.
+    pub programme_retirement_id: u64,
 }
 
 /// Borrowed stopped-only binding, retained until stopped unbind/rebind or quiescent destruction.
@@ -95,7 +100,7 @@ pub struct RadioFeedbackRequest {
 }
 
 /// Single-writer atomic publication. A reader tries once, never spins on audio.
-struct Slot<const N: usize> {
+pub(crate) struct Slot<const N: usize> {
     sequence: AtomicU64,
     words: [AtomicU64; N],
 }
@@ -110,7 +115,7 @@ impl<const N: usize> Default for Slot<N> {
 }
 
 impl<const N: usize> Slot<N> {
-    fn publish(&self, words: [u64; N]) {
+    pub(crate) fn publish(&self, words: [u64; N]) {
         self.sequence.fetch_add(1, Ordering::AcqRel);
         // Any newly observed relaxed payload word pairs this release fence with
         // the reader's acquire fence. Its final sequence read must then see at
@@ -122,7 +127,7 @@ impl<const N: usize> Slot<N> {
         self.sequence.fetch_add(1, Ordering::Release);
     }
 
-    fn read(&self) -> Option<[u64; N]> {
+    pub(crate) fn read(&self) -> Option<[u64; N]> {
         let before = self.sequence.load(Ordering::Acquire);
         let result = std::array::from_fn(|index| self.words[index].load(Ordering::Relaxed));
         fence(Ordering::Acquire);

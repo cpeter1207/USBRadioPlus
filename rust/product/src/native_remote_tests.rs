@@ -1,5 +1,78 @@
 use super::*;
 
+#[test]
+fn retirement_waits_for_prior_remote_work_but_polls_its_own_transaction_first() {
+    use crate::tests::provider_support as fixture;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    use std::time::{Duration, Instant};
+    let _guard = crate::tests::PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let source = "[524950]\n[remote_base 524950]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\nhamlib_option_ptt_type=RIG\nptt_source=usb\nstartup_memory=local\nallowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\nallowed_tx_ranges_hz=144000000-148000000\n[remote_memory 524950 local]\nselector=1\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\npower_w=5\nmode=FM\n";
+    let (status, handle) = crate::tests::native::create_source(source);
+    assert_eq!(status, 0);
+    // SAFETY: test owns this fixture station serially through confirmed shutdown.
+    unsafe {
+        assert_eq!(start(handle), 0);
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while !(*handle.cast::<NativeStation>())
+            .remote_dsp
+            .as_ref()
+            .unwrap()
+            .is_busy()
+        {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        assert_eq!(programme_retire(handle, 8, 1), crate::URP_AST_CHANNEL_BUSY);
+        // Repeated runtime start drives the fixture's synchronous callbacks;
+        // there is no background PortAudio thread or hardware RF in this test.
+        while crate::remote::native_activation_status(handle) == crate::URP_AST_RELOAD_PENDING {
+            assert_eq!(service(handle), 0);
+            let station = &mut *handle.cast::<NativeStation>();
+            station.runtime.stop().unwrap();
+            station.runtime.start().unwrap();
+            assert!(Instant::now() < deadline);
+        }
+        assert_eq!(
+            programme_retire(handle, 8, 1),
+            crate::URP_AST_RELOAD_PENDING
+        );
+        let port = (*handle.cast::<NativeStation>())
+            .remote_dsp
+            .as_ref()
+            .unwrap()
+            .port();
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let cancellation = Arc::clone(&cancelled);
+        let worker = std::thread::spawn(move || {
+            port.apply(
+                usbradioplus_core::RemoteOperatingState::default(),
+                SubaudibleSource::Disabled,
+                usbradioplus_core::CarrierSource::External,
+                Duration::from_secs(2),
+                || cancellation.load(Ordering::Acquire),
+            )
+        });
+        while !(*handle.cast::<NativeStation>())
+            .remote_dsp
+            .as_ref()
+            .unwrap()
+            .is_busy()
+        {
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        let progress = programme_retire(handle, 8, 1);
+        cancelled.store(true, Ordering::Release);
+        assert!(worker.join().unwrap().is_err());
+        assert_eq!(progress, crate::URP_AST_RELOAD_PENDING);
+        destroy(handle);
+    }
+}
+
 #[derive(Default)]
 struct Observed {
     remote: Option<usbradioplus_core::ResolvedRemoteConfiguration>,

@@ -9,6 +9,11 @@ use super::*;
 static TRANSMIT: AtomicU32 = AtomicU32::new(0);
 
 #[test]
+fn programme_retirement_status_is_distinct_from_dispatch_failure() {
+    assert_eq!(ControlResult::ProgrammeRetire(-37).status(), -37);
+}
+
+#[test]
 fn processing_text_copies_synchronous_chunks_and_preserves_status() {
     unsafe extern "C" fn text(
         channel: *mut c_void,

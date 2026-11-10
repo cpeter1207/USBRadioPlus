@@ -147,6 +147,8 @@ def staged_install_fixture(tmp_path):
         "README.md",
         "CHANGELOG.md",
         "doc/native-radio.md",
+        "doc/programme-buffering.md",
+        "doc/adr-programme-buffering.md",
         "doc/agc.md",
         "doc/standalone-tuner.md",
         "examples/usbradioplus.conf.sample",
@@ -213,6 +215,11 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
     """Exercise Make's installation paths without compiling the supplied artifact fixtures."""
     source, stage = staged_install_fixture(tmp_path)
     configuration = stage / "etc/asterisk/usbradioplus.conf"
+    for name in ("programme-buffering.md", "adr-programme-buffering.md"):
+        assert (stage / "usr/share/doc/usbradioplus" / name).read_bytes() == (
+            ROOT / "doc" / name
+        ).read_bytes()
+        assert f"doc/{name}" in read("debian/libusbradioplus-product1.docs")
 
     library = stage / "usr/lib/x86_64-linux-gnu"
     assert (library / "libusbradioplus_product.so").readlink() == Path(

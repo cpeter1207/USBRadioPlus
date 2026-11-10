@@ -1,4 +1,69 @@
 use super::*;
+
+#[test]
+fn programme_recipe_bounds_cover_limiter_and_explicit_src_without_counting_eq_history() {
+    let descriptions = GraphDescriptionFactory::new("/test/known-agc.so").unwrap();
+    for rate in [8000, 48000, 384000] {
+        let mut chain = ProcessingChain::shipped(ChainRole::Link);
+        let plain = descriptions.dynamics_recipe_at_rate(&chain, rate).unwrap();
+        assert_eq!(
+            plain.buffering,
+            crate::ProgrammeBufferingPlan::Known {
+                maximum_deficit_frames: 0,
+                additional_delay_frames: 0,
+            }
+        );
+        chain.peak_limiter.enabled = true;
+        chain.peak_limiter.lookahead_ms = 5.0;
+        for oversample in [1, 2, 4] {
+            chain.peak_limiter.oversample = oversample;
+            let recipe = descriptions.dynamics_recipe_at_rate(&chain, rate).unwrap();
+            assert_eq!(
+                recipe.description,
+                descriptions.dynamics_at_rate(&chain, rate).unwrap()
+            );
+            let crate::ProgrammeBufferingPlan::Known {
+                maximum_deficit_frames,
+                additional_delay_frames,
+            } = recipe.buffering
+            else {
+                panic!("an audited built-in recipe must have a conservative plan");
+            };
+            assert!(additional_delay_frames >= u64::from(rate) / 200);
+            assert!(maximum_deficit_frames + additional_delay_frames < u64::from(rate) / 10);
+            if oversample == 1 {
+                assert_eq!(maximum_deficit_frames, 0);
+            } else {
+                assert!(maximum_deficit_frames > 0);
+                assert!(recipe.description.contains("filter_size=32"));
+                assert!(recipe.description.contains("phase_shift=10"));
+                assert!(recipe.description.contains("resampler=swr"));
+                assert!(recipe.description.contains("async=0"));
+            }
+        }
+    }
+}
+
+#[test]
+fn invalid_recipe_controls_never_receive_a_known_programme_bound() {
+    let descriptions = GraphDescriptionFactory::new("/test/known-agc.so").unwrap();
+    let invalid: &[fn(&mut ProcessingChain)] = &[
+        |chain| chain.equalizer.low_gain_db = f64::NAN,
+        |chain| chain.peak_limiter.oversample = 3,
+        |chain| chain.peak_limiter.lookahead_ms = f64::NAN,
+    ];
+    for change in invalid {
+        let mut chain = ProcessingChain::shipped(ChainRole::Link);
+        change(&mut chain);
+        assert_eq!(
+            descriptions
+                .dynamics_recipe_at_rate(&chain, 48000)
+                .unwrap()
+                .buffering,
+            crate::ProgrammeBufferingPlan::Unknown
+        );
+    }
+}
 use crate::{ChainRole, StageOrder};
 
 fn factory() -> GraphDescriptionFactory {
@@ -102,8 +167,9 @@ fn final_limiter_oversampling_is_selectable_and_disabled_with_the_limiter() {
         assert_eq!(graph.matches("alimiter=").count(), 1);
         assert!(graph.contains(":level=0:latency=0"));
         if let Some(rate) = rate {
-            assert!(graph.contains(&format!("aresample={rate},alimiter=")));
-            assert!(graph.contains(",aresample=48000["));
+            assert!(graph.contains(&format!("aresample={rate}:filter_size=32:")));
+            assert!(graph.contains("async=0,alimiter="));
+            assert!(graph.contains(",aresample=48000:filter_size=32:"));
         } else {
             assert!(!graph.contains("aresample="));
         }
@@ -123,8 +189,9 @@ fn peak_limiter_graph_uses_its_exact_rate() {
     assert!(chain.validate().is_ok());
     for rate in [8_000, 16_000, 44_100, 48_000, 384_000] {
         let graph = factory().dynamics_at_rate(&chain, rate).unwrap();
-        assert!(graph.contains(&format!("aresample={},alimiter=", rate * 4)));
-        assert!(graph.contains(&format!(",aresample={rate}[")));
+        assert!(graph.contains(&format!("aresample={}:filter_size=32:", rate * 4)));
+        assert!(graph.contains("async=0,alimiter="));
+        assert!(graph.contains(&format!(",aresample={rate}:filter_size=32:")));
     }
     for rate in [0, 7_999, 384_001, u32::MAX] {
         assert_eq!(

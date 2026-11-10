@@ -161,6 +161,26 @@ impl StationFactory {
         station.service_remote(&self.processing, self.providers.radio);
     }
 
+    /// Retire only final TX programme history through the same acknowledged
+    /// station owners. No hardware service, gain, RX or RNNoise state is reset.
+    ///
+    /// # Errors
+    /// Returns pending adoption, overlapping update, stale identity, or a graph
+    /// preparation/adoption failure; pending/failure retains its borrowed owners.
+    pub fn retire_programme(
+        &self,
+        station: &mut HardwareStation,
+        expected_generation: u64,
+        request: u64,
+    ) -> Result<(), StationUpdateError> {
+        station.retire_programme(
+            &self.processing,
+            self.providers.radio,
+            expected_generation,
+            request,
+        )
+    }
+
     /// Capture immutable update ownership without compiling graphs on the delivery task.
     ///
     /// # Errors

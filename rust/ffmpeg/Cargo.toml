@@ -7,6 +7,9 @@ license = "GPL-2.0-only"
 description = "USBRadioPlus client for the versioned FFmpeg graph adapter"
 publish = false
 
+[dependencies]
+usbradioplus-core = { path = "../core" }
+
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 missing_docs = "deny"

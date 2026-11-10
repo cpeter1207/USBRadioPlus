@@ -270,3 +270,20 @@ transactional reload/rollback are implemented as described above. The broader
 accepted inbound-ring topology and verified shared-clock optimization remain
 separate architecture work; these callbacks do not establish completion of
 those ADRs.
+
+## Programme buffering reports
+
+Controllers can query conservative buffering bounds for the built-in link and
+final transmit processing profiles. These reports include configured limiter
+lookahead and supported resampling/filter buffering. A custom raw graph, an
+older FFmpeg adapter without the query, or an unaudited backend reports timing
+as unknown while ordinary audio processing remains available. Unknown timing
+cannot qualify a controller's bounded-latency phone-to-RF path.
+
+The controller can explicitly retire final transmit programme history while
+keeping receiver, RNNoise, signaling, and hardware gain ownership. This differs
+from an ordinary unkey or reload: those retain their established gain/history
+behavior. The controller must keep programme muted until the matching physical
+generation and retirement request are acknowledged after rendering. This does
+not establish physical PTT readback, receiver settling, DAC delay, or a complete
+local receive/RNNoise latency bound. Device and RF acceptance remain separate.

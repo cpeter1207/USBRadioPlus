@@ -107,14 +107,17 @@ impl LinkProcessingFactory {
         {
             return Err(LinkError::InvalidConfiguration.into());
         }
-        let description = CString::new(
-            self.descriptions
-                .dynamics_at_rate(profile, sample_rate_hz)?,
-        )
-        .map_err(|_| LinkPreparationError::InvalidDescription)?;
-        let mut graph =
-            self.provider
-                .prepare_at_rate(&description, sample_rate_hz, maximum_frame_count)?;
+        let recipe = self
+            .descriptions
+            .dynamics_recipe_at_rate(profile, sample_rate_hz)?;
+        let description = CString::new(recipe.description)
+            .map_err(|_| LinkPreparationError::InvalidDescription)?;
+        let mut graph = self.provider.prepare_at_rate_with_plan(
+            &description,
+            sample_rate_hz,
+            maximum_frame_count,
+            recipe.buffering,
+        )?;
         let maximum = maximum_frame_count as usize;
         let silence = vec![0.0; maximum];
         let mut output = vec![0.0; maximum];
@@ -123,6 +126,7 @@ impl LinkProcessingFactory {
             &mut output,
             GRAPH_WARMUP_BLOCKS.max(64_usize.div_ceil(maximum)),
         )?;
+        graph.finish_warmup();
         Ok(PreparedLink::new(
             sample_rate_hz,
             maximum,
@@ -136,6 +140,9 @@ struct LinkGraph(PreparedGraph);
 impl ExactRateGraph for LinkGraph {
     fn process_exact(&mut self, input: &[f32], output: &mut [f32]) -> bool {
         self.0.process_block(input, output).is_ok()
+    }
+    fn buffering_state(&self) -> usbradioplus_core::ProgrammeBuffering {
+        self.0.buffering_state()
     }
 }
 

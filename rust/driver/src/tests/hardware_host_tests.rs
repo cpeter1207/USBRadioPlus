@@ -4322,6 +4322,68 @@ fn open_hardware_station() -> HardwareStation {
     open_configured_hardware_station(resolved_hardware_channel())
 }
 
+#[test]
+fn programme_retirement_owns_progress_when_remote_work_queues_after_admission() {
+    let _guard = test_guard();
+    reset_test_state();
+    let mut station = open_hardware_station();
+    let factory = StationFactory::new(
+        station_providers(graph_provider(), sample_rate_adapter()),
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    assert!(matches!(
+        factory.retire_programme(&mut station, 1, 1),
+        Err(StationUpdateError::Busy)
+    ));
+    station.start().unwrap();
+    assert!(matches!(
+        factory.retire_programme(&mut station, 1, 1),
+        Err(StationUpdateError::Pending)
+    ));
+    let dsp = usbradioplus_station::RemoteDspControl::new();
+    let port = dsp.port();
+    station.remote_dsp = Some(dsp);
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let cancellation = Arc::clone(&cancelled);
+    let worker = std::thread::spawn(move || {
+        port.apply(
+            usbradioplus_core::RemoteOperatingState::default(),
+            usbradioplus_radio::SubaudibleSource::Disabled,
+            usbradioplus_core::CarrierSource::External,
+            Duration::from_secs(2),
+            || cancellation.load(Ordering::Acquire),
+        )
+    });
+    let deadline = std::time::Instant::now() + Duration::from_secs(1);
+    while !station.remote_dsp.as_ref().unwrap().is_busy() {
+        assert!(std::time::Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    let poll = factory.retire_programme(&mut station, 1, 1);
+    let replacement = factory.retire_programme(&mut station, 1, 2);
+    // SAFETY: this existing fixture helper synchronously drives both callback
+    // owners; no background PortAudio thread runs in this deterministic provider.
+    assert_eq!(
+        // SAFETY: the retained fake stream has these same sole callback owners.
+        unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+        0
+    );
+    let completed = factory.retire_programme(&mut station, 1, 1);
+    let remote_first = factory.retire_programme(&mut station, 1, 2);
+    cancelled.store(true, Ordering::Release);
+    assert!(worker.join().unwrap().is_err());
+    assert!(
+        matches!(poll, Err(StationUpdateError::Pending)),
+        "queued remote work must not deadlock retirement's own transaction"
+    );
+    assert!(matches!(replacement, Err(StationUpdateError::Busy)));
+    assert!(completed.is_ok());
+    assert!(matches!(remote_first, Err(StationUpdateError::Busy)));
+    station.stop().unwrap();
+}
+
 fn open_configured_hardware_station(mut channel: ResolvedChannelConfiguration) -> HardwareStation {
     let preflight = HardwareStation::preflight(
         &hardware_plan(channel.config()),

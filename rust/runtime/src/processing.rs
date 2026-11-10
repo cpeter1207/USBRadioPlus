@@ -9,9 +9,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 
 use usbradioplus_core::{
-    ChainRole, CtcssTone, GraphDescriptionError, GraphDescriptionFactory, NativeStreamSpec,
-    OutputLoudnessError, OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudnessSnapshot,
-    PlFilter, ProcessingChain, ProcessingConfigError, StreamSpecError,
+    ChainRole, CtcssTone, GraphDescriptionError, GraphDescriptionFactory, GraphRecipe,
+    NativeStreamSpec, OutputLoudnessError, OutputLoudnessMeter, OutputLoudnessObserver,
+    OutputLoudnessSnapshot, PROGRAMME_CURRENT_BOUND_VALID, PROGRAMME_PREPARED_BOUND_VALID,
+    PlFilter, ProcessingChain, ProcessingConfigError, ProgrammeBuffering, ProgrammeBufferingPlan,
+    StreamSpecError,
 };
 use usbradioplus_ffmpeg::{GraphError, GraphProvider, PreparedGraph};
 use usbradioplus_radio::{CTCSS_TONE_COUNT, ProcessorPort, ProgramRingPort, SessionPorts};
@@ -212,11 +214,16 @@ impl ExplicitNativeProcessingPlan {
     fn transmitter(
         &self,
         descriptions: &GraphDescriptionFactory,
-    ) -> Result<String, GraphDescriptionError> {
+    ) -> Result<GraphRecipe, GraphDescriptionError> {
         self.voice_telemetry.as_ref().map_or_else(
-            || Ok(self.transmit_graph.clone()),
+            || {
+                Ok(GraphRecipe {
+                    description: self.transmit_graph.clone(),
+                    buffering: ProgrammeBufferingPlan::Unknown,
+                })
+            },
             |voice| {
-                descriptions.transmitter(
+                descriptions.transmitter_recipe(
                     voice,
                     self.transmit_preemphasis,
                     self.transmit_preemphasis_corner_hz,
@@ -313,7 +320,11 @@ impl NativeProcessingFactory {
                 None
             },
             receive_dynamics: prepare(plan.receive_dynamics(descriptions)?)?,
-            transmit_program: prepare(plan.transmitter(descriptions)?)?,
+            transmit_program: prepare_recipe(
+                provider,
+                plan.transmitter(descriptions)?,
+                maximum_frame_count,
+            )?,
             receive_loudness: None,
             receive_input_gain: 0.0,
             transmit_loudness: None,
@@ -458,7 +469,7 @@ impl NativeProcessingFactory {
                 &previous.receive_dynamics,
                 limiter_lookahead_frames(plan.local.as_ref()),
             )?,
-            transmit_program: self.replacement_graph(
+            transmit_program: self.replacement_programme_graph(
                 plan.transmitter(&self.descriptions)?,
                 previous_plan.transmitter(&self.descriptions)?,
                 &previous.transmit_program,
@@ -481,6 +492,29 @@ impl NativeProcessingFactory {
             )?,
         }
         .with_output_meters(&plan, maximum, Some(previous))
+    }
+
+    /// Prepare a fresh, flat TX programme graph while retaining all RX, RNNoise,
+    /// and access-signaling state. This deliberately avoids the ordinary update's
+    /// predecessor priming, crossfade, and equal-plan reuse.
+    ///
+    /// # Safety
+    /// `previous` and this replacement must remain with the same sole RX/TX
+    /// owners through the existing acknowledged update lifecycle.
+    pub unsafe fn prepare_programme_retirement(
+        &self,
+        plan: impl Into<ExplicitNativeProcessingPlan>,
+        previous: &ProcessingGeneration,
+    ) -> Result<ProcessingGeneration, ProcessingRuntimeError> {
+        let plan = plan.into();
+        validate_plan(&plan)?;
+        let mut fresh = previous.clone_for_owner();
+        fresh.transmit_program = prepare_recipe(
+            self.graph_provider,
+            plan.transmitter(&self.descriptions)?,
+            self.stream.maximum_frame_count(),
+        )?;
+        fresh.with_output_meters(&plan, self.stream.maximum_frame_count(), Some(previous))
     }
 
     /// Prepare an inverse handoff to retained original processors without
@@ -587,6 +621,25 @@ impl NativeProcessingFactory {
         }
     }
 
+    fn replacement_programme_graph(
+        &self,
+        recipe: GraphRecipe,
+        previous_recipe: GraphRecipe,
+        previous: &SharedGraph,
+        lookahead_frames: usize,
+    ) -> Result<SharedGraph, ProcessingRuntimeError> {
+        if recipe == previous_recipe {
+            Ok(previous.clone())
+        } else {
+            let graph = prepare_warmed_recipe(
+                self.graph_provider,
+                recipe,
+                self.stream.maximum_frame_count(),
+            )?;
+            self.transition_graph(SharedProcessor::new(graph), previous, lookahead_frames)
+        }
+    }
+
     fn prepare_denoise(&self, activate: bool) -> Result<SharedDenoise, ProcessingRuntimeError> {
         prepare_denoise(
             self.denoise_provider
@@ -613,6 +666,7 @@ impl NativeProcessingFactory {
             (current.pointer() != previous.0.primary.pointer()).then(|| previous.0.primary.clone());
         Ok(SharedGraph(Arc::new(GraphStage {
             primary,
+            buffering: UnsafeCell::new(ProgrammeBuffering::default()),
             audible: Arc::clone(&previous.0.audible),
             handoff: Some(GraphHandoff {
                 previous: GraphPredecessor {
@@ -668,9 +722,25 @@ fn prepare_warmed_graph(
     description: String,
     maximum: u32,
 ) -> Result<PreparedGraph, ProcessingRuntimeError> {
-    let description =
-        CString::new(description).map_err(|_| ProcessingRuntimeError::InvalidGraphDescription)?;
-    let mut graph = provider.prepare(&description, maximum)?;
+    prepare_warmed_recipe(
+        provider,
+        GraphRecipe {
+            description,
+            buffering: ProgrammeBufferingPlan::Unknown,
+        },
+        maximum,
+    )
+}
+
+fn prepare_warmed_recipe(
+    provider: GraphProvider,
+    recipe: GraphRecipe,
+    maximum: u32,
+) -> Result<PreparedGraph, ProcessingRuntimeError> {
+    let description = CString::new(recipe.description)
+        .map_err(|_| ProcessingRuntimeError::InvalidGraphDescription)?;
+    let mut graph =
+        provider.prepare_at_rate_with_plan(&description, 48_000, maximum, recipe.buffering)?;
     let silence = vec![0.0; maximum as usize];
     let mut output = vec![0.0; maximum as usize];
     graph.warm_up(
@@ -678,6 +748,7 @@ fn prepare_warmed_graph(
         &mut output,
         GRAPH_WARMUP_BLOCKS.max(64_usize.div_ceil(maximum as usize)),
     )?;
+    graph.finish_warmup();
     Ok(graph)
 }
 
@@ -686,10 +757,28 @@ fn prepare_graph(
     description: String,
     maximum: u32,
 ) -> Result<SharedGraph, ProcessingRuntimeError> {
-    let primary = SharedProcessor::new(prepare_warmed_graph(provider, description, maximum)?);
+    prepare_recipe(
+        provider,
+        GraphRecipe {
+            description,
+            buffering: ProgrammeBufferingPlan::Unknown,
+        },
+        maximum,
+    )
+}
+
+fn prepare_recipe(
+    provider: GraphProvider,
+    recipe: GraphRecipe,
+    maximum: u32,
+) -> Result<SharedGraph, ProcessingRuntimeError> {
+    let graph = prepare_warmed_recipe(provider, recipe, maximum)?;
+    let buffering = UnsafeCell::new(graph.buffering_state());
+    let primary = SharedProcessor::new(graph);
     let audible = Arc::new(AtomicPtr::new(primary.pointer().as_ptr()));
     Ok(SharedGraph(Arc::new(GraphStage {
         primary,
+        buffering,
         handoff: None,
         audible,
         complete: AtomicBool::new(true),
@@ -727,6 +816,7 @@ unsafe impl<T: Send> Sync for SharedProcessor<T> {}
 /// transition's scratch/counters or mutates either selected native graph.
 struct GraphStage {
     primary: SharedProcessor<PreparedGraph>,
+    buffering: UnsafeCell<ProgrammeBuffering>,
     handoff: Option<GraphHandoff>,
     audible: Arc<AtomicPtr<PreparedGraph>>,
     complete: AtomicBool,
@@ -925,6 +1015,17 @@ impl ProcessingGeneration {
         )
     }
 
+    /// Last completed programme render's conservative buffering bound. Access
+    /// signaling and RX/RNNoise are outside this TX-only contract.
+    ///
+    /// # Safety
+    /// Call only on the original serial TX owner, between its graph operations.
+    /// Control-plane observers must use a separately published immutable record.
+    pub unsafe fn transmit_programme_buffering(&self) -> ProgrammeBuffering {
+        // SAFETY: the caller is the sole owner of this callback-mutated record.
+        unsafe { *self.transmit_program.0.buffering.get() }
+    }
+
     // Private: safe public Clone would permit two independent audio owners.
     fn clone_for_owner(&self) -> Self {
         Self {
@@ -1116,9 +1217,14 @@ unsafe extern "C" fn graph_process(
     // SAFETY: replacement admission preserves this graph's sole audio owner.
     let graph = unsafe { &mut *stage.primary.pointer().as_ptr() };
     if graph.process_block(input, output).is_err() {
+        // SAFETY: only this TX/RX owner accesses the stage's current observation.
+        unsafe { *stage.buffering.get() = ProgrammeBuffering::default() };
         return PORT_ERROR;
     }
+    let mut buffering = graph.buffering_state();
     if stage.complete.load(Ordering::Relaxed) {
+        // SAFETY: this serial graph owner publishes only its completed operation.
+        unsafe { *stage.buffering.get() = buffering };
         return PORT_OK;
     }
     // Only transition_graph constructs an incomplete stage, always with its
@@ -1138,6 +1244,8 @@ unsafe extern "C" fn graph_process(
                 // The inverse target may have finished its own earlier fade
                 // after inverse preparation. It is already current and warm.
                 stage.complete.store(true, Ordering::Relaxed);
+                // SAFETY: this owner just rendered the now-sole audible primary.
+                unsafe { *stage.buffering.get() = buffering };
                 return PORT_OK;
             }
             // Publication can select only the current or pending flat graph.
@@ -1163,8 +1271,11 @@ unsafe extern "C" fn graph_process(
     // same prepared maximum used to allocate transition scratch.
     let prior_output = &mut transition.output[..output.len()];
     if previous.process_block(input, prior_output).is_err() {
+        // SAFETY: a failed audible contributor invalidates this completed block.
+        unsafe { *stage.buffering.get() = ProgrammeBuffering::default() };
         return PORT_ERROR;
     }
+    buffering = combine_programme_buffering(buffering, previous.buffering_state());
     for (sample, prior) in output.iter_mut().zip(prior_output) {
         if transition.prime_remaining > 0 {
             transition.prime_remaining -= 1;
@@ -1182,7 +1293,30 @@ unsafe extern "C" fn graph_process(
             .store(stage.primary.pointer().as_ptr(), Ordering::Release);
         stage.complete.store(true, Ordering::Release);
     }
+    // SAFETY: the record describes every contributor audible anywhere in this
+    // block, including the last predecessor samples of a completed crossfade.
+    unsafe { *stage.buffering.get() = buffering };
     PORT_OK
+}
+
+fn combine_programme_buffering(
+    left: ProgrammeBuffering,
+    right: ProgrammeBuffering,
+) -> ProgrammeBuffering {
+    // Counters and bridge padding have no single identity while graphs mix.
+    // Independent bounds remain usable only when every audible graph qualifies.
+    ProgrammeBuffering {
+        flags: left.flags
+            & right.flags
+            & (PROGRAMME_PREPARED_BOUND_VALID | PROGRAMME_CURRENT_BOUND_VALID),
+        prepared_max_delay_frames: left
+            .prepared_max_delay_frames
+            .max(right.prepared_max_delay_frames),
+        current_max_delay_frames: left
+            .current_max_delay_frames
+            .max(right.current_max_delay_frames),
+        ..ProgrammeBuffering::default()
+    }
 }
 
 unsafe extern "C" fn denoise_process(

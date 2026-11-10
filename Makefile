@@ -146,8 +146,8 @@ RPTADV_FFMPEG_CFLAGS := -I$(RPTADV_FFMPEG_PREFIX)/include
 RPTADV_FFMPEG_LIBS := -L$(RPTADV_FFMPEG_LIBDIR) -lrptadv_ffmpeg_adapter
 RPTADV_FFMPEG_BUILD_DEP := $(RPTADV_FFMPEG_LIBRARY)
 else
-ifeq ($(shell $(PKG_CONFIG) --exists rptadv_ffmpeg_adapter && echo yes),)
-$(error USBRadioPlus requires the librptadv-ffmpeg-adapter development package)
+ifeq ($(shell $(PKG_CONFIG) --atleast-version=0.1.0~alpha3 rptadv_ffmpeg_adapter && echo yes),)
+$(error USBRadioPlus requires librptadv-ffmpeg-adapter-dev alpha3 or newer)
 endif
 RPTADV_FFMPEG_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadv_ffmpeg_adapter)
 RPTADV_FFMPEG_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadv_ffmpeg_adapter)/librptadv_ffmpeg_adapter.so.1
@@ -534,6 +534,8 @@ install: all
 	$(INSTALL_DATA) README.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) CHANGELOG.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/native-radio.md $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) doc/programme-buffering.md $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) doc/adr-programme-buffering.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/agc.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/standalone-tuner.md $(DESTDIR)$(tunerdocdir)/
@@ -570,6 +572,8 @@ uninstall:
 		$(DESTDIR)$(docdir)/README.md \
 		$(DESTDIR)$(docdir)/CHANGELOG.md \
 		$(DESTDIR)$(docdir)/native-radio.md \
+		$(DESTDIR)$(docdir)/programme-buffering.md \
+		$(DESTDIR)$(docdir)/adr-programme-buffering.md \
 		$(DESTDIR)$(docdir)/usbradioplus.conf.sample \
 		$(DESTDIR)$(docdir)/agc.md \
 		$(DESTDIR)$(tunerdocdir)/standalone-tuner.md

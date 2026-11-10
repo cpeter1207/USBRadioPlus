@@ -30,7 +30,11 @@ pub use channel_configuration::{
     ChannelConfiguration, ChannelConfigurationError, ResolvedChannelConfiguration,
 };
 pub use config_document::{ConfigDocument, ConfigError};
-pub use ffmpeg_graph::{GraphDescriptionError, GraphDescriptionFactory};
+pub use ffmpeg_graph::{
+    GraphDescriptionError, GraphDescriptionFactory, GraphRecipe, PROGRAMME_COUNTS_VALID,
+    PROGRAMME_CURRENT_BOUND_VALID, PROGRAMME_LAST_BLOCK_VALID, PROGRAMME_PREPARED_BOUND_VALID,
+    ProgrammeBuffering, ProgrammeBufferingPlan,
+};
 pub use loudness_meter::{
     OutputLoudnessError, OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudnessSnapshot,
 };

@@ -14,6 +14,62 @@ fn args(configuration: &str) -> UrpNativeProcessingArgs {
 }
 
 #[test]
+fn link_buffering_query_validates_output_before_reading_or_mutating_the_link() {
+    let _guard = crate::tests::PROVIDER_TEST_LOCK.lock().unwrap();
+    crate::tests::provider_support::clear_failure();
+    let api = crate::product_descriptor();
+    let providers = crate::tests::provider_support::manifest();
+    let mut link = std::ptr::null_mut();
+    // SAFETY: retained fake provider, valid request, and unique output owner.
+    unsafe {
+        assert_eq!(link_prepare(&args(""), providers.ffmpeg, 960, &mut link), 0);
+        let query = api.link_programme_buffering.unwrap();
+        assert_ne!(query(std::ptr::null_mut(), std::ptr::null_mut()), 0);
+        let mut unaligned = [0x5a_u64; 10];
+        let before = unaligned;
+        assert_ne!(
+            query(link, unaligned.as_mut_ptr().cast::<u8>().add(1).cast()),
+            0
+        );
+        assert_eq!(unaligned, before);
+        let mut output = usbradioplus_core::ProgrammeBuffering {
+            flags: 0xffff,
+            ..Default::default()
+        };
+        for defect in 0..4 {
+            output.struct_size = if defect == 0 { 8 } else { 64 };
+            output.abi_version = if defect == 1 { 2 } else { 1 };
+            output.reserved = u32::from(defect == 2);
+            let before = output;
+            let pointer = if defect == 3 {
+                std::ptr::null_mut()
+            } else {
+                link
+            };
+            assert_ne!(query(pointer, &mut output), 0);
+            assert_eq!(output, before);
+        }
+        #[repr(C)]
+        struct Larger {
+            value: usbradioplus_core::ProgrammeBuffering,
+            tail: u64,
+        }
+        let mut larger = Larger {
+            value: Default::default(),
+            tail: 0xface,
+        };
+        larger.value.struct_size = std::mem::size_of::<Larger>() as u32;
+        assert_eq!(query(link, &mut larger.value), 0);
+        assert_eq!(larger.tail, 0xface);
+        assert_eq!(
+            larger.value,
+            usbradioplus_core::ProgrammeBuffering::default()
+        );
+        api.link_destroy.unwrap()(link);
+    }
+}
+
+#[test]
 fn absent_roles_preserve_raw_graphs_and_explicit_roles_share_usb_resolution() {
     let empty = Profiles::resolve("", "").unwrap();
     assert!(empty.local.is_none());

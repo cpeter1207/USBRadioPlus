@@ -9,7 +9,11 @@
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::fmt;
 use std::mem::{offset_of, size_of};
-use std::ptr::NonNull;
+use std::ptr::{self, NonNull};
+use usbradioplus_core::{
+    PROGRAMME_COUNTS_VALID, PROGRAMME_CURRENT_BOUND_VALID, PROGRAMME_LAST_BLOCK_VALID,
+    PROGRAMME_PREPARED_BOUND_VALID, ProgrammeBuffering, ProgrammeBufferingPlan,
+};
 
 const ABI_VERSION: u32 = 1;
 const CAPABILITY: &CStr = c"rptadv.ffmpeg";
@@ -20,6 +24,20 @@ type StreamingProcessFn =
     unsafe extern "C" fn(*mut c_void, *const f32, u32, *mut f32, u32, *mut u32, *mut u32) -> c_int;
 type DestroyFn = unsafe extern "C" fn(*mut c_void);
 type ProcessBlockFn = unsafe extern "C" fn(*mut c_void, *const f32, u32, *mut f32) -> c_int;
+type BufferingStateFn = unsafe extern "C" fn(*const c_void, *mut BufferingState) -> c_int;
+
+#[repr(C)]
+struct BufferingState {
+    struct_size: u32,
+    abi_version: u32,
+    flags: u32,
+    reserved: u32,
+    accepted_frames: u64,
+    delivered_frames: u64,
+    output_fifo_frames: u64,
+    zero_prefix_frames: u32,
+    zero_suffix_frames: u32,
+}
 
 #[repr(C)]
 struct GraphConfig {
@@ -40,6 +58,7 @@ struct Descriptor {
     process: Option<StreamingProcessFn>,
     destroy: Option<DestroyFn>,
     process_block: Option<ProcessBlockFn>,
+    buffering_state: Option<BufferingStateFn>,
 }
 
 const REQUIRED_DESCRIPTOR_SIZE: usize =
@@ -74,6 +93,7 @@ pub struct GraphProvider {
     create: CreateFn,
     destroy: DestroyFn,
     process_block: ProcessBlockFn,
+    buffering_state: Option<BufferingStateFn>,
 }
 
 impl GraphProvider {
@@ -86,13 +106,30 @@ impl GraphProvider {
     pub unsafe fn from_raw_descriptor(raw_descriptor: *const c_void) -> Result<Self, GraphError> {
         let descriptor = NonNull::new(raw_descriptor.cast_mut().cast::<Descriptor>())
             .ok_or(GraphError::IncompatibleAdapter)?;
-        // SAFETY: The caller promises process-lifetime readable descriptor
-        // storage; only the fixed prefix is inspected before its size is used.
-        let descriptor = unsafe { descriptor.as_ref() };
-        if (descriptor.struct_size as usize) < REQUIRED_DESCRIPTOR_SIZE
-            || descriptor.abi_version != ABI_VERSION
-            || descriptor.capability_name.is_null()
-        {
+        // SAFETY: the advertised header is readable. Never form a larger
+        // reference over a provider exposing only the ordinary 48-byte prefix.
+        let length = unsafe { ptr::addr_of!((*descriptor.as_ptr()).struct_size).read() } as usize;
+        if length < REQUIRED_DESCRIPTOR_SIZE {
+            return Err(GraphError::IncompatibleAdapter);
+        }
+        // SAFETY: nullable function pointers are zero-valid. Copy only complete
+        // readable capability groups; missing optional tails remain unavailable.
+        let mut copied: Descriptor = unsafe { std::mem::zeroed() };
+        let count = if length >= size_of::<Descriptor>() {
+            size_of::<Descriptor>()
+        } else {
+            REQUIRED_DESCRIPTOR_SIZE
+        };
+        // SAFETY: prefix length was checked against the provider's declaration.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                descriptor.as_ptr().cast::<u8>(),
+                ptr::from_mut(&mut copied).cast::<u8>(),
+                count,
+            )
+        };
+        let descriptor = copied;
+        if descriptor.abi_version != ABI_VERSION || descriptor.capability_name.is_null() {
             return Err(GraphError::IncompatibleAdapter);
         }
         // SAFETY: The validated non-null name belongs to the promised
@@ -111,6 +148,7 @@ impl GraphProvider {
             create,
             destroy,
             process_block,
+            buffering_state: descriptor.buffering_state,
         })
     }
 
@@ -133,6 +171,23 @@ impl GraphProvider {
         filter_description: &CStr,
         sample_rate_hz: u32,
         maximum_frame_count: u32,
+    ) -> Result<PreparedGraph, GraphError> {
+        self.prepare_at_rate_with_plan(
+            filter_description,
+            sample_rate_hz,
+            maximum_frame_count,
+            ProgrammeBufferingPlan::Unknown,
+        )
+    }
+
+    /// Prepare the same graph with a separately audited programme-buffering plan.
+    /// Missing query/model support leaves bounds unknown and ordinary PCM available.
+    pub fn prepare_at_rate_with_plan(
+        self,
+        filter_description: &CStr,
+        sample_rate_hz: u32,
+        maximum_frame_count: u32,
+        plan: ProgrammeBufferingPlan,
     ) -> Result<PreparedGraph, GraphError> {
         if filter_description.to_bytes().is_empty()
             || sample_rate_hz == 0
@@ -160,11 +215,17 @@ impl GraphProvider {
             unsafe { (self.destroy)(handle.as_ptr()) };
             return Err(GraphError::AdapterFailure);
         }
-        Ok(PreparedGraph {
+        let mut graph = PreparedGraph {
             provider: self,
             handle,
             maximum_frame_count,
-        })
+            provider_maximum: config.maximum_frame_count,
+            plan,
+            buffering: ProgrammeBuffering::default(),
+            buffering_faulted: false,
+        };
+        graph.refresh_buffering(0);
+        Ok(graph)
     }
 }
 
@@ -173,6 +234,10 @@ pub struct PreparedGraph {
     provider: GraphProvider,
     handle: NonNull<c_void>,
     maximum_frame_count: u32,
+    provider_maximum: u32,
+    plan: ProgrammeBufferingPlan,
+    buffering: ProgrammeBuffering,
+    buffering_faulted: bool,
 }
 
 impl PreparedGraph {
@@ -200,9 +265,112 @@ impl PreparedGraph {
             )
         };
         if result == RESULT_OK {
+            self.refresh_buffering(frame_count);
             Ok(())
         } else {
+            self.invalidate_buffering();
             Err(GraphError::AdapterFailure)
+        }
+    }
+
+    /// Return the last owner-serialized observation; this never infers source time.
+    pub const fn buffering_state(&self) -> ProgrammeBuffering {
+        self.buffering
+    }
+
+    /// End control-plane silence preparation without resetting graph history or
+    /// counters. Warmup is not a live programme observation or retirement barrier.
+    pub fn finish_warmup(&mut self) {
+        self.buffering.flags &= !(PROGRAMME_CURRENT_BOUND_VALID | PROGRAMME_LAST_BLOCK_VALID);
+        self.buffering.current_max_delay_frames = 0;
+        self.buffering.zero_prefix_frames = 0;
+        self.buffering.zero_suffix_frames = 0;
+    }
+
+    fn invalidate_buffering(&mut self) {
+        self.buffering = ProgrammeBuffering::default();
+        self.buffering_faulted = true;
+    }
+
+    fn refresh_buffering(&mut self, advance: u32) {
+        let Some(query) = self.provider.buffering_state else {
+            return;
+        };
+        if self.buffering_faulted {
+            return;
+        }
+        let mut state = BufferingState {
+            struct_size: size_of::<BufferingState>() as u32,
+            abi_version: 1,
+            flags: 0,
+            reserved: 0,
+            accepted_frames: 0,
+            delivered_frames: 0,
+            output_fifo_frames: 0,
+            zero_prefix_frames: 0,
+            zero_suffix_frames: 0,
+        };
+        // SAFETY: processing and this complete stack query share the sole graph owner.
+        let result = unsafe { query(self.handle.as_ptr(), &mut state) };
+        if result != RESULT_OK
+            || state.struct_size < size_of::<BufferingState>() as u32
+            || state.abi_version != 1
+            || state.reserved != 0
+            || state.flags & 1 == 0
+            || self
+                .buffering
+                .accepted_frames
+                .checked_add(u64::from(advance))
+                != Some(state.accepted_frames)
+            || state.delivered_frames < self.buffering.delivered_frames
+            || state.delivered_frames > state.accepted_frames
+            || state.output_fifo_frames > u64::from(self.provider_maximum) * 8
+            || u64::from(state.zero_prefix_frames) + u64::from(state.zero_suffix_frames)
+                > u64::from(advance)
+            || (advance != 0 && state.flags & 2 == 0)
+        {
+            self.invalidate_buffering();
+            return;
+        }
+        self.buffering = ProgrammeBuffering {
+            flags: PROGRAMME_COUNTS_VALID
+                | if state.flags & 2 != 0 {
+                    PROGRAMME_LAST_BLOCK_VALID
+                } else {
+                    0
+                },
+            accepted_frames: state.accepted_frames,
+            delivered_frames: state.delivered_frames,
+            output_fifo_frames: state.output_fifo_frames,
+            zero_prefix_frames: state.zero_prefix_frames,
+            zero_suffix_frames: state.zero_suffix_frames,
+            ..ProgrammeBuffering::default()
+        };
+        if let ProgrammeBufferingPlan::Known {
+            maximum_deficit_frames,
+            additional_delay_frames,
+        } = self.plan
+        {
+            if state.flags & 4 == 0 {
+                // A prepared unknown backend cannot become qualified midway
+                // through a stream and relabel retained output as fresh.
+                self.plan = ProgrammeBufferingPlan::Unknown;
+                return;
+            }
+            let Some(prepared) = maximum_deficit_frames.checked_add(additional_delay_frames) else {
+                return;
+            };
+            let backlog = state.accepted_frames - state.delivered_frames;
+            if backlog > maximum_deficit_frames || state.output_fifo_frames > backlog {
+                self.invalidate_buffering();
+                return;
+            }
+            self.buffering.prepared_max_delay_frames = prepared;
+            self.buffering.flags |= PROGRAMME_PREPARED_BOUND_VALID;
+            if state.flags & 2 != 0 {
+                self.buffering.current_max_delay_frames = backlog + additional_delay_frames;
+                self.buffering.flags |= PROGRAMME_CURRENT_BOUND_VALID;
+            }
         }
     }
 
@@ -243,13 +411,160 @@ mod tests {
     use super::*;
     use std::cell::Cell;
 
+    #[link(name = "rptadv_ffmpeg_adapter")]
+    unsafe extern "C" {
+        fn rptadv_ffmpeg_adapter_descriptor() -> *const c_void;
+    }
+
+    fn real_provider() -> GraphProvider {
+        // SAFETY: the versioned shared provider retains its immutable descriptor
+        // and callback code for this process's entire native test lifetime.
+        unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap()
+    }
+
+    #[test]
+    fn real_explicit_recipes_preserve_pcm_and_bound_every_variable_partition() {
+        use usbradioplus_core::{ChainRole, GraphDescriptionFactory, ProcessingChain};
+        let descriptions = GraphDescriptionFactory::new("/unused/agc.so").unwrap();
+        let explicit_src = ":filter_size=32:phase_shift=10:linear_interp=1:exact_rational=1:cutoff=0.97:resampler=swr:async=0";
+        for rate in [8000, 48000, 384000] {
+            for factor in [1, 2, 4] {
+                let mut chain = ProcessingChain::shipped(ChainRole::Link);
+                chain.peak_limiter.enabled = true;
+                chain.peak_limiter.oversample = factor;
+                let recipe = descriptions.dynamics_recipe_at_rate(&chain, rate).unwrap();
+                let original = recipe
+                    .description
+                    .replace(explicit_src, "")
+                    .replace(":blocksize=0", "");
+                let original = std::ffi::CString::new(original).unwrap();
+                let explicit = std::ffi::CString::new(recipe.description).unwrap();
+                let mut graph = real_provider()
+                    .prepare_at_rate_with_plan(&explicit, rate, 4096, recipe.buffering)
+                    .unwrap();
+                let mut before = real_provider()
+                    .prepare_at_rate(&original, rate, 4096)
+                    .unwrap();
+                assert_ne!(
+                    graph.buffering_state().flags & PROGRAMME_PREPARED_BOUND_VALID,
+                    0
+                );
+                let (mut actual, mut reference) = ([0.0; 4096], [0.0; 4096]);
+                let mut source = 0_u64;
+                for count in [1, 7, 64, 960, 4096, 1, 4096, 7, 960, 64, 1, 7] {
+                    let mut input = [0.0; 4096];
+                    for sample in &mut input[..count] {
+                        *sample = ((source % 257) as f32 - 128.0) / 512.0;
+                        source += 1;
+                    }
+                    graph
+                        .process_block(&input[..count], &mut actual[..count])
+                        .unwrap();
+                    before
+                        .process_block(&input[..count], &mut reference[..count])
+                        .unwrap();
+                    assert_eq!(
+                        &actual[..count],
+                        &reference[..count],
+                        "rate{rate} factor{factor} count{count}"
+                    );
+                    let state = graph.buffering_state();
+                    assert_ne!(
+                        state.flags & PROGRAMME_CURRENT_BOUND_VALID,
+                        0,
+                        "rate{rate} factor{factor} count{count}: {state:?}"
+                    );
+                    assert!(state.current_max_delay_frames <= state.prepared_max_delay_frames);
+                    assert_eq!(state.accepted_frames, source);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn real_custom_delay_cannot_be_qualified_by_current_counters() {
+        let mut graph = real_provider().prepare(c"aecho=1:1:600:0.5", 960).unwrap();
+        let mut input = [0.0; 960];
+        input[0] = 0.25;
+        let mut output = [0.0; 960];
+        let mut heard = false;
+        for block in 0..32 {
+            graph.process_block(&input, &mut output).unwrap();
+            input.fill(0.0);
+            let state = graph.buffering_state();
+            assert_ne!(state.flags & PROGRAMME_COUNTS_VALID, 0);
+            assert_eq!(state.accepted_frames, state.delivered_frames);
+            assert_eq!(state.output_fifo_frames, 0);
+            assert_eq!(state.flags & 6, 0);
+            if block != 0 && output.iter().any(|sample| sample.abs() > 0.1) {
+                assert!(block >= 30);
+                heard = true;
+            }
+        }
+        assert!(
+            heard,
+            "ordinary custom processing stays available despite unknown age bounds"
+        );
+    }
+
+    #[test]
+    fn real_limiter_and_src_retained_impulse_never_outlive_the_prepared_bound() {
+        use usbradioplus_core::{ChainRole, GraphDescriptionFactory, ProcessingChain};
+        let descriptions = GraphDescriptionFactory::new("/unused/agc.so").unwrap();
+        for factor in [1, 2, 4] {
+            let mut chain = ProcessingChain::shipped(ChainRole::Link);
+            chain.enabled = false;
+            chain.input_gain_db = 0.0;
+            chain.output_gain_db = 0.0;
+            chain.peak_limiter.enabled = true;
+            chain.peak_limiter.oversample = factor;
+            let recipe = descriptions.dynamics_recipe_at_rate(&chain, 48000).unwrap();
+            let description = std::ffi::CString::new(recipe.description).unwrap();
+            let mut graph = real_provider()
+                .prepare_at_rate_with_plan(&description, 48000, 4096, recipe.buffering)
+                .unwrap();
+            let bound = graph.buffering_state().prepared_max_delay_frames;
+            let (mut input_position, mut output_position) = (0, 0);
+            let mut heard = false;
+            for count in [1, 7, 64, 960, 4096, 1, 7, 960, 64] {
+                let mut input = [0.0; 4096];
+                if input_position == 0 {
+                    input[0] = 0.25;
+                }
+                input_position += count;
+                let mut output = [0.0; 4096];
+                graph
+                    .process_block(&input[..count], &mut output[..count])
+                    .unwrap();
+                assert_ne!(
+                    graph.buffering_state().flags & PROGRAMME_CURRENT_BOUND_VALID,
+                    0
+                );
+                for sample in &output[..count] {
+                    if *sample != 0.0 {
+                        assert!(
+                            output_position <= bound,
+                            "factor{factor} output{output_position} bound{bound}"
+                        );
+                        heard = true;
+                    }
+                    output_position += 1;
+                }
+            }
+            assert!(heard);
+        }
+    }
+
     thread_local! {
         static DESTROYS: Cell<usize> = const { Cell::new(0) };
+        static QUERY_MODE: Cell<u8> = const { Cell::new(0) };
     }
 
     struct FakeGraphState {
         sample_rate_hz: u32,
         maximum_frame_count: u32,
+        accepted_frames: u64,
+        delivered_frames: u64,
     }
 
     unsafe extern "C" fn create(config: *const GraphConfig, output: *mut *mut c_void) -> c_int {
@@ -261,6 +576,8 @@ mod tests {
             *output = Box::into_raw(Box::new(FakeGraphState {
                 sample_rate_hz: config.sample_rate_hz,
                 maximum_frame_count: config.maximum_frame_count,
+                accepted_frames: 0,
+                delivered_frames: 0,
             }))
             .cast()
         };
@@ -278,6 +595,8 @@ mod tests {
             *output = Box::into_raw(Box::new(FakeGraphState {
                 sample_rate_hz: config.sample_rate_hz,
                 maximum_frame_count: config.maximum_frame_count,
+                accepted_frames: 0,
+                delivered_frames: 0,
             }))
             .cast()
         };
@@ -300,7 +619,9 @@ mod tests {
         output: *mut f32,
     ) -> c_int {
         // SAFETY: The ABI call supplies the live handle created above.
-        let state = unsafe { &*handle.cast::<FakeGraphState>() };
+        let state = unsafe { &mut *handle.cast::<FakeGraphState>() };
+        state.accepted_frames += u64::from(frames);
+        state.delivered_frames += u64::from(frames);
         // SAFETY: The tested wrapper supplies distinct slices of `frames` elements.
         let input = unsafe { std::slice::from_raw_parts(input, frames as usize) };
         // SAFETY: The tested wrapper supplies writable output of `frames` elements.
@@ -340,7 +661,242 @@ mod tests {
         process: None,
         destroy: Some(destroy),
         process_block: Some(process),
+        buffering_state: None,
     };
+
+    unsafe extern "C" fn query(handle: *const c_void, output: *mut BufferingState) -> c_int {
+        // SAFETY: the wrapper retains its unique handle and a complete writable result.
+        let (state, output) = unsafe { (&*handle.cast::<FakeGraphState>(), &mut *output) };
+        output.flags = if state.accepted_frames == 0 { 5 } else { 7 };
+        output.accepted_frames = state.accepted_frames;
+        output.delivered_frames = state.delivered_frames;
+        match QUERY_MODE.get() {
+            1 => return -2,
+            2 => output.struct_size = 8,
+            3 => output.abi_version = 2,
+            4 => output.reserved = 1,
+            5 => output.flags &= !1,
+            6 => output.flags &= !4,
+            7 => output.delivered_frames += 1,
+            8 => output.accepted_frames = 0,
+            9 => output.output_fifo_frames = u64::MAX,
+            10 => output.zero_prefix_frames = u32::MAX,
+            11 => output.flags &= !2,
+            12 => output.delivered_frames = 0,
+            13 => output.output_fifo_frames = 1,
+            _ => {}
+        }
+        0
+    }
+
+    #[test]
+    fn optional_buffering_state_qualifies_only_known_recipes_and_backend_models() {
+        use usbradioplus_core::ProgrammeBufferingPlan;
+        QUERY_MODE.set(0);
+        let descriptor = Box::leak(Box::new(Descriptor {
+            buffering_state: Some(query),
+            ..VALID
+        }));
+        let known = ProgrammeBufferingPlan::Known {
+            maximum_deficit_frames: 8,
+            additional_delay_frames: 4,
+        };
+        for (plan, mode, qualified) in [
+            (known, 0, true),
+            (known, 6, false),
+            (ProgrammeBufferingPlan::Unknown, 0, false),
+        ] {
+            QUERY_MODE.set(mode);
+            let mut graph = provider(descriptor)
+                .unwrap()
+                .prepare_at_rate_with_plan(c"anull", 48_000, 8, plan)
+                .unwrap();
+            assert_eq!(graph.buffering_state().flags & 2 != 0, qualified);
+            let mut output = [0.0; 4];
+            graph.process_block(&[0.25; 4], &mut output).unwrap();
+            assert_eq!(output, [0.125; 4]);
+            let state = graph.buffering_state();
+            assert_eq!((state.accepted_frames, state.delivered_frames), (4, 4));
+            assert_eq!(state.flags & 4 != 0, qualified);
+            if qualified {
+                assert_eq!(
+                    (
+                        state.prepared_max_delay_frames,
+                        state.current_max_delay_frames
+                    ),
+                    (12, 4)
+                );
+            }
+        }
+        QUERY_MODE.set(0);
+        let mut graph = provider(&VALID).unwrap().prepare(c"anull", 8).unwrap();
+        assert_eq!(graph.buffering_state().flags, 0);
+        graph.process_block(&[0.25; 4], &mut [0.0; 4]).unwrap();
+        assert_eq!(graph.buffering_state().flags, 0);
+    }
+
+    #[test]
+    fn malformed_or_faulted_buffering_never_recovers_qualification_on_the_same_graph() {
+        use usbradioplus_core::ProgrammeBufferingPlan;
+        let descriptor = Box::leak(Box::new(Descriptor {
+            buffering_state: Some(query),
+            ..VALID
+        }));
+        for mode in [1, 2, 3, 4, 5, 7, 8, 9, 10] {
+            QUERY_MODE.set(0);
+            let mut graph = provider(descriptor)
+                .unwrap()
+                .prepare_at_rate_with_plan(
+                    c"anull",
+                    48_000,
+                    8,
+                    ProgrammeBufferingPlan::Known {
+                        maximum_deficit_frames: 8,
+                        additional_delay_frames: 4,
+                    },
+                )
+                .unwrap();
+            QUERY_MODE.set(mode);
+            graph.process_block(&[0.25; 4], &mut [0.0; 4]).unwrap();
+            assert_eq!(graph.buffering_state().flags & 6, 0, "mode {mode}");
+            QUERY_MODE.set(0);
+            graph.process_block(&[0.25; 4], &mut [0.0; 4]).unwrap();
+            assert_eq!(graph.buffering_state().flags & 6, 0, "mode {mode}");
+        }
+        QUERY_MODE.set(0);
+    }
+
+    #[test]
+    fn buffering_rejects_regression_deficit_fifo_and_overflow_without_touching_pcm() {
+        let descriptor = Box::leak(Box::new(Descriptor {
+            buffering_state: Some(query),
+            ..VALID
+        }));
+        let known = ProgrammeBufferingPlan::Known {
+            maximum_deficit_frames: 8,
+            additional_delay_frames: 4,
+        };
+        for mode in [11, 12, 13] {
+            QUERY_MODE.set(0);
+            let mut graph = provider(descriptor)
+                .unwrap()
+                .prepare_at_rate_with_plan(c"anull", 48000, 8, known)
+                .unwrap();
+            graph.process_block(&[0.25; 4], &mut [0.0; 4]).unwrap();
+            QUERY_MODE.set(mode);
+            let mut pcm = [0.0; 4];
+            graph.process_block(&[0.25; 4], &mut pcm).unwrap();
+            assert_eq!(pcm, [0.125; 4]);
+            assert_eq!(graph.buffering_state().flags, 0, "mode{mode}");
+        }
+        QUERY_MODE.set(0);
+        let overflow = ProgrammeBufferingPlan::Known {
+            maximum_deficit_frames: u64::MAX,
+            additional_delay_frames: 1,
+        };
+        let mut graph = provider(descriptor)
+            .unwrap()
+            .prepare_at_rate_with_plan(c"anull", 48000, 8, overflow)
+            .unwrap();
+        assert_eq!(graph.buffering_state().flags & 6, 0);
+        graph.buffering.accepted_frames = u64::MAX;
+        graph.process_block(&[0.25; 4], &mut [0.0; 4]).unwrap();
+        assert_eq!(graph.buffering_state().flags, 0);
+        let mut graph = provider(descriptor)
+            .unwrap()
+            .prepare_at_rate_with_plan(c"anull", 48000, 8, known)
+            .unwrap();
+        QUERY_MODE.set(12);
+        graph.process_block(&[0.25; 8], &mut [0.0; 8]).unwrap();
+        assert_ne!(graph.buffering_state().flags & 6, 0);
+        graph.process_block(&[0.25; 8], &mut [0.0; 8]).unwrap();
+        assert_eq!(graph.buffering_state().flags, 0);
+        QUERY_MODE.set(0);
+    }
+
+    #[test]
+    fn complete_ordinary_prefix_and_unknown_model_keep_processing_without_upgrading_bounds() {
+        use usbradioplus_core::ProgrammeBufferingPlan;
+        let known = ProgrammeBufferingPlan::Known {
+            maximum_deficit_frames: 8,
+            additional_delay_frames: 4,
+        };
+        for length in [REQUIRED_DESCRIPTOR_SIZE, size_of::<Descriptor>() - 1] {
+            let descriptor = Descriptor {
+                buffering_state: Some(query),
+                ..VALID
+            };
+            let mut prefix = vec![0_u64; length.div_ceil(8)];
+            // SAFETY: copy only the complete readable ordinary prefix into
+            // aligned backing storage; the provider cannot inspect a larger tail.
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    ptr::from_ref(&descriptor).cast::<u8>(),
+                    prefix.as_mut_ptr().cast::<u8>(),
+                    REQUIRED_DESCRIPTOR_SIZE,
+                );
+                prefix.as_mut_ptr().cast::<u32>().write(length as u32);
+            }
+            let raw = prefix.as_ptr().cast();
+            // SAFETY: code/static name retain lifetime and the copied table
+            // outlives construction; GraphProvider owns its copied callbacks.
+            let selected = unsafe { GraphProvider::from_raw_descriptor(raw) }.unwrap();
+            let mut graph = selected
+                .prepare_at_rate_with_plan(c"anull", 48_000, 8, known)
+                .unwrap();
+            let mut output = [0.0; 4];
+            graph.process_block(&[0.25; 4], &mut output).unwrap();
+            assert_eq!(output, [0.125; 4]);
+            assert_eq!(graph.buffering_state().flags, 0);
+        }
+        let descriptor = Box::leak(Box::new(Descriptor {
+            buffering_state: Some(query),
+            ..VALID
+        }));
+        QUERY_MODE.set(6);
+        let mut graph = provider(descriptor)
+            .unwrap()
+            .prepare_at_rate_with_plan(c"anull", 48_000, 8, known)
+            .unwrap();
+        QUERY_MODE.set(0);
+        graph.process_block(&[0.25; 4], &mut [0.0; 4]).unwrap();
+        assert_eq!(graph.buffering_state().flags & 6, 0);
+    }
+
+    #[test]
+    fn warmup_is_not_a_live_programme_observation_and_does_not_reset_accounting() {
+        use usbradioplus_core::ProgrammeBufferingPlan;
+        QUERY_MODE.set(0);
+        let descriptor = Box::leak(Box::new(Descriptor {
+            buffering_state: Some(query),
+            ..VALID
+        }));
+        let mut graph = provider(descriptor)
+            .unwrap()
+            .prepare_at_rate_with_plan(
+                c"anull",
+                48000,
+                8,
+                ProgrammeBufferingPlan::Known {
+                    maximum_deficit_frames: 8,
+                    additional_delay_frames: 4,
+                },
+            )
+            .unwrap();
+        graph.warm_up(&[0.0; 4], &mut [0.0; 4], 2).unwrap();
+        graph.finish_warmup();
+        let state = graph.buffering_state();
+        assert_eq!(
+            state.flags,
+            PROGRAMME_COUNTS_VALID | PROGRAMME_PREPARED_BOUND_VALID
+        );
+        assert_eq!((state.accepted_frames, state.delivered_frames), (8, 8));
+        assert_eq!(state.current_max_delay_frames, 0);
+        graph.process_block(&[0.25; 4], &mut [0.0; 4]).unwrap();
+        let state = graph.buffering_state();
+        assert_ne!(state.flags & PROGRAMME_CURRENT_BOUND_VALID, 0);
+        assert_eq!((state.accepted_frames, state.delivered_frames), (12, 12));
+    }
 
     // SAFETY: Test descriptors are immutable and all pointed-to strings and
     // functions have static lifetime.

@@ -5,6 +5,160 @@ use std::ffi::{CStr, c_char};
 use std::mem::size_of;
 use std::ptr;
 
+#[link(name = "rptadv_ffmpeg_adapter")]
+unsafe extern "C" {
+    fn rptadv_ffmpeg_adapter_descriptor() -> *const c_void;
+}
+
+#[test]
+fn programme_retirement_prepares_only_fresh_transmit_without_audible_predecessor() {
+    let factory = factory();
+    let mut settings = plan();
+    settings.local.rnnoise_enabled = true;
+    let mut previous = factory.prepare(&settings).unwrap();
+    process_transmit(&mut previous, &[0.25; 960]);
+    let old_meter = previous.transmit_loudness().unwrap();
+    GRAPH_CREATES.set(0);
+    DENOISE_CREATES.set(0);
+    // SAFETY: both generations stay with these original serial RX/TX owners.
+    let fresh = unsafe { factory.prepare_programme_retirement(&settings, &previous) }.unwrap();
+    assert_eq!(GRAPH_CREATES.get(), 1);
+    assert_eq!(DENOISE_CREATES.get(), 0);
+    assert!(fresh.same_receive_path(&previous));
+    assert!(Arc::ptr_eq(
+        &fresh.transmit_dcs_normal_filter.0,
+        &previous.transmit_dcs_normal_filter.0
+    ));
+    assert!(Arc::ptr_eq(
+        &fresh.transmit_dcs_turnoff_filter.0,
+        &previous.transmit_dcs_turnoff_filter.0
+    ));
+    assert!(!Arc::ptr_eq(
+        &fresh.transmit_program.0,
+        &previous.transmit_program.0
+    ));
+    assert!(fresh.transmit_program.0.handoff.is_none());
+    assert_ne!(fresh.transmit_loudness().unwrap().epoch, old_meter.epoch);
+    assert_eq!(fresh.transmit_loudness().unwrap().sample_count, 0);
+    GRAPH_CREATE_FAIL_AT.set(2);
+    // SAFETY: failed preparation never publishes ports or replaces the original owner.
+    assert!(unsafe { factory.prepare_programme_retirement(&settings, &previous) }.is_err());
+    GRAPH_CREATE_FAIL_AT.set(0);
+}
+
+#[test]
+fn real_programme_retirement_never_emits_the_predecessors_delayed_marker() {
+    // SAFETY: the released provider outlives all serially owned prepared graphs.
+    let provider =
+        // SAFETY: versioned provider code/table are static for all derived handles.
+        unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
+    let factory =
+        NativeProcessingFactory::new_explicit(provider, None, "/unused/agc.so", 960).unwrap();
+    let mut settings = explicit_raw_plan();
+    settings.transmit_graph = "aecho=1:1:600:0.5".into();
+    let mut previous = factory.prepare(&settings).unwrap();
+    let mut impulse = [0.0; 960];
+    impulse[0] = 0.25;
+    process_transmit(&mut previous, &impulse);
+    // SAFETY: these distinct TX graphs stay with the same serial owner; all RX
+    // leases are retained and neither test path invokes them concurrently.
+    let mut fresh = unsafe { factory.prepare_programme_retirement(&settings, &previous) }.unwrap();
+    let mut predecessor_witness = false;
+    for _ in 0..32 {
+        predecessor_witness |= process_transmit(&mut previous, &[0.0; 960])
+            .iter()
+            .any(|sample| sample.abs() > 0.1);
+        assert!(
+            process_transmit(&mut fresh, &[0.0; 960])
+                .iter()
+                .all(|sample| *sample == 0.0)
+        );
+    }
+    assert!(
+        predecessor_witness,
+        "the discarded old handle really retained delayed programme"
+    );
+}
+
+#[test]
+fn programme_buffering_covers_real_tx_and_audible_transition_but_not_raw_history() {
+    // SAFETY: released provider remains loaded; all graph ports stay with one owner.
+    let provider =
+        // SAFETY: released table and code are retained throughout all derived graphs.
+        unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
+    let factory =
+        NativeProcessingFactory::new_explicit(provider, None, "/unused/agc.so", 960).unwrap();
+    let mut settings = explicit_raw_plan();
+    settings.receive_graph = "anull".into();
+    settings.voice_telemetry = Some(ProcessingChain::shipped(ChainRole::VoiceTelemetry));
+    settings
+        .voice_telemetry
+        .as_mut()
+        .unwrap()
+        .peak_limiter
+        .enabled = true;
+    let mut current = factory.prepare(&settings).unwrap();
+    // SAFETY: test exclusively owns TX between these synchronous calls.
+    let initial = unsafe { current.transmit_programme_buffering() };
+    assert_ne!(
+        initial.flags & usbradioplus_core::PROGRAMME_PREPARED_BOUND_VALID,
+        0
+    );
+    assert_eq!(
+        initial.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+        0
+    );
+    process_transmit(&mut current, &[0.25; 960]);
+    // SAFETY: test retains the sole serial TX graph owner.
+    let live = unsafe { current.transmit_programme_buffering() };
+    assert_ne!(
+        live.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+        0
+    );
+    assert!(live.current_max_delay_frames <= live.prepared_max_delay_frames);
+
+    let mut raw = settings.clone();
+    raw.voice_telemetry = None;
+    raw.transmit_graph = "aecho=1:1:600:0.5".into();
+    let old = factory.prepare(&raw).unwrap();
+    // SAFETY: successor and predecessor share this same sole TX owner.
+    let mut transition = unsafe { factory.prepare_replacement(&settings, &raw, &old) }.unwrap();
+    process_transmit(&mut transition, &[0.0; 1]);
+    // SAFETY: predecessor and successor still use this same serial TX owner.
+    let mixed = unsafe { transition.transmit_programme_buffering() };
+    assert_eq!(
+        mixed.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+        0
+    );
+    for _ in 0..10 {
+        if transition
+            .transmit_program
+            .0
+            .complete
+            .load(Ordering::Acquire)
+        {
+            break;
+        }
+        process_transmit(&mut transition, &[0.0; 960]);
+    }
+    assert!(
+        transition
+            .transmit_program
+            .0
+            .complete
+            .load(Ordering::Acquire)
+    );
+    // A block that finishes the fade still contains its predecessor. The next
+    // complete block is the first observation of only the qualified primary.
+    process_transmit(&mut transition, &[0.0; 960]);
+    // SAFETY: only this serial TX owner accesses the completed graph observation.
+    let settled = unsafe { transition.transmit_programme_buffering() };
+    assert_ne!(
+        settled.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+        0
+    );
+}
+
 #[test]
 fn explicit_native_processing_preserves_graphs_gain_and_only_selected_notches() {
     GRAPH_CREATES.set(0);

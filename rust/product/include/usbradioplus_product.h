@@ -592,6 +592,33 @@ typedef struct UrpNativeReceiveMetadata {
 /** Process one exact span while this immutable metadata remains borrowed. */
 typedef int (*UrpNativeReceive)(void *, const UrpNativeReceiveMetadata *, float *, uint32_t);
 
+/** Typed programme-buffering contract, independent of exact source provenance. */
+#define URP_PROGRAMME_BUFFERING_ABI_VERSION 1U
+/** Actual graph accepted/delivered/FIFO counters are valid. */
+#define URP_PROGRAMME_COUNTS_VALID 1U
+/** Audited recipe and backend qualify the prepared conservative bound. */
+#define URP_PROGRAMME_PREPARED_BOUND_VALID 2U
+/** Current conservative delay bound belongs to the last completed live block. */
+#define URP_PROGRAMME_CURRENT_BOUND_VALID 4U
+/** Bridge padding fields belong to the last completed live block. */
+#define URP_PROGRAMME_LAST_BLOCK_VALID 8U
+/** No wall-clock or exact source sample is inferred. Bounds count retained/delayed
+ * programme, including lookahead/conversion and bridge queues; ordinary IIR/gain
+ * adaptation state is separate. Unknown raw/custom graphs remain unqualified. */
+typedef struct UrpProgrammeBuffering {
+	uint32_t struct_size;		    /**< Readable prefix, at least 64. */
+	uint32_t abi_version;		    /**< One. */
+	uint32_t flags;			    /**< Independent URP_PROGRAMME_* validity bits. */
+	uint32_t reserved;		    /**< Zero. */
+	uint64_t prepared_max_delay_frames; /**< Conservative maximum in graph frames. */
+	uint64_t current_max_delay_frames;  /**< Conservative last-block delay. */
+	uint64_t accepted_frames;	    /**< Actual accepted input, including setup warmup. */
+	uint64_t delivered_frames;	    /**< Graph output; bridge padding is excluded. */
+	uint64_t output_fifo_frames;	    /**< Actual current bridge FIFO occupancy. */
+	uint32_t zero_prefix_frames;	    /**< Leading adapter zeros, not all graph silence. */
+	uint32_t zero_suffix_frames;	    /**< Trailing adapter zeros. */
+} UrpProgrammeBuffering;
+
 /** Optional radio feedback contract, independent of the exact PCM callback ABI. */
 #define URP_RADIO_FEEDBACK_ABI_VERSION 1U
 /** Explicit hardware radio-duplex declaration is available. */
@@ -636,7 +663,16 @@ typedef struct UrpRadioFeedback {
 	uint32_t serviced_ptt;		 /**< Completed output service value when valid. */
 	uint32_t observed_ptt;		 /**< Independent readback value when valid. */
 	int32_t transmitter_state;	 /**< Existing radio state after prior render. */
+	UrpProgrammeBuffering programme_buffering; /**< Optional TX-only conservative bound. */
+	uint64_t programme_retirement_id;	   /**< Committed fresh-history request, or zero. */
 } UrpRadioFeedback;
+
+/** Complete unchanged SDK33 physical prefix; no programme tail is required. */
+#define URP_RADIO_FEEDBACK_PHYSICAL_MIN_SIZE offsetof(UrpRadioFeedback, programme_buffering)
+/** Complete optional programme bound and retirement identity. */
+#define URP_RADIO_FEEDBACK_PROGRAMME_MIN_SIZE                                                      \
+	(offsetof(UrpRadioFeedback, programme_retirement_id) +                                     \
+	 sizeof(((UrpRadioFeedback *)0)->programme_retirement_id))
 
 /** Bounded allocation-free no-unwind TX-owner callback; never retain the record. */
 typedef void (*UrpRadioFeedbackPublish)(void *, const UrpRadioFeedback *);
@@ -665,6 +701,22 @@ typedef struct UrpAstFeedbackBinding {
 	uint32_t accepted_abi_version; /**< Initialize zero; set to one only on successful bind. */
 	uint32_t reserved;	       /**< Must be zero. */
 } UrpAstFeedbackBinding;
+
+/** Acknowledged programme retirement through the existing channel taskprocessor. */
+#define URP_AST_OPTION_PROGRAMME_RETIRE 0x52505052U
+/** Sized RPPR option prefix ABI. */
+#define URP_AST_PROGRAMME_RETIRE_OPTION_ABI_VERSION 1U
+/** Require zero setoption return and accepted_abi_version=1, then inspect result.
+ * Dispatch acceptance is distinct from retirement completion. No pointer/context
+ * is retained; larger readable envelopes preserve their additional tail. */
+typedef struct UrpAstProgrammeRetirement {
+	uint32_t struct_size; /**< Readable prefix, at least 32 and no larger than option data. */
+	uint32_t abi_version; /**< URP_AST_PROGRAMME_RETIRE_OPTION_ABI_VERSION. */
+	uint64_t expected_radio_generation; /**< Nonzero physical lifecycle generation. */
+	uint64_t request_id; /**< Nonzero increasing station-scoped retirement identity. */
+	uint32_t accepted_abi_version; /**< Initialize zero; one only after actual SDK dispatch. */
+	int32_t result; /**< SDK result: zero committed, RELOAD_PENDING, or a negative failure. */
+} UrpAstProgrammeRetirement;
 
 /** Exact native PCM/metadata callback contract shared by every host adapter. */
 #define URP_AST_DIRECT_CALLBACKS_ABI_VERSION 6U
@@ -1537,12 +1589,43 @@ typedef struct UrpAstDescriptor {
 	int (*native_feedback_bind)(void *native, const struct UrpRadioFeedbackPort *port);
 	/** Same capability on an existing serialized Asterisk station; survives reload. */
 	int (*channel_feedback_bind)(void *channel, const struct UrpRadioFeedbackPort *port);
+	/** Optional no-allocation query on the same serial owner as link processing.
+	 * Output is an initialized ABI-one record with reserved zero. Invalid requests
+	 * change neither output nor link state; larger output tails remain untouched.
+	 * Missing capability/unknown bounds never prevent ordinary graph processing. */
+	int (*link_programme_buffering)(void *link, struct UrpProgrammeBuffering *output);
+	/** Explicit final-TX programme retirement on the active serialized native owner.
+	 * expected_radio_generation must match the immutable physical session, including
+	 * on repeated polls; replaced/unknown generations fail before preparation.
+	 * Nonzero IDs increase monotonically within a physical station lifetime. Repeat
+	 * the same ID to poll one transaction: RELOAD_PENDING retains all ownership;
+	 * zero acknowledges a committed fresh TX graph with no predecessor crossfade
+	 * or rollback to revoked programme. Prior/superseded IDs fail. Ordinary updates
+	 * and remote DSP work serialize with this request. RX/RNNoise, signaling,
+	 * hardware gains and ordinary unkey behavior remain unchanged. The caller gates
+	 * programme until matching completed-render feedback; no new callback is bound.
+	 */
+	int (*native_programme_retire)(void *native, uint64_t expected_radio_generation,
+				       uint64_t request_id);
+	/** Same operation on the existing channel taskprocessor owner. */
+	int (*channel_programme_retire)(void *channel, uint64_t expected_radio_generation,
+					uint64_t request_id);
 } UrpAstDescriptor;
 
 /** Complete optional feedback capability, preserving every preceding descriptor field. */
 #define URP_AST_DESCRIPTOR_FEEDBACK_MIN_SIZE                                                       \
 	(offsetof(UrpAstDescriptor, channel_feedback_bind) +                                       \
 	 sizeof(((UrpAstDescriptor *)0)->channel_feedback_bind))
+
+/** Complete optional owner-serialized link buffering query. */
+#define URP_AST_DESCRIPTOR_PROGRAMME_BUFFERING_MIN_SIZE                                            \
+	(offsetof(UrpAstDescriptor, link_programme_buffering) +                                    \
+	 sizeof(((UrpAstDescriptor *)0)->link_programme_buffering))
+
+/** Complete optional native/channel TX programme retirement capability. */
+#define URP_AST_DESCRIPTOR_PROGRAMME_RETIRE_MIN_SIZE                                               \
+	(offsetof(UrpAstDescriptor, channel_programme_retire) +                                    \
+	 sizeof(((UrpAstDescriptor *)0)->channel_programme_retire))
 
 #ifdef __cplusplus
 extern "C" {

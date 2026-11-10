@@ -849,12 +849,23 @@ pub struct UrpAstDescriptor {
     /// Same borrowed serial-TX binding on an existing ASL channel owner.
     pub channel_feedback_bind:
         Option<unsafe extern "C" fn(*mut c_void, *const UrpRadioFeedbackPort) -> c_int>,
+    /// Owner-serialized optional buffering query; unknown bounds preserve ordinary PCM.
+    pub link_programme_buffering: Option<
+        unsafe extern "C" fn(*mut c_void, *mut usbradioplus_core::ProgrammeBuffering) -> c_int,
+    >,
+    /// Idempotent TX-only fresh-history retirement on the existing native owner.
+    pub native_programme_retire: Option<unsafe extern "C" fn(*mut c_void, u64, u64) -> c_int>,
+    /// Same retirement serialized with the channel's existing reload owner.
+    pub channel_programme_retire: Option<unsafe extern "C" fn(*mut c_void, u64, u64) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_programme_retire: Some(native::programme_retire),
+    channel_programme_retire: Some(channel_programme_retire),
+    link_programme_buffering: Some(native_processing::link_programme_buffering),
     native_feedback_bind: Some(native::feedback_bind),
     channel_feedback_bind: Some(channel_feedback_bind),
     channel_processing_status_text: Some(channel_processing_status_text),
@@ -2728,6 +2739,43 @@ unsafe extern "C" fn channel_feedback_bind(
         }
         control.feedback = port;
         Ok(())
+    })
+}
+
+unsafe extern "C" fn channel_programme_retire(
+    channel: *mut c_void,
+    expected_generation: u64,
+    request: u64,
+) -> c_int {
+    ffi_status(|| {
+        if request == 0 || expected_generation == 0 {
+            return Err(Status::InvalidArgument);
+        }
+        // SAFETY: this is the existing serialized channel control endpoint.
+        let (channel, control) = unsafe { channel_control(channel)? };
+        if control.reload.is_some()
+            || channel
+                .rollback
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .is_some()
+        {
+            return Err(Status::ChannelBusy);
+        }
+        if !control.running {
+            return Err(Status::NotReady);
+        }
+        let hardware = control.hardware.as_mut().ok_or(Status::NotReady)?;
+        channel
+            .driver()
+            .factory
+            .retire_programme(hardware, expected_generation, request)
+            .map_err(|error| match error {
+                StationUpdateError::Pending => Status::ReloadPending,
+                StationUpdateError::Busy => Status::ChannelBusy,
+                StationUpdateError::Incompatible => Status::InvalidArgument,
+                _ => Status::SetupFailed,
+            })
     })
 }
 

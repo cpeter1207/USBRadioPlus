@@ -1,3 +1,12 @@
+usbradioplus (0.1.0~alpha34-1) unstable; urgency=medium
+
+  * Report qualified link/TX programme bounds using the released FFmpeg adapter.
+  * Retire TX history through generation-bound native and acknowledged RPPR control.
+  * Preserve RX/signaling and retain fresh cleanup owners after failed adoption.
+  * Fence new retirement after failed stop until a real lifecycle receipt.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Tue, 10 Nov 2026 02:20:00 +0000
+
 usbradioplus (0.1.0~alpha33-1) unstable; urgency=medium
 
   * Add sized native/channel radio feedback bindings and acknowledged RPFB options.

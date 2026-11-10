@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0~alpha34 - 2026-11-10
+
+- Report qualified conservative programme buffering for built-in link and TX graphs.
+- Retain ordinary processing with unknown bounds for unqualified raw graphs or backends.
+- Retire final TX history through the existing generation-bound update owners,
+  with acknowledged native and Asterisk control and completed-render feedback.
+- Preserve RX, signaling, hardware ownership and ordinary gain/start behavior.
+- Keep receive-window scheduling and provider/radio acceptance with the controller.
+
 ## 0.1.0~alpha32 - 2026-11-07
 
 - Preserve distinct same-span branch decisions when combining compiled copies.

@@ -470,6 +470,44 @@ pub(crate) unsafe extern "C" fn feedback_bind(
     })
 }
 
+pub(crate) unsafe extern "C" fn programme_retire(
+    handle: *mut c_void,
+    expected_generation: u64,
+    request: u64,
+) -> c_int {
+    ffi_status(|| {
+        if request == 0 || expected_generation == 0 {
+            return Err(Status::InvalidArgument);
+        }
+        // SAFETY: caller retains the unique native control owner through this call.
+        let station =
+            // SAFETY: serialized caller retains this live unique native station.
+            unsafe { handle.cast::<NativeStation>().as_mut() }.ok_or(Status::InvalidArgument)?;
+        if !station.runtime.started() {
+            return Err(Status::NotReady);
+        }
+        if station.pending.is_some()
+            || (station
+                .remote_dsp
+                .as_ref()
+                .is_some_and(usbradioplus_station::RemoteDspControl::is_busy)
+                && !station.runtime.programme_retirement_pending())
+        {
+            return Err(Status::ChannelBusy);
+        }
+        station
+            .runtime
+            .retire_programme(
+                &mut station.control,
+                &station.factory,
+                station.radio_provider,
+                expected_generation,
+                request,
+            )
+            .map_err(update_error)
+    })
+}
+
 /// Forward the existing lock-free callback observations, without introducing
 /// another processing counter or reading callback-owned graph state.
 pub(crate) unsafe extern "C" fn processing_status_text(

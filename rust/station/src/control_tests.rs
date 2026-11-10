@@ -11,11 +11,16 @@ use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_rnnoise::DenoiseProvider;
 
 thread_local! {
+    static FAIL_NEXT_GRAPH_CREATE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static SIMULATE_GRAPH_DELAY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
 pub(crate) fn simulate_graph_delay(enabled: bool) {
     SIMULATE_GRAPH_DELAY.set(enabled);
+}
+
+pub(crate) fn fail_next_graph_preparation() {
+    FAIL_NEXT_GRAPH_CREATE.set(true);
 }
 
 struct TestGraph {
@@ -53,6 +58,9 @@ unsafe extern "C" fn graph_create(
     _config: *const TestGraphConfig,
     output: *mut *mut c_void,
 ) -> c_int {
+    if FAIL_NEXT_GRAPH_CREATE.replace(false) {
+        return -1;
+    }
     let delay = if SIMULATE_GRAPH_DELAY.get() {
         std::collections::VecDeque::from(vec![0.0; 240])
     } else {
