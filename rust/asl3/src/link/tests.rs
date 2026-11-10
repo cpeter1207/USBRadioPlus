@@ -37,6 +37,7 @@ fn setup_requires_positive_exact_bounds() {
 
     let link = PreparedLink::new(8_000, 160, graph(1.0, true)).unwrap();
     assert_eq!(counters(link.observe()), LinkObservation::default());
+    assert_eq!(link.buffering_state(), ProgrammeBuffering::default());
 }
 
 #[test]

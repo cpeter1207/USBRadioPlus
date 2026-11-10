@@ -613,6 +613,31 @@ pub struct HardwareStation {
 }
 
 impl HardwareStation {
+    pub(crate) fn retire_programme(
+        &mut self,
+        factory: &NativeProcessingFactory,
+        provider: RadioProvider,
+        expected_generation: u64,
+        request: u64,
+    ) -> Result<(), StationUpdateError> {
+        if !self.runtime.started()
+            || (self
+                .remote_dsp
+                .as_ref()
+                .is_some_and(usbradioplus_station::RemoteDspControl::is_busy)
+                && !self.runtime.programme_retirement_pending())
+        {
+            return Err(StationUpdateError::Busy);
+        }
+        self.runtime.retire_programme(
+            &mut self.control,
+            factory,
+            provider,
+            expected_generation,
+            request,
+        )
+    }
+
     /// Bind a borrowed serial-TX feedback endpoint while audio is quiescent.
     ///
     /// # Safety

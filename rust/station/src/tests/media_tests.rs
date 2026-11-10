@@ -25,6 +25,7 @@ const ABI_VERSION: u32 = 5;
 const CHANNELS: usize = 2;
 
 thread_local! {
+    pub(crate) static FAIL_NEXT_APPLY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     pub(crate) static TRANSMIT_STATE_OVERRIDE: std::cell::Cell<Option<i32>> = const { std::cell::Cell::new(None) };
     pub(crate) static TRANSMIT_INDEX_OVERRIDE: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
     pub(crate) static DESTROYED_SEVEN: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
@@ -206,7 +207,8 @@ unsafe extern "C" fn apply_update(session: *mut c_void, update: *mut c_void) -> 
     }) else {
         return RADIO_FAILED;
     };
-    if session.maximum_receive != update.maximum_receive
+    if FAIL_NEXT_APPLY.replace(false)
+        || session.maximum_receive != update.maximum_receive
         || session.maximum_transmit != update.maximum_transmit
         || update.generation_id == RECEIVE_UPDATE_FAILING_GENERATION
     {

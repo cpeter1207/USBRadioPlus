@@ -162,6 +162,33 @@ fn create(config: &UrpNativeStationConfig) -> (c_int, *mut c_void) {
     create_pointer(config)
 }
 
+pub(crate) fn create_source(source: &str) -> (c_int, *mut c_void) {
+    let raw = radio();
+    let mut config = request(&raw);
+    config.processing_configuration = source.as_ptr();
+    config.processing_configuration_length = source.len() as u32;
+    config.processing_node = b"524950".as_ptr();
+    config.processing_node_length = 6;
+    let providers = fixture::manifest();
+    let callbacks = UrpAstDirectCallbacks {
+        metadata: Some(remote_metadata),
+        ..direct_callbacks()
+    };
+    let args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &config,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 8,
+        maximum_frames: 960,
+    };
+    let mut handle = ptr::null_mut();
+    // SAFETY: native creation copies source/configuration; fixture callbacks are static.
+    let status = unsafe { product_descriptor().native_create.unwrap()(&args, &mut handle) };
+    (status, handle)
+}
+
 fn create_pointer(config: *const UrpNativeStationConfig) -> (c_int, *mut c_void) {
     let mut providers = fixture::manifest();
     // Native program PCM is pulled directly from the callback: no ASL rate/queue path.
@@ -202,6 +229,43 @@ fn native_create_accepts_the_current_processing_configuration_abi() {
     assert_eq!(status, URP_AST_OK);
     // SAFETY: successful creation transfers the uniquely owned native handle.
     unsafe { product_descriptor().native_destroy.unwrap()(handle) };
+}
+
+#[test]
+fn native_programme_retirement_uses_one_owner_and_preserves_hardware_intents() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::periodic_audio(true);
+    fixture::exclusive_audio(true);
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    let retire = api.native_programme_retire.unwrap();
+    // SAFETY: this test retains and serializes the native handle through destroy.
+    unsafe {
+        assert_eq!(retire(ptr::null_mut(), 8, 1), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(retire(handle, 8, 1), URP_AST_NOT_READY);
+        assert_eq!(api.native_start.unwrap()(handle), 0);
+        let gains = fixture::mixer_levels();
+        assert_ne!(retire(handle, 0, 1), 0);
+        assert_ne!(retire(handle, 7, 999), 0);
+        assert_ne!(retire(handle, 8, 0), 0);
+        assert_eq!(await_reload(|| retire(handle, 8, 3)), 0);
+        assert_eq!(retire(handle, 8, 3), 0);
+        assert_ne!(retire(handle, 8, 2), 0);
+        fixture::set_failure(fixture::FAIL_GRAPH);
+        assert_eq!(retire(handle, 8, 4), URP_AST_SETUP_FAILED);
+        assert_eq!(retire(handle, 8, 4), URP_AST_SETUP_FAILED);
+        fixture::clear_failure();
+        assert_eq!(await_reload(|| retire(handle, 8, 5)), 0);
+        assert_eq!(fixture::mixer_levels(), gains);
+        assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        api.native_destroy.unwrap()(handle);
+    }
+    fixture::periodic_audio(false);
+    fixture::exclusive_audio(false);
 }
 
 #[test]
@@ -727,6 +791,10 @@ fn native_prepared_updates_commit_and_rollback_without_reopening_audio() {
             );
             assert!(!update.is_null());
             assert_eq!(crate::native::begin_update(handle, update), URP_AST_OK);
+            assert_eq!(
+                product_descriptor().native_programme_retire.unwrap()(handle, 8, 99),
+                URP_AST_CHANNEL_BUSY
+            );
             crate::native::destroy_update(update);
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
             loop {

@@ -1349,6 +1349,292 @@ fn live_update_preserves_stream_ptt_and_sample_clock() {
 }
 
 #[test]
+fn programme_retirement_is_idempotent_serialized_and_generation_scoped() {
+    let (mut runtime, mut control) = runtime(20);
+    runtime.start().unwrap();
+    let rx = control.receive_loudness().unwrap().epoch;
+    let tx = control.transmit_loudness().unwrap().epoch;
+    assert!(
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 20, 0)
+            .is_err()
+    );
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 7),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 7),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 8),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    assert!(matches!(
+        runtime.finish_update(&mut control, true),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    assert!(runtime.accept_update(&mut control).is_err());
+    update_tick(&mut runtime, true);
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 7),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, false);
+    assert!(matches!(
+        runtime.accept_update(&mut control),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    assert_ne!(control.transmit_loudness().unwrap().epoch, tx);
+    assert_eq!(control.receive_loudness().unwrap().epoch, rx);
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 7)
+        .unwrap();
+    let retired = control.transmit_loudness().unwrap().epoch;
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 7)
+        .unwrap();
+    assert_eq!(control.transmit_loudness().unwrap().epoch, retired);
+    assert!(
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 20, 6)
+            .is_err()
+    );
+    let mut next = *control.plan().radio();
+    next.generation_id = 21;
+    let plan = control
+        .plan()
+        .clone()
+        .with_radio_configuration(control.plan().configuration().clone(), next);
+    let update = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 7),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    runtime.finish_update(&mut control, true).unwrap();
+    assert!(
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 20, 7)
+            .is_err()
+    );
+}
+
+#[test]
+fn programme_retirement_failed_half_keeps_fresh_reverse_until_ack_and_never_acks_failure() {
+    let (mut runtime, mut control) = runtime(20);
+    runtime.start().unwrap();
+    let old = control.transmit_loudness().unwrap().epoch;
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 1),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    crate::media::tests::FAIL_NEXT_APPLY.set(true);
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 1),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 2),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    assert!(
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 20, 1)
+            .is_err()
+    );
+    assert_ne!(control.transmit_loudness().unwrap().epoch, old);
+    assert!(
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 20, 1)
+            .is_err()
+    );
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 2),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 2)
+        .unwrap();
+}
+
+#[test]
+fn programme_retirement_checks_foreign_failed_start_stopped_and_preparation_ownership() {
+    let (mut owned, mut control) = runtime(20);
+    let (_foreign, mut foreign) = runtime(21);
+    assert!(matches!(
+        owned.retire_programme(&mut foreign, &factory(), radio_provider(), 20, 1),
+        Err(crate::StationUpdateError::Incompatible)
+    ));
+    crate::control::tests::fail_next_graph_preparation();
+    assert!(matches!(
+        owned.retire_programme(&mut control, &factory(), radio_provider(), 20, 1),
+        Err(crate::StationUpdateError::Preparation(_))
+    ));
+    assert!(
+        owned
+            .retire_programme(&mut control, &factory(), radio_provider(), 20, 1)
+            .is_err()
+    );
+    owned
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 2)
+        .unwrap();
+    PARTIAL_START_ERROR.set(true);
+    assert!(owned.start().is_err());
+    assert!(matches!(
+        owned.retire_programme(&mut control, &factory(), radio_provider(), 20, 3),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    PARTIAL_START_ERROR.set(false);
+    owned.stop().unwrap();
+}
+
+#[test]
+fn programme_retirement_failed_stop_fences_new_work_and_retains_pending_cleanup() {
+    let (mut runtime, mut control) = runtime(20);
+    assert!(
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 19, 1)
+            .is_err()
+    );
+    runtime.start().unwrap();
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 1),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    PARTIAL_STOP_ERROR.set(true);
+    assert!(runtime.stop().is_err());
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 1),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 1)
+        .unwrap();
+    // A completed same-ID poll allocates/prepares nothing even while fresh
+    // retirement admission is fenced by the failed stop.
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 1)
+        .unwrap();
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 2),
+        Err(crate::StationUpdateError::Busy)
+    ));
+    PARTIAL_STOP_ERROR.set(false);
+    runtime.stop().unwrap();
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 2)
+        .unwrap();
+    runtime.start().unwrap();
+    PARTIAL_STOP_ERROR.set(true);
+    assert!(runtime.stop().is_err());
+    assert!(
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 20, 3)
+            .is_err()
+    );
+    PARTIAL_STOP_ERROR.set(false);
+    runtime.start().unwrap();
+    assert!(
+        matches!(
+            runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 3),
+            Err(crate::StationUpdateError::Busy)
+        ),
+        "already-started no-op is not a new provider receipt"
+    );
+    runtime.stop().unwrap();
+    runtime.start().unwrap();
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 3),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 3)
+        .unwrap();
+}
+
+#[test]
+fn programme_feedback_preserves_physical_prefix_and_requires_completed_matching_render() {
+    assert_eq!(
+        std::mem::offset_of!(crate::RadioFeedback, programme_buffering),
+        112
+    );
+    assert_eq!(size_of::<crate::RadioFeedback>(), 184);
+    let (mut runtime, mut control) = runtime(20);
+    runtime.start().unwrap();
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 20, 9),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    // SAFETY: no fixture background worker exists; test exclusively owns TX.
+    let before = unsafe { (*runtime._transmit_context.get()).feedback_record };
+    assert_eq!(before.programme_retirement_id, 0);
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 20, 9)
+        .unwrap();
+    crate::allocation::without_heap(|| update_tick(&mut runtime, false));
+    // SAFETY: the callback has returned to this fixture's sole TX owner.
+    let committed = unsafe { (*runtime._transmit_context.get()).feedback_record };
+    assert_eq!(committed.generation_id, 20);
+    assert_eq!(committed.programme_retirement_id, 9);
+    assert_eq!(
+        committed.programme_buffering.flags, 0,
+        "old provider stays unknown"
+    );
+    let mut radio = *control.plan().radio();
+    radio.generation_id = 21;
+    let next = control
+        .plan()
+        .clone()
+        .with_radio_configuration(control.plan().configuration().clone(), radio);
+    let update = runtime
+        .prepare_update(&control, next, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    update_tick(&mut runtime, false);
+    // SAFETY: no concurrent callback can access this fixture-owned record.
+    let replaced = unsafe { (*runtime._transmit_context.get()).feedback_record };
+    assert_eq!(
+        replaced.generation_id, 20,
+        "same-device update preserves physical session identity"
+    );
+    assert_eq!(replaced.programme_retirement_id, 0);
+    let mut output = [0.0; 1920];
+    assert_ne!(
+        // SAFETY: test supplies its owned callback context and bounded output span.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                0,
+            )
+        },
+        0
+    );
+    // SAFETY: test owns TX after the failed synchronous callback returned.
+    let failed = unsafe { (*runtime._transmit_context.get()).feedback_record };
+    assert_eq!(failed.programme_retirement_id, 0);
+    assert_eq!(failed.programme_buffering.flags, 0);
+}
+
+#[test]
 fn disabled_receive_source_starts_a_new_meter_epoch() {
     STARTS.set(0);
     STOPS.set(0);

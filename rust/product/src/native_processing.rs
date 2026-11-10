@@ -198,6 +198,26 @@ pub(crate) unsafe extern "C" fn link_process_f32(
     })
 }
 
+pub(crate) unsafe extern "C" fn link_programme_buffering(
+    link: *mut c_void,
+    output: *mut usbradioplus_core::ProgrammeBuffering,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the caller supplies the advertised sized writable record.
+        // Validate all output fields before accessing any link-owned state.
+        let request = unsafe { copy_abi(output)? };
+        if request.reserved != 0 {
+            return Err(Status::InvalidArgument);
+        }
+        // SAFETY: query and PCM processing have the same unique serialized owner.
+        let link = unsafe { link_mut(link)? };
+        let state = link.buffering_state();
+        // SAFETY: validated output covers this prefix; larger tails stay untouched.
+        unsafe { output.write(state) };
+        Ok(())
+    })
+}
+
 pub(super) const fn agc_plugin_path() -> &'static str {
     AGC_PLUGIN_PATH
 }

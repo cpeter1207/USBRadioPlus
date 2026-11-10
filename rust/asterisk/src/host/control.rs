@@ -26,6 +26,7 @@ pub(super) enum ControlOperation {
     Echo(bool),
     Direct(super::super::UrpAstDirectCallbacks),
     Feedback(super::super::UrpRadioFeedbackPort),
+    ProgrammeRetire { generation: u64, request: u64 },
     Site(super::super::UrpAstSiteControl),
     Remote(super::super::UrpAstRemoteControl),
     Jitter,
@@ -45,6 +46,7 @@ pub(super) enum ControlResult {
     ProcessingText(i32, Vec<u8>),
     Site(i32, super::super::UrpAstSiteControl),
     Remote(i32, super::super::UrpAstRemoteControl),
+    ProgrammeRetire(i32),
 }
 
 impl ControlResult {
@@ -58,6 +60,7 @@ impl ControlResult {
             | Self::ProcessingText(status, _)
             | Self::Site(status, _)
             | Self::Remote(status, _) => *status,
+            Self::ProgrammeRetire(status) => *status,
         }
     }
 }
@@ -136,6 +139,13 @@ unsafe fn execute(
                     .channel_feedback_bind
                     .map(|call| call(channel, &port)),
             )),
+            ControlOperation::ProgrammeRetire {
+                generation,
+                request,
+            } => match descriptor.channel_programme_retire {
+                Some(call) => ControlResult::ProgrammeRetire(call(channel, generation, request)),
+                None => ControlResult::Status(URP_AST_ASTERISK_FAILURE),
+            },
             ControlOperation::Site(mut request) => {
                 let result = match request.operation {
                     super::super::URP_AST_SITE_BIND => descriptor

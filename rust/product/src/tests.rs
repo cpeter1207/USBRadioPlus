@@ -3,7 +3,7 @@
 use super::*;
 
 #[path = "tests/native.rs"]
-mod native;
+pub(crate) mod native;
 
 #[path = "tests/link_observer.rs"]
 mod link_observer;
@@ -16,6 +16,69 @@ fn descriptor_exposes_stopped_native_and_channel_feedback_bindings() {
         DESCRIPTOR.struct_size as usize >= existing + 2 * std::mem::size_of::<usize>(),
         "optional native/channel radio feedback bindings are missing"
     );
+}
+
+#[test]
+fn channel_programme_retirement_shares_reload_admission_and_callback_owners() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    provider_support::periodic_audio(true);
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    let retire = DESCRIPTOR.channel_programme_retire.unwrap();
+    // SAFETY: channel control is unique and retained until confirmed stop/destroy.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        let mut generation = 1;
+        assert_eq!(retire(channel, 0, 1), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(retire(channel, generation, 0), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(retire(ptr::null_mut(), 1, 1), URP_AST_INVALID_ARGUMENT);
+        assert_eq!(retire(channel, generation, 1), URP_AST_NOT_READY);
+        assert_eq!(channel_start(channel), 0);
+        assert_eq!(await_reload(|| retire(channel, generation, 1)), 0);
+        assert_eq!(retire(channel, generation, 1), 0);
+        assert_eq!(
+            stage_reload(
+                driver,
+                b"[usb]\n[hardware]\nhardware_output_extra_buffer_ms=20\n"
+            ),
+            0
+        );
+        assert_eq!(prepare_reload(channel), 0);
+        assert_eq!(retire(channel, generation, 2), URP_AST_CHANNEL_BUSY);
+        assert_eq!(activate_reload(channel), 0);
+        assert_eq!(retire(channel, generation, 2), URP_AST_CHANNEL_BUSY);
+        assert_eq!(finish_reload(channel, 1), 0);
+        assert_eq!(driver_reload_finish(driver, 1), 0);
+        let next = channel_control(channel)
+            .unwrap()
+            .1
+            .hardware
+            .as_mut()
+            .unwrap()
+            .control()
+            .plan()
+            .radio()
+            .generation_id;
+        assert_ne!(next, generation);
+        assert_ne!(retire(channel, generation, 1), 0);
+        generation = next;
+        assert_eq!(await_reload(|| retire(channel, generation, 2)), 0);
+        assert_ne!(retire(channel, generation, 1), 0);
+        provider_support::set_failure(provider_support::FAIL_GRAPH);
+        assert_eq!(retire(channel, generation, 3), URP_AST_SETUP_FAILED);
+        provider_support::clear_failure();
+        assert_eq!(retire(channel, generation, 3), URP_AST_SETUP_FAILED);
+        assert_eq!(await_reload(|| retire(channel, generation, 4)), 0);
+        provider_support::set_failure(provider_support::FAIL_STOP);
+        assert_eq!(channel_stop(channel), URP_AST_SETUP_FAILED);
+        assert_eq!(retire(channel, generation, 5), URP_AST_CHANNEL_BUSY);
+        provider_support::clear_failure();
+        assert_eq!(channel_stop(channel), 0);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+    provider_support::periodic_audio(false);
 }
 
 #[derive(Default)]

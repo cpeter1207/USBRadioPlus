@@ -375,6 +375,9 @@ dependencies = [
 [[package]]
 name = "usbradioplus-ffmpeg"
 version = "0.1.0-alpha19"
+dependencies = [
+ "usbradioplus-core",
+]
 
 [[package]]
 name = "usbradioplus-gpio"

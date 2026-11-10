@@ -570,6 +570,8 @@ struct TransmitContext {
 /// The stream is declared first so its destructor stops and destroys both
 /// callbacks before their contexts or the boxed station media are released.
 pub struct StationRuntime {
+    // Physical session identity is immutable across same-device DSP updates.
+    generation_id: u64,
     stream: Option<AudioStream<'static, 'static>>,
     _receive_context: Box<UnsafeCell<ReceiveContext>>,
     _transmit_context: Box<UnsafeCell<TransmitContext>>,
@@ -578,6 +580,9 @@ pub struct StationRuntime {
     hardware: SharedHardwareState,
     updates: Arc<UpdateMailbox>,
     running: bool,
+    // Receipt for retirement admission only. Failed start/stop clears it without
+    // changing ordinary callback lifetime, gain retention or restart semantics.
+    programme_retirement_ready: bool,
 }
 
 /// Serialized controller and radio-observer owner paired with one runtime.
@@ -787,6 +792,7 @@ impl StationRuntime {
             },
         }));
         let mut runtime = Self {
+            generation_id: radio.generation_id,
             stream: None,
             _receive_context: receive_context,
             _transmit_context: transmit_context,
@@ -795,6 +801,7 @@ impl StationRuntime {
             hardware: hardware.clone(),
             updates: Arc::clone(&updates),
             running: false,
+            programme_retirement_ready: true,
         };
         runtime.reopen()?;
         Ok(runtime)
@@ -834,6 +841,10 @@ impl StationRuntime {
 
     /// Reopen if reload-suspended, then start capture and playback callbacks.
     pub fn start(&mut self) -> Result<(), AudioError> {
+        // AudioStream::start preserves an already-started stream without another
+        // provider call. That no-op cannot repair a failed-stop retirement fence.
+        let retirement_receipt = self.programme_retirement_ready || !self.started();
+        self.programme_retirement_ready = false;
         self.reopen()?;
         // A provider may return an error with an endpoint still active. Keep all
         // callback-owned cells and borrowed bindings fenced until actual stop.
@@ -842,18 +853,24 @@ impl StationRuntime {
             .as_mut()
             .expect("successful reopen owns a stream")
             .start()?;
+        self.programme_retirement_ready = retirement_receipt;
         Ok(())
     }
 
     /// Stop capture and playback callbacks; repeated confirmed stops are harmless.
     /// Failure retains possibly active callbacks and does not establish quiescence.
     pub fn stop(&mut self) -> Result<(), AudioError> {
+        self.programme_retirement_ready = false;
         self.stream.as_mut().map_or(Ok(()), AudioStream::stop)?;
+        self.programme_retirement_ready = true;
         self.running = false;
         self.hardware.0.feedback.publish_request(Default::default());
         // SAFETY: successful stream stop quiesces the unique TX context.
         unsafe {
-            (*self._transmit_context.get()).feedback_record.flags = crate::FEEDBACK_DUPLEX_VALID
+            let record = &mut (*self._transmit_context.get()).feedback_record;
+            record.flags = crate::FEEDBACK_DUPLEX_VALID;
+            record.programme_buffering = Default::default();
+            record.programme_retirement_id = 0;
         };
         Ok(())
     }
@@ -1063,6 +1080,8 @@ unsafe extern "C" fn transmit_callback(
     let frames = frame_count as usize;
     if output.is_null() || frames == 0 || frames > context.maximum_frames {
         context.feedback_record.flags = crate::FEEDBACK_DUPLEX_VALID;
+        context.feedback_record.programme_buffering = Default::default();
+        context.feedback_record.programme_retirement_id = 0;
         context
             .hardware
             .0
@@ -1095,6 +1114,8 @@ unsafe extern "C" fn transmit_callback(
     }
     let previous_feedback = context.feedback_record;
     context.feedback_record.flags = crate::FEEDBACK_DUPLEX_VALID;
+    context.feedback_record.programme_buffering = Default::default();
+    context.feedback_record.programme_retirement_id = 0;
     let station = &mut context.station;
     let mut controls = context.hardware.transmit_controls();
     let mut direct_failed = false;
@@ -1169,6 +1190,9 @@ unsafe extern "C" fn transmit_callback(
     } else if controls.external_ptt_request || !remote.enabled {
         context.remote_burst_admitted = true;
     }
+    // SAFETY: the serial TX owner has applied its successor and has not yet run
+    // this block. The existing output meter counts only live graph renders.
+    let (_, programme_before) = unsafe { context.updates.programme_observation(station) };
     match station.radio().render(output, controls) {
         Ok(mut result) => {
             if direct_failed {
@@ -1193,7 +1217,21 @@ unsafe extern "C" fn transmit_callback(
                 .first_sample_index
                 .checked_add(u64::from(result.frame_count));
             if let (Some(request_id), Some(sample_index)) = (request_id, end) {
+                // SAFETY: the same TX owner has just completed its radio render.
+                let (mut programme_buffering, programme_after) =
+                    unsafe { context.updates.programme_observation(station) };
+                if programme_after.checked_sub(programme_before) != Some(u64::from(frame_count)) {
+                    // CPU saver or a non-programme path may not invoke this graph.
+                    // Its previous output must not acquire a fresh render time.
+                    programme_buffering.flags &= !(usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID
+                        | usbradioplus_core::PROGRAMME_LAST_BLOCK_VALID);
+                    programme_buffering.current_max_delay_frames = 0;
+                    programme_buffering.zero_prefix_frames = 0;
+                    programme_buffering.zero_suffix_frames = 0;
+                }
                 context.feedback_record = crate::RadioFeedback {
+                    programme_buffering,
+                    programme_retirement_id: context.updates.retired_request(result.generation_id),
                     request_id,
                     sample_index,
                     requested_ptt: u32::from(requested_ptt),

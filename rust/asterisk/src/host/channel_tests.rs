@@ -1317,6 +1317,78 @@ fn feedback_option_acknowledges_only_a_valid_retained_binding() {
         assert_eq!(accepted, u32::from(success), "case {case}");
     }
     assert_eq!(with_state(|state| state.taskprocessor_push_calls), 6);
+    unsafe extern "C" fn retire(channel: *mut c_void, generation: u64, request: u64) -> c_int {
+        assert_eq!(request, 11);
+        if generation != 7 {
+            return -1;
+        }
+        // SAFETY: the existing serialized fixture retains this exact status cell.
+        unsafe { *channel.cast::<c_int>() }
+    }
+    #[repr(C)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    struct Retirement {
+        struct_size: u32,
+        abi_version: u32,
+        generation: u64,
+        request: u64,
+        accepted: u32,
+        result: i32,
+        tail: u64,
+    }
+    for case in 0..14 {
+        descriptor.channel_programme_retire = if case == 3 { None } else { Some(retire) };
+        with_state(|state| state.taskprocessor_push_result = if case == 4 { -1 } else { 0 });
+        retention = i32::from(case == 1);
+        let mut envelope = Retirement {
+            struct_size: 32,
+            abi_version: 1,
+            generation: 7,
+            request: 11,
+            accepted: 0,
+            result: 0x55,
+            tail: 0xface,
+        };
+        match case {
+            2 => envelope.generation = 6,
+            6 => envelope.struct_size = 31,
+            7 => envelope.abi_version = 0,
+            8 => envelope.request = 0,
+            9 => envelope.generation = 0,
+            10 => envelope.accepted = 1,
+            11 => envelope.struct_size = 40,
+            13 => envelope.struct_size = 40,
+            _ => {}
+        }
+        let mut storage = [0_u8; 41];
+        // SAFETY: this fixture owns complete byte-aligned writable option storage.
+        let data = unsafe { storage.as_mut_ptr().add(1).cast::<Retirement>() };
+        // SAFETY: the buffer retains the complete larger envelope, including its tail.
+        unsafe { data.write_unaligned(envelope) };
+        let length = if case == 5 {
+            31
+        } else if case == 11 {
+            40
+        } else {
+            32
+        };
+        // SAFETY: owner and advertised writable prefix stay live through dispatch.
+        let result = unsafe { setoption(owner.as_ptr(), 0x5250_5052, data.cast(), length) };
+        // SAFETY: the synchronous option retained no pointer to this envelope.
+        let after = unsafe { data.read_unaligned() };
+        if matches!(case, 0 | 1 | 2 | 11 | 12) {
+            assert_eq!(result, 0, "case{case}");
+            assert_eq!(after.accepted, 1);
+            assert_eq!(after.result, if case == 2 { -1 } else { retention });
+        } else {
+            assert_eq!(result, -1, "case{case}");
+            assert_eq!(
+                after, envelope,
+                "failed dispatch cannot manufacture acceptance"
+            );
+        }
+        assert_eq!(after.tail, 0xface);
+    }
 }
 
 #[test]

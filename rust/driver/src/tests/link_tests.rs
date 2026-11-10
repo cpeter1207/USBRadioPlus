@@ -8,6 +8,68 @@ use crate::test_support::{
     failing_graph_create_provider, graph_provider, live_failing_graph_provider,
 };
 
+#[link(name = "rptadv_ffmpeg_adapter")]
+unsafe extern "C" {
+    fn rptadv_ffmpeg_adapter_descriptor() -> *const std::ffi::c_void;
+}
+
+#[test]
+fn native_and_asl_links_forward_real_buffering_without_promoting_warmup_to_programme() {
+    // SAFETY: the dynamically linked provider's immutable code/table live through
+    // every derived graph, and each PreparedLink retains exactly one PCM owner.
+    let provider =
+        // SAFETY: immutable provider table/code outlive all serially owned graphs.
+        unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
+    let factory = LinkProcessingFactory::new(
+        provider,
+        GraphDescriptionFactory::new("/unused/agc.so").unwrap(),
+    );
+    let mut profile = ProcessingChain::shipped(ChainRole::Link);
+    profile.peak_limiter.enabled = true;
+    for (rate, maximum) in [(48000, 960), (8000, 160)] {
+        let mut link = factory.prepare(&profile, rate, maximum).unwrap();
+        let prepared = link.buffering_state();
+        assert_ne!(
+            prepared.flags & usbradioplus_core::PROGRAMME_PREPARED_BOUND_VALID,
+            0
+        );
+        assert_eq!(
+            prepared.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+            0
+        );
+        if rate == 48000 {
+            let mut pcm = [0.25; 960];
+            assert_eq!(
+                link.process_f32(LinkDirection::Read, rate, &mut pcm),
+                LinkProcessOutcome::Processed
+            );
+        } else {
+            let mut pcm = [8000_i16; 160];
+            assert_eq!(
+                link.process_s16(LinkDirection::Read, rate, &mut pcm),
+                LinkProcessOutcome::Processed
+            );
+        }
+        let current = link.buffering_state();
+        assert_ne!(
+            current.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+            0
+        );
+        assert_eq!(
+            current.accepted_frames,
+            prepared.accepted_frames + u64::from(maximum)
+        );
+        assert_eq!(
+            link.advance_silence(maximum as usize),
+            LinkProcessOutcome::Processed
+        );
+        assert_eq!(
+            link.buffering_state().accepted_frames,
+            current.accepted_frames + u64::from(maximum)
+        );
+    }
+}
+
 #[test]
 fn factory_prepares_warms_and_processes_at_the_link_rate() {
     let factory = LinkProcessingFactory::new(

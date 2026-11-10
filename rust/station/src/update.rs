@@ -45,6 +45,7 @@ pub struct StationUpdate {
     reverse: UpdateOwner,
     source: Weak<UpdateMailbox>,
     revision: u64,
+    programme_retirement: bool,
 }
 
 impl StationUpdate {
@@ -112,6 +113,31 @@ impl StationUpdatePreparation {
             reverse,
             source: self.source,
             revision: self.revision,
+            programme_retirement: false,
+        })
+    }
+
+    fn prepare_programme_retirement(self) -> Result<StationUpdate, StationUpdateError> {
+        // Both possible successors have fresh TX histories. A failed forward
+        // adoption must never restore the retired predecessor programme.
+        let prepare = || {
+            // SAFETY: these leases are restricted to the original mailbox/revision.
+            unsafe {
+                self.factory
+                    .prepare_programme_retirement(self.previous.processing(), &self.processing)
+            }
+            .map_err(|error| StationUpdateError::Preparation(error.into()))
+        };
+        let forward = UpdateOwner::prepare(&self.previous, prepare()?, self.provider)?;
+        let reverse = UpdateOwner::prepare(&self.previous, prepare()?, self.provider)?;
+        Ok(StationUpdate {
+            plan: self.previous.clone(),
+            previous: self.previous,
+            forward,
+            reverse,
+            source: self.source,
+            revision: self.revision,
+            programme_retirement: true,
         })
     }
 }
@@ -161,6 +187,21 @@ struct UpdateStorage {
     current: Option<UpdateOwner>,
     transaction: Option<Transaction>,
     revision: u64,
+    retirement: Option<ProgrammeRetirement>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RetirementOutcome {
+    Pending,
+    Failed,
+    Complete,
+}
+
+#[derive(Clone, Copy)]
+struct ProgrammeRetirement {
+    request: u64,
+    revision: u64,
+    outcome: RetirementOutcome,
 }
 
 /// Only control operations lock storage. RX/TX exclusively use their atomic slot.
@@ -176,9 +217,37 @@ pub(super) struct UpdateMailbox {
     transmit_processing: AtomicPtr<ProcessingGeneration>,
     receive_result: AtomicI32,
     transmit_result: AtomicI32,
+    retirement_ack: crate::feedback::Slot<2>,
 }
 
 impl UpdateMailbox {
+    pub(super) fn retired_request(&self, generation: u64) -> u64 {
+        self.retirement_ack
+            .read()
+            .filter(|value| value[0] == generation)
+            .map_or(0, |value| value[1])
+    }
+
+    /// Called only between operations of the original serial TX owner.
+    pub(super) unsafe fn programme_observation(
+        &self,
+        station: &StationTransmit,
+    ) -> (usbradioplus_core::ProgrammeBuffering, u64) {
+        // SAFETY: storage retains every adopted owner through successor ACKs;
+        // this sole TX owner cannot acknowledge or reclaim itself during read.
+        let processing = unsafe { self.transmit_processing.load(Ordering::Acquire).as_ref() }
+            .unwrap_or_else(|| station.processing());
+        // SAFETY: caller is the sole TX graph owner between its process calls.
+        (
+            // SAFETY: caller is the sole TX graph owner between process calls.
+            unsafe { processing.transmit_programme_buffering() },
+            processing
+                .transmit_loudness()
+                .expect("prepared TX meter")
+                .sample_count,
+        )
+    }
+
     fn publish(&self, owner: &UpdateOwner) {
         self.receive_result.store(0, Ordering::Relaxed);
         self.transmit_result.store(0, Ordering::Relaxed);
@@ -280,6 +349,149 @@ impl StationControlHost {
 }
 
 impl StationRuntime {
+    /// Whether explicit programme retirement currently owns the existing update
+    /// transaction. Later queued remote work must not block this owner's polls.
+    pub fn programme_retirement_pending(&self) -> bool {
+        self.updates
+            .storage
+            .lock()
+            .expect("update storage poisoned")
+            .transaction
+            .as_ref()
+            .is_some_and(|transaction| transaction.candidate.programme_retirement)
+    }
+
+    /// Explicitly retire only TX programme history through the existing update
+    /// owners. A repeated nonzero request polls one transaction; newer requests
+    /// wait for its completion. Failed/pending work retains every borrowed owner.
+    /// Completion is scoped to the current radio lifecycle generation.
+    pub fn retire_programme(
+        &mut self,
+        control: &mut StationControlHost,
+        factory: &NativeProcessingFactory,
+        provider: RadioProvider,
+        expected_generation: u64,
+        request: u64,
+    ) -> Result<(), StationUpdateError> {
+        if request == 0
+            || !Arc::ptr_eq(&self.updates, &control._updates)
+            || expected_generation != self.generation_id
+        {
+            return Err(StationUpdateError::Incompatible);
+        }
+        if self.running && !self.started() {
+            return Err(StationUpdateError::Busy);
+        }
+        let generation = self.generation_id;
+        let prepare = {
+            let mut storage = self
+                .updates
+                .storage
+                .lock()
+                .expect("update storage poisoned");
+            if storage
+                .transaction
+                .as_ref()
+                .is_some_and(|transaction| !transaction.candidate.programme_retirement)
+            {
+                return Err(StationUpdateError::Busy);
+            }
+            if let Some(previous) = storage.retirement {
+                if request < previous.request
+                    || (request == previous.request
+                        && previous.outcome == RetirementOutcome::Complete
+                        && storage.revision != previous.revision)
+                {
+                    return Err(StationUpdateError::Incompatible);
+                }
+                if request == previous.request {
+                    match previous.outcome {
+                        RetirementOutcome::Complete => return Ok(()),
+                        RetirementOutcome::Failed if storage.transaction.is_none() => {
+                            return Err(StationUpdateError::Radio(RadioError::InvalidArgument));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            let same = storage
+                .retirement
+                .is_some_and(|previous| previous.request == request);
+            if storage.transaction.is_some() && !same {
+                return Err(StationUpdateError::Busy);
+            }
+            if !same {
+                if !self.programme_retirement_ready {
+                    return Err(StationUpdateError::Busy);
+                }
+                storage.retirement = Some(ProgrammeRetirement {
+                    request,
+                    revision: storage.revision,
+                    outcome: RetirementOutcome::Pending,
+                });
+                self.updates.retirement_ack.publish([0, 0]);
+            }
+            !same
+        };
+        if prepare {
+            let result = self
+                .snapshot_update(control, factory, provider)
+                .and_then(StationUpdatePreparation::prepare_programme_retirement)
+                .and_then(|update| self.begin_update(control, update));
+            if let Err(error) = result {
+                self.updates
+                    .storage
+                    .lock()
+                    .expect("update storage poisoned")
+                    .retirement
+                    .as_mut()
+                    .expect("retirement request")
+                    .outcome = RetirementOutcome::Failed;
+                return Err(error);
+            }
+        }
+        let failed = self
+            .updates
+            .storage
+            .lock()
+            .expect("update storage poisoned")
+            .retirement
+            .expect("retirement request")
+            .outcome
+            == RetirementOutcome::Failed;
+        if !failed {
+            match self.update_result() {
+                Err(StationUpdateError::Pending) => return Err(StationUpdateError::Pending),
+                Err(_) => {
+                    self.updates
+                        .storage
+                        .lock()
+                        .expect("update storage poisoned")
+                        .retirement
+                        .as_mut()
+                        .expect("retirement request")
+                        .outcome = RetirementOutcome::Failed;
+                }
+                Ok(()) => {
+                    self.finish_update_inner(control, true, true)?;
+                    let mut storage = self
+                        .updates
+                        .storage
+                        .lock()
+                        .expect("update storage poisoned");
+                    let revision = storage.revision;
+                    let retirement = storage.retirement.as_mut().expect("retirement request");
+                    retirement.outcome = RetirementOutcome::Complete;
+                    retirement.revision = revision;
+                    self.updates.retirement_ack.publish([generation, request]);
+                    return Ok(());
+                }
+            }
+        }
+        self.finish_update_inner(control, false, true)?;
+        Err(StationUpdateError::Radio(RadioError::InvalidArgument))
+    }
+
     /// Capture immutable policy and processor leases without building new graphs.
     pub fn snapshot_update(
         &self,
@@ -349,6 +561,7 @@ impl StationRuntime {
         if storage.transaction.is_some() || storage.revision != update.revision {
             return Err(StationUpdateError::Busy);
         }
+        self.updates.retirement_ack.publish([0, 0]);
         storage.transaction = Some(Transaction {
             candidate: Box::new(update),
             reversing: false,
@@ -388,7 +601,7 @@ impl StationRuntime {
             .transaction
             .as_ref()
             .ok_or(StationUpdateError::Busy)?;
-        if transaction.reversing {
+        if transaction.reversing || transaction.candidate.programme_retirement {
             return Err(StationUpdateError::Busy);
         }
         control.plan = transaction.candidate.plan.clone();
@@ -401,6 +614,15 @@ impl StationRuntime {
         &mut self,
         control: &mut StationControlHost,
         commit: bool,
+    ) -> Result<(), StationUpdateError> {
+        self.finish_update_inner(control, commit, false)
+    }
+
+    fn finish_update_inner(
+        &mut self,
+        control: &mut StationControlHost,
+        commit: bool,
+        retirement_owner: bool,
     ) -> Result<(), StationUpdateError> {
         if !Arc::ptr_eq(&self.updates, &control._updates) {
             return Err(StationUpdateError::Incompatible);
@@ -416,6 +638,9 @@ impl StationRuntime {
         let Some(transaction) = storage.transaction.as_mut() else {
             return Ok(());
         };
+        if transaction.candidate.programme_retirement != retirement_owner {
+            return Err(StationUpdateError::Busy);
+        }
         if commit {
             self.updates.result()?;
             if transaction.reversing {

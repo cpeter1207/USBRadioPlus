@@ -385,6 +385,10 @@ pub struct StationTransmit {
 }
 
 impl StationTransmit {
+    pub(crate) fn processing(&self) -> &ProcessingGeneration {
+        &self._resources.processing
+    }
+
     pub(crate) fn stage_direct(&mut self, samples: &[f32]) {
         // SAFETY: this sole TX owner stages before invoking radio.render(). The
         // separate source cell is shared; the borrowed consumer is never accessed.

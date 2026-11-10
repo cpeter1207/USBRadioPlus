@@ -5,7 +5,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::{f32_to_s16, s16_to_f32};
-use usbradioplus_core::{OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudnessSnapshot};
+use usbradioplus_core::{
+    OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudnessSnapshot, ProgrammeBuffering,
+};
 
 /// Exact-rate graph operation prepared by product composition.
 ///
@@ -14,6 +16,10 @@ use usbradioplus_core::{OutputLoudnessMeter, OutputLoudnessObserver, OutputLoudn
 pub trait ExactRateGraph: Send {
     /// Process one nonempty block into an equally sized output workspace.
     fn process_exact(&mut self, input: &[f32], output: &mut [f32]) -> bool;
+    /// Optional owner-serialized programme buffering, never exact source time.
+    fn buffering_state(&self) -> ProgrammeBuffering {
+        ProgrammeBuffering::default()
+    }
 }
 
 /// Asterisk audiohook stream direction after ABI translation.
@@ -257,6 +263,12 @@ impl PreparedLink {
     /// Retain diagnostics on the control plane before transferring this graph to audio.
     pub fn observer(&self) -> LinkObserver {
         self.observation.clone()
+    }
+
+    /// Last graph observation in this link's established sample rate.
+    /// Unknown graph capabilities do not change ordinary PCM processing.
+    pub fn buffering_state(&self) -> ProgrammeBuffering {
+        self.graph.buffering_state()
     }
 }
 

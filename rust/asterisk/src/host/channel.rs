@@ -1445,6 +1445,42 @@ unsafe extern "C" fn setoption(
         };
         return 0;
     }
+    if option as u32 == super::super::URP_AST_OPTION_PROGRAMME_RETIRE {
+        use super::super::{
+            URP_AST_PROGRAMME_RETIRE_OPTION_ABI_VERSION, UrpAstProgrammeRetirement,
+        };
+        if (data_length as usize) < size_of::<UrpAstProgrammeRetirement>() {
+            return -1;
+        }
+        // SAFETY: Asterisk lends the entire possibly byte-aligned sized prefix.
+        let request = unsafe { data.cast::<UrpAstProgrammeRetirement>().read_unaligned() };
+        if (request.struct_size as usize) < size_of::<UrpAstProgrammeRetirement>()
+            || request.struct_size as usize > data_length as usize
+            || request.abi_version != URP_AST_PROGRAMME_RETIRE_OPTION_ABI_VERSION
+            || request.accepted_abi_version != 0
+            || request.expected_radio_generation == 0
+            || request.request_id == 0
+        {
+            return -1;
+        }
+        let ControlResult::ProgrammeRetire(result) =
+            channel.control(ControlOperation::ProgrammeRetire {
+                generation: request.expected_radio_generation,
+                request: request.request_id,
+            })
+        else {
+            return -1;
+        };
+        // SAFETY: only actual SDK invocation acknowledges this synchronous copy;
+        // Pending and failure remain distinct in result. Larger tails are untouched.
+        unsafe {
+            ptr::addr_of_mut!((*data.cast::<UrpAstProgrammeRetirement>()).accepted_abi_version)
+                .write_unaligned(1);
+            ptr::addr_of_mut!((*data.cast::<UrpAstProgrammeRetirement>()).result)
+                .write_unaligned(result);
+        }
+        return 0;
+    }
     if option as u32 != ffi::AST_OPTION_TONE_VERIFY {
         // SAFETY: errno is thread-local on supported Linux targets.
         unsafe { *libc::__errno_location() = libc::ENOSYS };
