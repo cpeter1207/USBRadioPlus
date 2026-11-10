@@ -17,6 +17,12 @@ station library also used by the standalone rpt_advanced controller. The
 `libusbradioplus-product-dev` package supplies the C header and pkg-config
 metadata for consumers; the shared product has no Asterisk dependency.
 
+The alpha34 SDK adds conservative programme-buffering reports and explicit
+generation-bound final-TX history retirement through the existing owners.
+Controllers keep programme gated until matching completed-render feedback;
+unknown/raw graphs remain unqualified for a latency guarantee. See the
+[buffering contract](doc/programme-buffering.md).
+
 The alpha33 SDK adds radio-output feedback for controller receive-window
 integration. It distinguishes requested PTT, completed output service and
 independent readback. Failed audio startup keeps transmit and maintenance
