@@ -5,6 +5,9 @@ use super::*;
 #[path = "tests/native.rs"]
 pub(crate) mod native;
 
+#[path = "tests/programme_fence.rs"]
+mod programme_fence;
+
 #[path = "tests/link_observer.rs"]
 mod link_observer;
 

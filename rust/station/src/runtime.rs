@@ -562,6 +562,7 @@ struct TransmitContext {
     updates: Arc<UpdateMailbox>,
     remote_burst_admitted: bool,
     feedback: Option<crate::RadioFeedbackPort>,
+    programme_fence: Option<usbradioplus_runtime::ProgrammeFence>,
     feedback_record: crate::RadioFeedback,
 }
 
@@ -640,6 +641,24 @@ impl StationRuntime {
         }
         // SAFETY: the stopped stream has no callback accessing its TX context.
         unsafe { (*self._transmit_context.get()).feedback = port };
+        Ok(())
+    }
+
+    /// Bind a borrowed final-programme fence only after callback quiescence.
+    ///
+    /// # Safety
+    /// Callback code/context remain live until stopped unbind/rebind or quiescent
+    /// destruction. Stop retains the binding for restart. The callback must be
+    /// bounded, allocation-free and non-unwinding and must not call control APIs.
+    pub unsafe fn bind_programme_fence(
+        &mut self,
+        port: Option<usbradioplus_runtime::ProgrammeFence>,
+    ) -> Result<(), AudioError> {
+        if self.running {
+            return Err(AudioError::InvalidArgument);
+        }
+        // SAFETY: successful stop (or no start) proves no active TX callback.
+        unsafe { (*self._transmit_context.get()).programme_fence = port };
         Ok(())
     }
 
@@ -782,6 +801,7 @@ impl StationRuntime {
             updates: Arc::clone(&updates),
             remote_burst_admitted: true,
             feedback: None,
+            programme_fence: None,
             feedback_record: crate::RadioFeedback {
                 struct_size: std::mem::size_of::<crate::RadioFeedback>() as u32,
                 abi_version: 1,
@@ -1193,6 +1213,15 @@ unsafe extern "C" fn transmit_callback(
     // SAFETY: the serial TX owner has applied its successor and has not yet run
     // this block. The existing output meter counts only live graph renders.
     let (_, programme_before) = unsafe { context.updates.programme_observation(station) };
+    // SAFETY: the same sole TX owner applies the retained port to the actual
+    // selected graph, including an adopted update not yet committed by control.
+    unsafe {
+        context.updates.bind_programme_fence(
+            station,
+            context.programme_fence,
+            context.feedback_record.generation_id,
+        );
+    }
     match station.radio().render(output, controls) {
         Ok(mut result) => {
             if direct_failed {

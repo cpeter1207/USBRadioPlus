@@ -3087,3 +3087,101 @@ fn direct_remote_metadata_failure_after_render_silences_the_current_frame() {
     assert_eq!(output, [0.0; 8]);
     assert!(!runtime.hardware.outputs().logical_ptt);
 }
+
+#[test]
+fn programme_fence_survives_same_device_adoption_and_waits_for_rendered_retirement() {
+    struct Permit {
+        answer: u32,
+        calls: usize,
+    }
+    unsafe extern "C" fn permit(context: *mut c_void, generation: u64, frames: u32) -> u32 {
+        // SAFETY: the test retains this probe through synchronous runtime destruction.
+        let probe = unsafe { &mut *context.cast::<Permit>() };
+        assert_eq!((generation, frames), (25, 960));
+        probe.calls += 1;
+        probe.answer
+    }
+    fn render(runtime: &mut StationRuntime) -> [f32; 1920] {
+        let mut output = [0.0; 1920];
+        // SAFETY: the fake audio provider has no background worker; this test is sole TX owner.
+        assert_eq!(
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            0
+        );
+        output
+    }
+    let (mut runtime, mut control) = runtime(25); // Existing fixture executes its actual graph port.
+    let hardware = runtime.hardware_state();
+    hardware.publish_requests(ControllerRequests {
+        transmit: true,
+        render_admitted: true,
+        ..ControllerRequests::default()
+    });
+    let mut probe = Permit {
+        answer: 0,
+        calls: 0,
+    };
+    let port = usbradioplus_runtime::ProgrammeFence {
+        context: ptr::from_mut(&mut probe).cast(),
+        permit,
+    };
+    // SAFETY: probe stays live through confirmed stop/unbind; no real hardware is opened.
+    unsafe { runtime.bind_programme_fence(Some(port)) }.unwrap();
+    runtime.start().unwrap();
+    assert!(render(&mut runtime).iter().all(|v| *v == 0.0));
+    assert!(
+        hardware.outputs().logical_ptt,
+        "programme suppression must not rewrite signaling intent"
+    );
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 25, 11),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    assert!(render(&mut runtime).iter().all(|v| *v == 0.0));
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 25, 11)
+        .unwrap();
+    assert!(render(&mut runtime).iter().all(|v| *v == 0.0));
+    // SAFETY: no concurrent callback; this is the just-completed render's record.
+    assert_eq!(
+        unsafe {
+            (*runtime._transmit_context.get())
+                .feedback_record
+                .programme_retirement_id
+        },
+        11
+    );
+    probe.answer = 1;
+    assert!(render(&mut runtime).iter().any(|v| *v != 0.0));
+    probe.answer = 0;
+    let mut config = control.plan().configuration().clone();
+    config.voice_telemetry.output_gain_db = -3.0;
+    let plan = StationPlan::new("usb", config, control.plan().transport(), 25, 960).unwrap();
+    let update = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    runtime.begin_update(&control, update).unwrap();
+    update_tick(&mut runtime, true);
+    assert!(render(&mut runtime).iter().all(|v| *v == 0.0));
+    runtime.finish_update(&mut control, true).unwrap();
+    assert!(render(&mut runtime).iter().all(|v| *v == 0.0));
+    // SAFETY: running unbind is rejected and cannot release the active context.
+    assert!(unsafe { runtime.bind_programme_fence(None) }.is_err());
+    runtime.stop().unwrap();
+    runtime.start().unwrap();
+    assert!(render(&mut runtime).iter().all(|v| *v == 0.0));
+    assert!(probe.calls >= 8);
+    runtime.stop().unwrap();
+    // SAFETY: successful stop quiesced both callbacks before releasing the probe.
+    unsafe { runtime.bind_programme_fence(None) }.unwrap();
+    runtime.start().unwrap();
+    assert!(render(&mut runtime).iter().any(|v| *v != 0.0));
+    runtime.stop().unwrap();
+}

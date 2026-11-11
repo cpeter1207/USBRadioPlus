@@ -651,6 +651,19 @@ impl HardwareStation {
         unsafe { self.runtime.bind_feedback(port) }.map_err(Into::into)
     }
 
+    /// Bind a borrowed final-programme fence while audio is quiescent.
+    ///
+    /// # Safety
+    /// Its bounded no-unwind callback/context remain live until stopped
+    /// unbind/rebind or quiescent destruction; stop retains it for restart.
+    pub unsafe fn bind_programme_fence(
+        &mut self,
+        port: Option<usbradioplus_runtime::ProgrammeFence>,
+    ) -> Result<(), HardwareStationError> {
+        // SAFETY: forwarded to the same stopped runtime without another owner.
+        unsafe { self.runtime.bind_programme_fence(port) }.map_err(Into::into)
+    }
+
     /// Select one canonical USB identity and read its optional tuning EEPROM.
     ///
     /// This pre-audio operation temporarily owns only the CM119 HID handle and

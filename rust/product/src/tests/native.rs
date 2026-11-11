@@ -1766,3 +1766,41 @@ fn native_failed_start_or_stop_retains_handle_for_retry() {
     }
     assert_eq!(fixture::audio_streams(), 0);
 }
+
+#[test]
+fn programme_fence_native_requires_stopped_sized_ack_and_retains_failed_start_owner() {
+    let call = super::programme_fence::bindings()[0];
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    super::programme_fence::reject_invalid(call, handle);
+    let mut value = super::programme_fence::binding();
+    // SAFETY: the native handle and static permit remain live through confirmed stop/destroy.
+    unsafe {
+        assert_eq!(call(handle, &mut value), 0);
+        assert_eq!(value.accepted, 1);
+        assert_eq!(api.native_start.unwrap()(handle), 0);
+        value.accepted = 0;
+        value.permit = None;
+        assert_eq!(call(handle, &mut value), URP_AST_CHANNEL_BUSY);
+        assert_eq!(value.accepted, 0);
+        fixture::set_failure(fixture::FAIL_STOP);
+        assert_ne!(api.native_stop.unwrap()(handle), 0);
+        assert_eq!(call(handle, &mut value), URP_AST_CHANNEL_BUSY);
+        assert_eq!(value.accepted, 0);
+        fixture::clear_failure();
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        assert_eq!(api.native_start.unwrap()(handle), 0);
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        fixture::set_failure(fixture::FAIL_START_ONCE);
+        assert_ne!(api.native_start.unwrap()(handle), 0);
+        assert_eq!(call(handle, &mut value), URP_AST_CHANNEL_BUSY);
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        assert_eq!(call(handle, &mut value), 0);
+        assert_eq!(value.accepted, 1);
+        api.native_destroy.unwrap()(handle);
+    }
+}
