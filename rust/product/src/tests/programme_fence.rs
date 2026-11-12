@@ -226,3 +226,62 @@ fn programme_fence_preserves_actual_callback_across_replacement_rollback_and_sto
     }
     provider_support::execute_tx_graph(false);
 }
+
+#[test]
+fn programme_fence_retains_binding_during_stopped_reload_transactions() {
+    unsafe extern "C" fn count(raw: *mut c_void, generation: u64, frames: u32) -> u32 {
+        assert_ne!(generation, 0);
+        assert_eq!(frames, 960);
+        // SAFETY: the test retains its counter through confirmed callback quiescence.
+        unsafe { *raw.cast::<u32>() += 1 };
+        0
+    }
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    provider_support::execute_tx_graph(true);
+    let bind = bindings()[1];
+    for commit in [0, 1] {
+        let context = RefCell::new(Calls::default());
+        let driver = create_driver(&context, b"[usb]\n");
+        let mut calls = 0_u32;
+        let mut value = binding();
+        value.context = ptr::from_mut(&mut calls).cast();
+        value.permit = Some(count);
+        // SAFETY: the stopped reservation and counter remain live through destruction.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(bind(channel, &mut value), URP_AST_OK);
+            assert_eq!(value.accepted, 1);
+            assert_eq!(
+                stage_reload(
+                    driver,
+                    b"[usb]\n[hardware]\nhardware_output_extra_buffer_ms=20\n"
+                ),
+                URP_AST_OK
+            );
+            assert_eq!(prepare_reload(channel), URP_AST_OK);
+            value.accepted = 0;
+            value.permit = None;
+            assert_eq!(bind(channel, &mut value), URP_AST_CHANNEL_BUSY);
+            assert_eq!(value.accepted, 0);
+            assert_eq!(activate_reload(channel), URP_AST_OK);
+            assert_eq!(bind(channel, &mut value), URP_AST_CHANNEL_BUSY);
+            assert_eq!(value.accepted, 0);
+            assert_eq!(finish_reload(channel, commit), URP_AST_OK);
+            assert_eq!(driver_reload_finish(driver, commit), URP_AST_OK);
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            assert_eq!(calls, 1, "rejected unbind retained the original callback");
+            assert!(!provider_support::tx_graph_audible());
+            assert_eq!(channel_stop(channel), URP_AST_OK);
+            assert_eq!(bind(channel, &mut value), URP_AST_OK);
+            assert_eq!(value.accepted, 1);
+            assert_eq!(channel_start(channel), URP_AST_OK);
+            assert_eq!(calls, 1, "quiescent unbind released the original callback");
+            assert!(provider_support::tx_graph_audible());
+            assert_eq!(channel_stop(channel), URP_AST_OK);
+            channel_destroy(channel);
+            driver_destroy(driver);
+        }
+    }
+    provider_support::execute_tx_graph(false);
+}
