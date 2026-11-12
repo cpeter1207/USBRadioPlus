@@ -27,6 +27,7 @@ pub(super) enum ControlOperation {
     Direct(super::super::UrpAstDirectCallbacks),
     Feedback(super::super::UrpRadioFeedbackPort),
     ProgrammeRetire { generation: u64, request: u64 },
+    ProgrammeFence(super::super::UrpProgrammeFenceBinding),
     Site(super::super::UrpAstSiteControl),
     Remote(super::super::UrpAstRemoteControl),
     Jitter,
@@ -139,6 +140,26 @@ unsafe fn execute(
                     .channel_feedback_bind
                     .map(|call| call(channel, &port)),
             )),
+            ControlOperation::ProgrammeFence(mut binding) => {
+                let expected = binding;
+                let result = status(
+                    descriptor
+                        .channel_programme_fence_bind
+                        .map(|call| call(channel, &mut binding)),
+                );
+                let retained = binding.accepted_abi_version == 1
+                    && binding.struct_size == expected.struct_size
+                    && binding.abi_version == expected.abi_version
+                    && binding.context == expected.context
+                    && binding.permit.map(|call| call as usize)
+                        == expected.permit.map(|call| call as usize)
+                    && binding.reserved == expected.reserved;
+                ControlResult::Status(if result != URP_AST_OK || retained {
+                    result
+                } else {
+                    URP_AST_ASTERISK_FAILURE
+                })
+            }
             ControlOperation::ProgrammeRetire {
                 generation,
                 request,

@@ -58,6 +58,25 @@ pub use usbradioplus_station::{
 };
 use usbradioplus_station::{StationMedia, StationPlan, StationUpdate, StationUpdateError};
 
+/// Acknowledged stopped-only final-programme fence envelope.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct UrpProgrammeFenceBinding {
+    /// Complete readable/writable prefix; larger tails are ignored.
+    pub struct_size: u32,
+    /// Envelope ABI, currently one.
+    pub abi_version: u32,
+    /// Borrowed state retained through quiescence; may be null.
+    pub context: *mut c_void,
+    /// Only one permits post-DSP programme for the actual generation/frame count.
+    /// None explicitly unbinds; the bounded callback must never allocate or unwind.
+    pub permit: Option<unsafe extern "C" fn(*mut c_void, u64, u32) -> u32>,
+    /// Initialize zero; one only after successful stopped retention.
+    pub accepted_abi_version: u32,
+    /// Must be zero.
+    pub reserved: u32,
+}
+
 const ABI_VERSION: u32 = 1;
 const MAXIMUM_FRAME_COUNT: u32 = 960;
 const HANDOFF_SLOTS: usize = 3;
@@ -857,12 +876,20 @@ pub struct UrpAstDescriptor {
     pub native_programme_retire: Option<unsafe extern "C" fn(*mut c_void, u64, u64) -> c_int>,
     /// Same retirement serialized with the channel's existing reload owner.
     pub channel_programme_retire: Option<unsafe extern "C" fn(*mut c_void, u64, u64) -> c_int>,
+    /// Stopped-only native post-DSP fence with explicit retained-binding ACK.
+    pub native_programme_fence_bind:
+        Option<unsafe extern "C" fn(*mut c_void, *mut UrpProgrammeFenceBinding) -> c_int>,
+    /// Same borrowed port on the existing channel control and serial TX owners.
+    pub channel_programme_fence_bind:
+        Option<unsafe extern "C" fn(*mut c_void, *mut UrpProgrammeFenceBinding) -> c_int>,
 }
 
 // SAFETY: the descriptor and every referenced function and string are static.
 unsafe impl Sync for UrpAstDescriptor {}
 
 static DESCRIPTOR: UrpAstDescriptor = UrpAstDescriptor {
+    native_programme_fence_bind: Some(native::programme_fence_bind),
+    channel_programme_fence_bind: Some(channel_programme_fence_bind),
     native_programme_retire: Some(native::programme_retire),
     channel_programme_retire: Some(channel_programme_retire),
     link_programme_buffering: Some(native_processing::link_programme_buffering),
@@ -1157,6 +1184,7 @@ struct ChannelControl {
     running: bool,
     direct: Option<UrpAstDirectCallbacks>,
     feedback: Option<UrpRadioFeedbackPort>,
+    programme_fence: Option<usbradioplus_runtime::ProgrammeFence>,
 }
 
 enum PreparedChannelReload {
@@ -1918,6 +1946,7 @@ unsafe extern "C" fn channel_reserve(
                 running: false,
                 direct: None,
                 feedback: None,
+                programme_fence: None,
             }),
             rollback: Mutex::new(None),
         });
@@ -1962,6 +1991,9 @@ unsafe extern "C" fn channel_start(channel: *mut c_void) -> c_int {
         }
         // SAFETY: the retained feedback port outlives this channel's callbacks.
         unsafe { hardware.bind_feedback(control.feedback) }.map_err(|_| Status::InvalidArgument)?;
+        // SAFETY: the same stopped channel retains this bounded fence through shutdown.
+        unsafe { hardware.bind_programme_fence(control.programme_fence) }
+            .map_err(|_| Status::InvalidArgument)?;
         let result = hardware.start().map_err(|error| {
             channel.log_error(&error.to_string());
             Status::SetupFailed
@@ -2349,6 +2381,8 @@ unsafe extern "C" fn channel_reload_activate(channel: *mut c_void) -> c_int {
         .and_then(|mut hardware| {
             // SAFETY: replacement retains the same channel-scoped borrowed port.
             unsafe { hardware.bind_feedback(control.feedback) }?;
+            // SAFETY: replacement retains the same borrowed channel-scoped fence.
+            unsafe { hardware.bind_programme_fence(control.programme_fence) }?;
             if let Some((setup, dsp)) = remote {
                 hardware.bind_remote(setup, dsp)?;
             }
@@ -2738,6 +2772,67 @@ unsafe extern "C" fn channel_feedback_bind(
             unsafe { hardware.bind_feedback(port) }.map_err(|_| Status::ChannelBusy)?;
         }
         control.feedback = port;
+        Ok(())
+    })
+}
+
+/// Validate only the advertised prefix; do not form a full external reference.
+unsafe fn programme_fence(
+    raw: *mut UrpProgrammeFenceBinding,
+) -> Result<Option<usbradioplus_runtime::ProgrammeFence>, Status> {
+    if raw.is_null() {
+        return Err(Status::InvalidArgument);
+    }
+    // SAFETY: the caller lends at least the readable size field.
+    let size = unsafe { raw.cast::<u32>().read_unaligned() };
+    if (size as usize) < size_of::<UrpProgrammeFenceBinding>() {
+        return Err(Status::IncompatibleAbi);
+    }
+    // SAFETY: the advertised size now covers this complete prefix.
+    let binding = unsafe { raw.read_unaligned() };
+    if binding.abi_version != 1 || binding.reserved != 0 || binding.accepted_abi_version != 0 {
+        return Err(Status::IncompatibleAbi);
+    }
+    Ok(binding
+        .permit
+        .map(|permit| usbradioplus_runtime::ProgrammeFence {
+            context: binding.context,
+            permit,
+        }))
+}
+
+/// Acknowledge only after the existing stopped owner retained the validated port.
+unsafe fn acknowledge_programme_fence(raw: *mut UrpProgrammeFenceBinding) {
+    // SAFETY: caller validated the complete writable prefix before retention.
+    unsafe { ptr::addr_of_mut!((*raw).accepted_abi_version).write_unaligned(1) };
+}
+
+unsafe extern "C" fn channel_programme_fence_bind(
+    channel: *mut c_void,
+    binding: *mut UrpProgrammeFenceBinding,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the serialized caller lends the sized writable binding.
+        let port = unsafe { programme_fence(binding)? };
+        // SAFETY: existing channel control is borrowed by its sole serial owner.
+        let (channel, control) = unsafe { channel_control(channel)? };
+        if control.running
+            || control.reload.is_some()
+            || channel
+                .rollback
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .is_some()
+        {
+            return Err(Status::ChannelBusy);
+        }
+        if let Some(hardware) = control.hardware.as_mut() {
+            // SAFETY: caller retains code/context through confirmed quiescence.
+            unsafe { hardware.bind_programme_fence(port) }.map_err(|_| Status::ChannelBusy)?;
+        }
+        control.programme_fence = port;
+        // SAFETY: validated prefix was retained on the quiescent owner.
+        unsafe { acknowledge_programme_fence(binding) };
         Ok(())
     })
 }

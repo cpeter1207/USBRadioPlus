@@ -8,5 +8,10 @@ mod processing;
 
 pub use processing::{
     ExplicitNativeProcessingPlan, NativeProcessingFactory, NativeProcessingPlan,
-    ProcessingGeneration, ProcessingRuntimeError,
+    ProcessingGeneration, ProcessingRuntimeError, ProgrammeFence,
 };
+
+// Reuse the SDK's thread-local test allocator guard; production has no allocator hook.
+#[cfg(test)]
+#[path = "../../station/src/tests/allocation.rs"]
+mod allocation;

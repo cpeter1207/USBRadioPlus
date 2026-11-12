@@ -248,6 +248,21 @@ impl UpdateMailbox {
         )
     }
 
+    /// Apply only on the original serial TX owner after successor adoption.
+    pub(super) unsafe fn bind_programme_fence(
+        &self,
+        station: &StationTransmit,
+        port: Option<usbradioplus_runtime::ProgrammeFence>,
+        generation: u64,
+    ) {
+        // SAFETY: adopted storage is retained until this owner acknowledges;
+        // neither reclamation nor a concurrent TX call can occur in this read.
+        let processing = unsafe { self.transmit_processing.load(Ordering::Acquire).as_ref() }
+            .unwrap_or_else(|| station.processing());
+        // SAFETY: forwarded to the same sole TX owner between graph operations.
+        unsafe { processing.set_transmit_programme_fence(port, generation) };
+    }
+
     fn publish(&self, owner: &UpdateOwner) {
         self.receive_result.store(0, Ordering::Relaxed);
         self.transmit_result.store(0, Ordering::Relaxed);

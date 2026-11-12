@@ -43,3 +43,42 @@ callback lifetime, ordinary restart returns, and gain preservation unchanged.
 
 See [the buffering contract](programme-buffering.md) for fields, bounds,
 upstream-source audit, lifecycle rules, verification, and package consequences.
+
+## Final-graph permission fence
+
+Control retirement is asynchronous. It cannot prevent an already retained graph
+from emitting revoked programme while the control task prepares its replacement.
+Add one borrowed permission callback to the existing station TX owner, with
+native/channel bind entries appended to descriptor ABI 1. The new sized 32-byte
+binding is independent of DirectCallbacks and the existing feedback port, so no
+nested layout or SONAME changes. The channel option is a separate host integration using the same envelope and
+the existing taskprocessor; zero return alone is not an acknowledgment.
+
+Only confirmed callback quiescence permits bind/rebind/unbind. Successful stop
+retains the port for restart. Failed start/stop keeps ownership fenced. Same-device
+adoption and channel hardware replacement retain the binding; each call supplies
+the actual immutable physical generation and graph frame count. A caller rejects
+stale generations. Callback code and context must outlive stopped unbind/rebind
+or quiescent destruction and module unload.
+
+The serial TX owner applies the port to its actually selected processing
+generation after update adoption, including before control commits the update.
+The permission check runs after the final graph and handoff, before output
+measurement and the radio core's independent signaling. Exactly one permits
+programme; zero, unknown values or zero generation suppress it. Suppression
+advances existing graph/meter state without faulting the stream. No extra graph,
+PCM buffer, worker, allocation, lock or hardware operation is introduced.
+An absent binding preserves ordinary PCM; it cannot qualify private phone RF.
+
+This gate suppresses an inseparable programme composite, including voice
+telemetry mixed with revoked speech. It does not suppress independent
+CTCSS/DCS/STE or claim physical OFF. The controller RF arbiter must track
+mandatory-ID deadlines and retry/schedule IDs using fresh permitted programme.
+It must retain exact contributor fences and keep the gate closed through the
+matching generation/request completed-render retirement acknowledgment.
+Control dispatch acceptance alone is insufficient.
+
+Converter, device queue and physical presentation after this seam remain
+separate bounds. Source birth is never inferred from graph counters or gate
+calls. Production phone activation still requires the controller's complete
+source-age, FIFO, switching, deadline and actual physical-feedback qualification.

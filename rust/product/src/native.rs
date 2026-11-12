@@ -470,6 +470,24 @@ pub(crate) unsafe extern "C" fn feedback_bind(
     })
 }
 
+pub(crate) unsafe extern "C" fn programme_fence_bind(
+    handle: *mut c_void,
+    binding: *mut crate::UrpProgrammeFenceBinding,
+) -> c_int {
+    ffi_status(|| {
+        // SAFETY: the serialized caller lends the complete sized writable record.
+        let port = unsafe { crate::programme_fence(binding)? };
+        let station =
+            // SAFETY: this control call borrows the unique live native owner.
+            unsafe { handle.cast::<NativeStation>().as_mut() }.ok_or(Status::InvalidArgument)?;
+        // SAFETY: caller retains code/context until stopped unbind or destruction.
+        unsafe { station.runtime.bind_programme_fence(port) }.map_err(|_| Status::ChannelBusy)?;
+        // SAFETY: validated prefix was retained by the quiescent owner.
+        unsafe { crate::acknowledge_programme_fence(binding) };
+        Ok(())
+    })
+}
+
 pub(crate) unsafe extern "C" fn programme_retire(
     handle: *mut c_void,
     expected_generation: u64,

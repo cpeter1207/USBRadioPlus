@@ -846,10 +846,36 @@ unsafe impl Sync for GraphStage {}
 #[derive(Clone)]
 struct SharedGraph(Arc<GraphStage>);
 
+/// Borrowed final-programme permission check on the existing serial TX owner.
+///
+/// The callback runs after the complete programme graph and before independent
+/// radio signaling. Only one permits this block; all other values suppress it.
+/// It must be bounded, allocation-free and non-unwinding, without calling control
+/// or hardware APIs. Its context and code
+/// remain live until quiescent unbind/rebind or destruction.
+#[derive(Clone, Copy)]
+pub struct ProgrammeFence {
+    /// Borrowed caller-owned state, never dereferenced by this library.
+    pub context: *mut c_void,
+    /// Actual physical generation and graph frame count, not source timestamps.
+    pub permit: unsafe extern "C" fn(*mut c_void, u64, u32) -> u32,
+}
+
+// SAFETY: copying the borrowed address transfers no access. The unsafe binding
+// contract requires one serial TX owner and context lifetime through quiescence.
+unsafe impl Send for ProgrammeFence {}
+
+#[derive(Clone, Copy)]
+struct BoundProgrammeFence {
+    port: ProgrammeFence,
+    generation: u64,
+}
+
 struct OutputLoudnessStage {
     graph: SharedGraph,
     meter: UnsafeCell<OutputLoudnessMeter>,
     observer: OutputLoudnessObserver,
+    programme_fence: UnsafeCell<Option<BoundProgrammeFence>>,
 }
 
 // SAFETY: only the original serial TX owner mutates the meter and graph.
@@ -962,6 +988,7 @@ impl ProcessingGeneration {
             graph,
             meter: UnsafeCell::new(meter),
             observer,
+            programme_fence: UnsafeCell::new(None),
         }))
     }
 
@@ -1013,6 +1040,25 @@ impl ProcessingGeneration {
                 .observer
                 .snapshot(),
         )
+    }
+
+    /// Set this block's final-programme fence on the existing TX graph wrapper.
+    ///
+    /// # Safety
+    /// Only the original serial TX owner may call this, between graph operations.
+    /// The callback/context must remain live through all ensuing renders, and
+    /// obey the bounded no-allocation/no-unwind contract of ProgrammeFence.
+    pub unsafe fn set_transmit_programme_fence(
+        &self,
+        port: Option<ProgrammeFence>,
+        generation: u64,
+    ) {
+        let stage = self.transmit_loudness.as_ref().expect("prepared TX meter");
+        // SAFETY: the caller is the sole TX owner between graph operations.
+        unsafe {
+            *stage.programme_fence.get() =
+                port.map(|port| BoundProgrammeFence { port, generation });
+        }
     }
 
     /// Last completed programme render's conservative buffering bound. Access
@@ -1176,6 +1222,17 @@ unsafe extern "C" fn metered_graph_process(
     };
     if result != PORT_OK {
         return result;
+    }
+    // SAFETY: only this serial owner reads or replaces its borrowed scalar port.
+    if let Some(fence) = unsafe { *stage.programme_fence.get() } {
+        // Zero is never a physical generation. Do not delegate its admission.
+        let permitted = fence.generation != 0
+            // SAFETY: the binding contract retains this bounded callback/context.
+            && unsafe { (fence.port.permit)(fence.port.context, fence.generation, frame_count) } == 1;
+        if !permitted {
+            // SAFETY: the successful graph call validated this writable span.
+            unsafe { slice::from_raw_parts_mut(output, frame_count as usize) }.fill(0.0);
+        }
     }
     // SAFETY: successful graph processing validated this exact output span;
     // its final handoff mix is complete and the corresponding serial callback exclusively owns the meter.

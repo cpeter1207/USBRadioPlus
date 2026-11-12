@@ -1445,6 +1445,35 @@ unsafe extern "C" fn setoption(
         };
         return 0;
     }
+    if option as u32 == super::super::URP_AST_OPTION_PROGRAMME_FENCE {
+        use super::super::{URP_PROGRAMME_FENCE_ABI_VERSION, UrpProgrammeFenceBinding};
+        if (data_length as usize) < size_of::<UrpProgrammeFenceBinding>() {
+            return -1;
+        }
+        // SAFETY: Asterisk lends the complete possibly byte-aligned writable prefix.
+        let mut binding = unsafe { data.cast::<UrpProgrammeFenceBinding>().read_unaligned() };
+        if (binding.struct_size as usize) < size_of::<UrpProgrammeFenceBinding>()
+            || binding.struct_size as usize > data_length as usize
+            || binding.abi_version != URP_PROGRAMME_FENCE_ABI_VERSION
+            || binding.accepted_abi_version != 0
+            || binding.reserved != 0
+        {
+            return -1;
+        }
+        // The task copies this known prefix, not the caller's optional tail.
+        // Never advertise bytes beyond the actual local task payload.
+        binding.struct_size = size_of::<UrpProgrammeFenceBinding>() as u32;
+        if channel.control_status(ControlOperation::ProgrammeFence(binding)) != URP_AST_OK {
+            return -1;
+        }
+        // SAFETY: exact unchanged retention was acknowledged by the SDK; only
+        // this field of the validated prefix is written, never a larger tail.
+        unsafe {
+            ptr::addr_of_mut!((*data.cast::<UrpProgrammeFenceBinding>()).accepted_abi_version)
+                .write_unaligned(URP_PROGRAMME_FENCE_ABI_VERSION);
+        }
+        return 0;
+    }
     if option as u32 == super::super::URP_AST_OPTION_PROGRAMME_RETIRE {
         use super::super::{
             URP_AST_PROGRAMME_RETIRE_OPTION_ABI_VERSION, UrpAstProgrammeRetirement,

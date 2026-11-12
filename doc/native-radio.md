@@ -287,3 +287,27 @@ behavior. The controller must keep programme muted until the matching physical
 generation and retirement request are acknowledged after rendering. This does
 not establish physical PTT readback, receiver settling, DAC delay, or a complete
 local receive/RNNoise latency bound. Device and RF acceptance remain separate.
+
+## Final-programme permission
+
+SDK alpha35 supplies an optional stopped-bound permission callback after the
+final transmit graph. A controller uses it to suppress revoked programme
+immediately, without waiting for its control task to prepare fresh DSP history.
+Only an exact permit value of one admits the block. The callback receives the
+actual physical radio generation and frame count; these are not source timestamps.
+
+Native and Asterisk consumers require the sized capability and an explicit
+successful retention acknowledgment. Callback code and state must remain live
+through restart, replacement and rollback until a confirmed stopped unbind,
+rebind or quiescent destruction. Failed start or stop never permits releasing
+that state. An absent binding preserves ordinary audio, but cannot qualify
+private phone programme.
+
+The gate preserves independent CTCSS, DCS, signaling tails and PTT processing.
+It can suppress voice telemetry mixed inseparably with revoked speech, so the
+controller must track mandatory-ID deadlines and schedule or retry fresh IDs.
+Keep the gate closed until matching physical-generation and retirement-request
+feedback confirms a completed render. Source age, controller FIFO, converter
+and device delay, actual hardware OFF, and receive-window scheduling remain
+separate controller responsibilities. This SDK capability alone does not enable
+phone-to-RF operation.

@@ -1,3 +1,14 @@
+usbradioplus (0.1.0~alpha35-1) unstable; urgency=medium
+
+  * Add stopped-bound post-DSP programme fences on existing native/channel
+    owners.
+  * Require explicit retention acknowledgment for the sized RPPF channel option.
+  * Preserve callback identity across replacement, rollback, and restart.
+  * Keep independent signaling and physical RF qualification separate.
+  * Require released ABI3 ring alpha6 with bounded metadata allocation.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Thu, 12 Nov 2026 00:26:56 +0000
+
 usbradioplus (0.1.0~alpha34-1) unstable; urgency=medium
 
   * Report qualified link/TX programme bounds using the released FFmpeg adapter.

@@ -718,6 +718,37 @@ typedef struct UrpAstProgrammeRetirement {
 	int32_t result; /**< SDK result: zero committed, RELOAD_PENDING, or a negative failure. */
 } UrpAstProgrammeRetirement;
 
+/** Acknowledged stopped-only post-DSP programme fence on the existing channel owner. */
+#define URP_AST_OPTION_PROGRAMME_FENCE 0x52505046U
+/** Sized RPPF binding prefix ABI. */
+#define URP_PROGRAMME_FENCE_ABI_VERSION 1U
+/** Called on the existing serial TX owner after its final programme graph.
+ * Only exactly one permits the block; all other results suppress programme.
+ * Generation and frames are actual radio/graph identities, never source timing.
+ * Bounded, allocation-free, no-unwind; never call a control or hardware API.
+ * Independent radio signaling is not gated. Inseparable voice telemetry is
+ * suppressed too: the controller must schedule/retry mandatory IDs separately.
+ * @param context Borrowed state retained until confirmed quiescent unbind.
+ * @param generation Actual immutable physical radio generation.
+ * @param frames Actual number of frames in this graph call.
+ * @return Exactly one to permit this programme block; every other value denies. */
+typedef uint32_t (*UrpProgrammePermit)(void *context, uint64_t generation, uint32_t frames);
+/** Writable sized prefix shared by descriptor binds and ast_channel_setoption.
+ * Require zero return AND accepted_abi_version=1. Bind/rebind/unbind only after
+ * confirmed callback quiescence. Successful stop retains the binding for restart;
+ * failed start/stop does not authorize releasing it. Context/code remain live
+ * through stopped unbind/rebind or quiescent destruction/module unload.
+ * A missing capability cannot qualify private programme. An absent binding
+ * preserves ordinary PCM behavior; it is not an implicit private-media permit. */
+typedef struct UrpProgrammeFenceBinding {
+	uint32_t struct_size;	       /**< At least this prefix; no larger than option data. */
+	uint32_t abi_version;	       /**< URP_PROGRAMME_FENCE_ABI_VERSION. */
+	void *context;		       /**< Borrowed state; may be null. */
+	UrpProgrammePermit permit;     /**< Null explicitly unbinds while stopped. */
+	uint32_t accepted_abi_version; /**< Initialize zero; one only after retention. */
+	uint32_t reserved;	       /**< Must be zero. */
+} UrpProgrammeFenceBinding;
+
 /** Exact native PCM/metadata callback contract shared by every host adapter. */
 #define URP_AST_DIRECT_CALLBACKS_ABI_VERSION 6U
 
@@ -1610,6 +1641,10 @@ typedef struct UrpAstDescriptor {
 	/** Same operation on the existing channel taskprocessor owner. */
 	int (*channel_programme_retire)(void *channel, uint64_t expected_radio_generation,
 					uint64_t request_id);
+	/** Retain a final-programme fence on the quiescent native owner; require ACK. */
+	int (*native_programme_fence_bind)(void *native, UrpProgrammeFenceBinding *binding);
+	/** Same stopped-only operation on the existing channel taskprocessor owner. */
+	int (*channel_programme_fence_bind)(void *channel, UrpProgrammeFenceBinding *binding);
 } UrpAstDescriptor;
 
 /** Complete optional feedback capability, preserving every preceding descriptor field. */
@@ -1626,6 +1661,11 @@ typedef struct UrpAstDescriptor {
 #define URP_AST_DESCRIPTOR_PROGRAMME_RETIRE_MIN_SIZE                                               \
 	(offsetof(UrpAstDescriptor, channel_programme_retire) +                                    \
 	 sizeof(((UrpAstDescriptor *)0)->channel_programme_retire))
+
+/** Complete optional native/channel post-DSP programme fence capability. */
+#define URP_AST_DESCRIPTOR_PROGRAMME_FENCE_MIN_SIZE                                                \
+	(offsetof(UrpAstDescriptor, channel_programme_fence_bind) +                                \
+	 sizeof(((UrpAstDescriptor *)0)->channel_programme_fence_bind))
 
 #ifdef __cplusplus
 extern "C" {

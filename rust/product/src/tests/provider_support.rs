@@ -34,6 +34,17 @@ static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
 static AUDIO_CREATES: AtomicU32 = AtomicU32::new(0);
 static AUDIO_DESTROYS: AtomicU32 = AtomicU32::new(0);
 static PERIODIC_AUDIO: AtomicBool = AtomicBool::new(false);
+static EXECUTE_TX_GRAPH: AtomicBool = AtomicBool::new(false);
+static TX_GRAPH_AUDIBLE: AtomicBool = AtomicBool::new(false);
+
+pub(super) fn execute_tx_graph(enabled: bool) {
+    EXECUTE_TX_GRAPH.store(enabled, Ordering::Release);
+    TX_GRAPH_AUDIBLE.store(false, Ordering::Release);
+}
+
+pub(super) fn tx_graph_audible() -> bool {
+    TX_GRAPH_AUDIBLE.load(Ordering::Acquire)
+}
 static PTT_DROPS: AtomicU32 = AtomicU32::new(0);
 static GRAPH_DELAY_MS: AtomicU32 = AtomicU32::new(0);
 static GRAPH_PREPARING: AtomicBool = AtomicBool::new(false);
@@ -497,8 +508,25 @@ struct RadioConfigPrefix {
     generation_id: u64,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RadioProcessor {
+    context: *mut c_void,
+    process: Option<unsafe extern "C" fn(*mut c_void, *const f32, *mut f32, u32) -> c_int>,
+    bypass: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
+    warm: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
+}
+
+#[repr(C)]
+struct RadioPortsPrefix {
+    struct_size: u32,
+    // Released radio ABI: 38 notches, two RX ports, NR, dynamics, then TX programme.
+    processors: [RadioProcessor; 43],
+}
+
 struct RadioState {
     generation_id: u64,
+    transmit_processor: Option<RadioProcessor>,
 }
 
 #[repr(C)]
@@ -625,13 +653,18 @@ unsafe impl Sync for RadioDescriptor {}
 
 unsafe extern "C" fn radio_create(
     config: *const c_void,
-    _ports: *const c_void,
+    ports: *const c_void,
     output: *mut *mut c_void,
 ) -> c_int {
     // SAFETY: the wrapper supplies one complete configuration prefix and output storage.
     unsafe {
         *output = Box::into_raw(Box::new(RadioState {
             generation_id: (*config.cast::<RadioConfigPrefix>()).generation_id,
+            transmit_processor: EXECUTE_TX_GRAPH.load(Ordering::Acquire).then(|| {
+                // The SDK supplies this full port ABI; TX programme follows
+                // two RX ports, the notch bank, noise reduction and dynamics.
+                (*ports.cast::<RadioPortsPrefix>()).processors[42]
+            }),
         }))
         .cast()
     };
@@ -687,9 +720,36 @@ unsafe extern "C" fn radio_transmit(
     _controls: *const c_void,
     result: *mut c_void,
 ) -> c_int {
-    // SAFETY: the wrapper supplies exact stereo output and result storage.
+    // SAFETY: the wrapper supplies this retained fixture handle.
+    let state = unsafe { &*handle.cast::<RadioState>() };
+    if let Some(port) = state.transmit_processor {
+        assert!(frames as usize <= 960);
+        let input = [0.125; 960];
+        let mut processed = [0.0; 960];
+        assert_eq!(
+            // SAFETY: the SDK retains the actual prepared port through this serial call.
+            unsafe {
+                port.process.unwrap()(port.context, input.as_ptr(), processed.as_mut_ptr(), frames)
+            },
+            OK
+        );
+        TX_GRAPH_AUDIBLE.store(
+            processed[..frames as usize].iter().any(|v| *v != 0.0),
+            Ordering::Release,
+        );
+        // SAFETY: the wrapper lends exactly frames stereo output samples.
+        for (pair, sample) in unsafe { std::slice::from_raw_parts_mut(output, frames as usize * 2) }
+            .chunks_exact_mut(2)
+            .zip(processed)
+        {
+            pair.fill(sample);
+        }
+    } else {
+        // SAFETY: the wrapper supplies exact stereo output storage.
+        unsafe { std::slice::from_raw_parts_mut(output, frames as usize * 2) }.fill(0.125);
+    }
+    // SAFETY: the wrapper supplies exact result storage.
     unsafe {
-        std::slice::from_raw_parts_mut(output, frames as usize * 2).fill(0.125);
         result
             .cast::<RadioTransmitResult>()
             .write(RadioTransmitResult {

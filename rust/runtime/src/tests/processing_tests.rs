@@ -2231,3 +2231,222 @@ fn optional_receive_stages_preserve_history_on_transmit_edits_and_reset_on_mask_
     assert_eq!(tail_changed.receive_loudness().unwrap().sample_count, 0);
     assert_eq!(tail_changed.transmit_loudness().unwrap().epoch, tx_epoch);
 }
+
+#[test]
+fn programme_fence_suppresses_real_delayed_composite_before_control_retirement() {
+    let provider =
+        // SAFETY: the versioned provider code/table outlive these serial test graphs.
+        unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
+    let factory =
+        NativeProcessingFactory::new_explicit(provider, None, "/unused/agc.so", 960).unwrap();
+    let mut settings = explicit_raw_plan();
+    settings.transmit_graph = "aecho=1:1:600:0.5".into();
+    let mut fenced = factory.prepare(&settings).unwrap();
+    let mut witness = factory.prepare(&settings).unwrap();
+    let mut impulse = [0.0; 960];
+    impulse[0] = 0.25;
+    impulse[1] = 0.5; // Inseparable programme contributors are both suppressed.
+    process_transmit(&mut fenced, &impulse);
+    process_transmit(&mut witness, &impulse);
+    struct Probe {
+        answer: u32,
+        calls: usize,
+    }
+    unsafe extern "C" fn permit(context: *mut c_void, generation: u64, frames: u32) -> u32 {
+        // SAFETY: this sole test owner retains the probe through graph destruction.
+        let probe = unsafe { &mut *context.cast::<Probe>() };
+        assert_eq!(frames, 960);
+        probe.calls += 1;
+        if generation == 7 { probe.answer } else { 0 }
+    }
+    let mut probe = Probe {
+        answer: 0,
+        calls: 0,
+    };
+    let port = ProgrammeFence {
+        context: ptr::from_mut(&mut probe).cast(),
+        permit,
+    };
+    // SAFETY: this graph is used only by the original serial TX owner; probe outlives it.
+    unsafe { fenced.set_transmit_programme_fence(Some(port), 7) };
+    let mut delayed_witness = false;
+    for _ in 0..32 {
+        delayed_witness |= process_transmit(&mut witness, &[0.0; 960])
+            .iter()
+            .any(|v| v.abs() > 0.1);
+        assert!(
+            process_transmit(&mut fenced, &[0.0; 960])
+                .iter()
+                .all(|v| *v == 0.0)
+        );
+    }
+    assert!(
+        delayed_witness,
+        "the existing backend must really retain the delayed marker"
+    );
+    assert_eq!(probe.calls, 32);
+    for (generation, answer, allowed) in [
+        (7, 2, false),
+        (7, u32::MAX, false),
+        (8, 1, false),
+        (0, 1, false),
+        (7, 1, true),
+    ] {
+        probe.answer = answer;
+        // SAFETY: no concurrent render; this replaces only the same owner's scalar fence.
+        unsafe { fenced.set_transmit_programme_fence(Some(port), generation) };
+        let audible = process_transmit(&mut fenced, &[0.25; 960])
+            .iter()
+            .any(|v| *v != 0.0);
+        assert_eq!(audible, allowed, "generation={generation}, answer={answer}");
+    }
+    // SAFETY: clearing the binding occurs on its same owner before releasing the probe.
+    unsafe { fenced.set_transmit_programme_fence(None, 7) };
+    assert!(
+        process_transmit(&mut fenced, &[0.25; 960])
+            .iter()
+            .any(|v| *v != 0.0)
+    );
+}
+
+#[test]
+fn programme_fence_callback_and_mute_do_not_touch_the_rust_heap() {
+    let generation = factory().prepare(plan()).unwrap();
+    unsafe extern "C" fn permit(_: *mut c_void, generation: u64, frames: u32) -> u32 {
+        assert_eq!((generation, frames), (7, 960));
+        0
+    }
+    let port = ProgrammeFence {
+        context: ptr::null_mut(),
+        permit,
+    };
+    // SAFETY: this is the sole TX owner and the callback/context are static.
+    unsafe { generation.set_transmit_programme_fence(Some(port), 7) };
+    let context = NonNull::from(generation.transmit_loudness.as_ref().unwrap().as_ref())
+        .cast()
+        .as_ptr();
+    let input = [0.25; 960];
+    let mut output = [0.0; 960];
+    crate::allocation::without_heap(|| {
+        assert_eq!(
+            // SAFETY: prepared exact disjoint spans and the same serial graph/meter owner.
+            unsafe { metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 960) },
+            PORT_OK
+        );
+    });
+    assert!(output.iter().all(|v| *v == 0.0));
+}
+
+#[test]
+#[should_panic(expected = "warmed feedback callback touched the Rust heap")]
+fn programme_fence_heap_guard_detects_a_positive_control() {
+    crate::allocation::without_heap(|| {
+        let allocation = Box::new([0_u8; 64]);
+        std::hint::black_box(&allocation);
+    });
+}
+
+#[link(name = "rptadvradio")]
+unsafe extern "C" {
+    fn rptadv_radio_descriptor() -> *const c_void;
+}
+
+#[test]
+fn programme_fence_leaves_real_ctcss_dcs_and_ptt_signaling_unchanged() {
+    use usbradioplus_radio::{
+        CtcssTransmitConfig, DcsTransmitConfig, OutputConfig, OutputRoute, RadioProvider,
+        SessionConfig, TransmitControls, TransmitSignaling,
+    };
+    // These released providers are software-only DSP/session objects, not audio hardware.
+    let graph =
+        // SAFETY: both immutable tables and their code live for this process.
+        unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
+    // SAFETY: the radio core is the immutable software session provider, with no device access.
+    let radio = unsafe { RadioProvider::from_raw_descriptor(rptadv_radio_descriptor()) }.unwrap();
+    let factory =
+        NativeProcessingFactory::new_explicit(graph, None, "/unused/agc.so", 960).unwrap();
+    let mut plan = explicit_raw_plan();
+    plan.transmit_graph = "aeval=0.25".into();
+    unsafe extern "C" fn deny(_: *mut c_void, generation: u64, frames: u32) -> u32 {
+        assert_eq!(generation, 7);
+        assert!((1..=960).contains(&frames));
+        0
+    }
+    for signaling in [
+        TransmitSignaling::Ctcss(CtcssTransmitConfig {
+            default_frequency_tenths_hz: 1000,
+            peak: 0.1,
+            ..CtcssTransmitConfig::default()
+        }),
+        TransmitSignaling::Dcs(DcsTransmitConfig {
+            code: 23,
+            peak: 0.1,
+            ..DcsTransmitConfig::default()
+        }),
+    ] {
+        let mut config = SessionConfig::new(7, 960, 960);
+        config.transmit.signaling = signaling;
+        config.transmit.output_a = OutputConfig {
+            route: OutputRoute::Voice,
+            tone_gain: 1.0,
+            tone_bias: 0.0,
+        };
+        config.transmit.output_b = OutputConfig {
+            route: OutputRoute::Tone,
+            tone_gain: 1.0,
+            tone_bias: 0.0,
+        };
+        let mut open = factory.prepare(&plan).unwrap();
+        let mut closed = factory.prepare(&plan).unwrap();
+        // SAFETY: only this test's serial TX owner uses the graph, with a static gate.
+        unsafe {
+            closed.set_transmit_programme_fence(
+                Some(ProgrammeFence {
+                    context: ptr::null_mut(),
+                    permit: deny,
+                }),
+                7,
+            )
+        };
+        let (_, mut open_tx, _) = radio
+            .prepare(&config, open.session_ports(ProgramRingPort::silence()))
+            .unwrap()
+            .split();
+        let (_, mut closed_tx, _) = radio
+            .prepare(&config, closed.session_ports(ProgramRingPort::silence()))
+            .unwrap()
+            .split();
+        let mut observed_voice = false;
+        let mut observed_tone = false;
+        for _ in 0..8 {
+            let controls = TransmitControls {
+                external_ptt_request: true,
+                physical_ptt_applied: true,
+                render_admitted: true,
+                ..TransmitControls::default()
+            };
+            let mut open_output = [0.0; 1920];
+            let mut closed_output = [0.0; 1920];
+            let before = open_tx.render(&mut open_output, controls).unwrap();
+            let after = closed_tx.render(&mut closed_output, controls).unwrap();
+            assert_eq!(
+                (before.logical_ptt, before.selected_ctcss_tenths_hz),
+                (after.logical_ptt, after.selected_ctcss_tenths_hz)
+            );
+            assert!(after.logical_ptt);
+            for (open, closed) in open_output
+                .chunks_exact(2)
+                .zip(closed_output.chunks_exact(2))
+            {
+                observed_voice |= open[0] != 0.0;
+                observed_tone |= open[1] != 0.0;
+                assert_eq!(closed[0], 0.0);
+                assert_eq!(
+                    closed[1], open[1],
+                    "the independent signaling path must be unchanged"
+                );
+            }
+        }
+        assert!(observed_voice && observed_tone);
+    }
+}
