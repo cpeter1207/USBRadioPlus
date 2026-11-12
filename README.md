@@ -17,6 +17,14 @@ station library also used by the standalone rpt_advanced controller. The
 `libusbradioplus-product-dev` package supplies the C header and pkg-config
 metadata for consumers; the shared product has no Asterisk dependency.
 
+The alpha35 SDK adds a stopped-bound final-programme permission callback for
+controllers that must suppress revoked audio immediately while retiring DSP
+history. It runs on the existing TX owner after the final graph and does not
+suppress independent radio signaling. Controllers must separately schedule or
+retry mandatory identification that was mixed with suppressed programme.
+Installing this SDK does not enable phone-to-RF attachment or receive-window
+scheduling.
+
 The alpha34 SDK adds conservative programme-buffering reports and explicit
 generation-bound final-TX history retirement through the existing owners.
 Controllers keep programme gated until matching completed-render feedback;

@@ -850,7 +850,8 @@ struct SharedGraph(Arc<GraphStage>);
 ///
 /// The callback runs after the complete programme graph and before independent
 /// radio signaling. Only one permits this block; all other values suppress it.
-/// It must be bounded, allocation-free and non-unwinding. Its context and code
+/// It must be bounded, allocation-free and non-unwinding, without calling control
+/// or hardware APIs. Its context and code
 /// remain live until quiescent unbind/rebind or destruction.
 #[derive(Clone, Copy)]
 pub struct ProgrammeFence {

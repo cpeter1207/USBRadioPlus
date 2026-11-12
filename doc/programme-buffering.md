@@ -127,6 +127,43 @@ one proves actual SDK dispatch, including a Pending or negative operation result
 Missing capability or enqueue failure leaves the envelope unchanged. Larger tails
 are preserved. Dispatch acknowledgment alone never means retirement completed.
 
+## Post-DSP programme permission
+
+The optional native/channel programme_fence_bind descriptor entries retain a
+UrpProgrammeFenceBinding on the existing station TX owner. The RPPF Asterisk
+option copies the same sized prefix through the existing taskprocessor. Require
+zero status and accepted_abi_version=1; an unknown option, absent SDK callback,
+failed enqueue, malformed binding or changed reply cannot acknowledge retention.
+Larger caller tails are untouched, and the copied task advertises only its actual
+prefix extent. Descriptor ABI/SONAME 1, DirectCallbacks ABI 6 and the feedback
+port/envelope layouts remain unchanged.
+
+Bind, rebind and unbind only while callbacks are confirmed quiescent. A null
+permit explicitly unbinds. A successful stop retains the binding for restart;
+a failed start or stop retains its lifetime fence. Callback/context ownership
+survives same-device updates, physical replacement and rollback. Keep code and
+context alive until stopped unbind/rebind or quiescent destruction/module unload.
+
+The bounded, allocation-free, non-unwinding callback receives the actual physical
+generation and graph block size. It must not invoke hardware or control APIs.
+The existing TX owner applies the binding to its selected generation after
+adoption and checks it after final graph processing, before metering and
+independent radio signaling. Only exactly one permits programme; any other value
+or zero generation suppresses it. Suppression advances graph state normally and
+does not fault the stream. There is no extra DSP owner, PCM buffer or worker.
+
+This closes the interval before control-side history retirement completes. It
+does not supply source birth, queue age, a physical-OFF receipt or downstream
+presentation bounds. Keep the gate closed until matching generation/request
+completed-render retirement feedback. The caller must separately retire upstream
+history and qualify later programme. Unbound ordinary audio remains supported,
+but a missing fence cannot qualify a phone RF path.
+
+An inseparable programme composite can include voice telemetry or mandatory
+identification. The controller RF arbiter must retain those deadlines and
+schedule/retry fresh permitted identification rather than treating suppression
+as successful transmission. Independent CTCSS/DCS/STE and PTT are not gated.
+
 ## Packaging
 
 These additions keep product descriptor ABI 1/SONAME 1 and DirectCallbacks ABI 6.

@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "packaging/repository/install-usbradioplus.sh"
 ## Released provider minimums required by the Debian source package.
 BUILD_PROVIDER_MINIMUMS = (
-    ("rate_adjusting_pcm_ring3", "3.0.0~alpha1"),
+    ("rate_adjusting_pcm_ring3", "3.0.0~alpha6"),
+    ("rate_adjusting_pcm_ring3", "3.0.0-alpha.6"),
     ("rptadvradio", "0.1.0~alpha10"),
     ("rptadv_samplerate_adapter", "0.1.0~alpha2"),
     ("rptadv_ffmpeg_adapter", "0.1.0~alpha2"),

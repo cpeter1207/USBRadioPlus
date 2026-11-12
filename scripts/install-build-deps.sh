@@ -59,8 +59,14 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 	librptadv-ffmpeg-adapter-dev librptadv-portaudio-alsa-adapter-dev \
 	librptadv-gpio-adapter-dev librptadv-rnnoise-adapter-dev
 
-pkg-config --atleast-version=3.0.0~alpha1 rate_adjusting_pcm_ring3 || \
-	die "rate_adjusting_pcm_ring3 3.0.0~alpha1 or newer is unavailable"
+pkg-config --exists rate_adjusting_pcm_ring3 || \
+	die "rate_adjusting_pcm_ring3 metadata is unavailable"
+case "$(pkg-config --modversion rate_adjusting_pcm_ring3)" in
+	*-alpha.*) urp_ring_min_version=3.0.0-alpha.6 ;;
+	*) urp_ring_min_version=3.0.0~alpha6 ;;
+esac
+pkg-config --atleast-version="$urp_ring_min_version" rate_adjusting_pcm_ring3 || \
+	die "rate_adjusting_pcm_ring3 $urp_ring_min_version or newer is unavailable"
 case "$(pkg-config --modversion rptadvradio)" in
 	*-alpha.*) urp_radio_min_version=0.1.0-alpha.10 ;;
 	*) urp_radio_min_version=0.1.0~alpha10 ;;

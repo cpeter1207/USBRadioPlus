@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0~alpha35 - 2026-11-12
+
+- Add acknowledged native and Asterisk bindings for a final-programme permission fence.
+- Suppress revoked post-DSP programme before delayed control-side retirement completes.
+- Retain the borrowed fence through restart, physical replacement and rollback;
+  require confirmed callback quiescence before changing its context or callback.
+- Preserve independent CTCSS/DCS/PTT signaling and existing DSP/hardware owners.
+- Keep controller source-age, receive-window scheduling and RF qualification separate.
+- Require the released ABI3 ring alpha6 cohort with bounded metadata allocation.
+
 ## 0.1.0~alpha34 - 2026-11-10
 
 - Report qualified conservative programme buffering for built-in link and TX graphs.

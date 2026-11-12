@@ -727,8 +727,12 @@ typedef struct UrpAstProgrammeRetirement {
  * Generation and frames are actual radio/graph identities, never source timing.
  * Bounded, allocation-free, no-unwind; never call a control or hardware API.
  * Independent radio signaling is not gated. Inseparable voice telemetry is
- * suppressed too: the controller must schedule/retry mandatory IDs separately. */
-typedef uint32_t (*UrpProgrammePermit)(void *, uint64_t generation, uint32_t frames);
+ * suppressed too: the controller must schedule/retry mandatory IDs separately.
+ * @param context Borrowed state retained until confirmed quiescent unbind.
+ * @param generation Actual immutable physical radio generation.
+ * @param frames Actual number of frames in this graph call.
+ * @return Exactly one to permit this programme block; every other value denies. */
+typedef uint32_t (*UrpProgrammePermit)(void *context, uint64_t generation, uint32_t frames);
 /** Writable sized prefix shared by descriptor binds and ast_channel_setoption.
  * Require zero return AND accepted_abi_version=1. Bind/rebind/unbind only after
  * confirmed callback quiescence. Successful stop retains the binding for restart;

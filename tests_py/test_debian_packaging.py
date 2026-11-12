@@ -31,7 +31,7 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librptadv-portaudio-alsa-adapter-dev" in control
     assert "librptadv-gpio-adapter-dev" in control
     assert "librptadv-rnnoise-adapter-dev" in control
-    assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha2)" in control
+    assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha6)" in control
     assert "librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1)" in control
     assert "libsamplerate" not in control
     assert "librptadvradio-dev (>= 0.1.0~alpha10)" in control
@@ -506,7 +506,7 @@ def test_build_rejects_missing_or_incompatible_radio_descriptor_metadata(tmp_pat
         assert "requires librptadvradio descriptor ABI 5" in result.stderr
 
 
-def test_ring_minimum_accepts_source_and_debian_alpha2_but_not_alpha1(tmp_path):
+def test_ring_minimum_accepts_source_and_debian_alpha6_but_not_alpha5(tmp_path):
     """Exercise the real pkg-config ordering for both supported version spellings."""
     pkg_config = tmp_path / "pkg-config"
     pkg_config.write_text(
@@ -520,12 +520,18 @@ def test_ring_minimum_accepts_source_and_debian_alpha2_but_not_alpha1(tmp_path):
     )
     pkg_config.chmod(0o755)
     for version, accepted in (
+        ("3.0.0~alpha5", False),
+        ("3.0.0-alpha.5", False),
         ("3.0.0~alpha1", False),
         ("3.0.0-alpha.1", False),
-        ("3.0.0~alpha2", True),
-        ("3.0.0-alpha.2", True),
-        ("3.0.0~alpha3", True),
-        ("3.0.0-alpha.3", True),
+        ("3.0.0~alpha2", False),
+        ("3.0.0-alpha.2", False),
+        ("3.0.0~alpha3", False),
+        ("3.0.0-alpha.3", False),
+        ("3.0.0~alpha6", True),
+        ("3.0.0-alpha.6", True),
+        ("3.0.0~alpha7", True),
+        ("3.0.0-alpha.7", True),
         ("3.0.0", True),
     ):
         (tmp_path / "rate_adjusting_pcm_ring3.pc").write_text(
