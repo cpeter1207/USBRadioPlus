@@ -3103,8 +3103,8 @@ fn programme_fence_survives_same_device_adoption_and_waits_for_rendered_retireme
     }
     fn render(runtime: &mut StationRuntime) -> [f32; 1920] {
         let mut output = [0.0; 1920];
-        // SAFETY: the fake audio provider has no background worker; this test is sole TX owner.
         assert_eq!(
+            // SAFETY: the fake audio provider has no background worker; this test is sole TX owner.
             unsafe {
                 transmit_callback(
                     runtime._transmit_context.get().cast(),
@@ -3149,8 +3149,8 @@ fn programme_fence_survives_same_device_adoption_and_waits_for_rendered_retireme
         .retire_programme(&mut control, &factory(), radio_provider(), 25, 11)
         .unwrap();
     assert!(render(&mut runtime).iter().all(|v| *v == 0.0));
-    // SAFETY: no concurrent callback; this is the just-completed render's record.
     assert_eq!(
+        // SAFETY: no concurrent callback; this is the just-completed render's record.
         unsafe {
             (*runtime._transmit_context.get())
                 .feedback_record
@@ -3184,4 +3184,92 @@ fn programme_fence_survives_same_device_adoption_and_waits_for_rendered_retireme
     runtime.start().unwrap();
     assert!(render(&mut runtime).iter().any(|v| *v != 0.0));
     runtime.stop().unwrap();
+}
+
+#[test]
+fn programme_fence_stays_closed_through_failed_forward_and_reverse_adoption() {
+    unsafe extern "C" fn deny(raw: *mut c_void, generation: u64, frames: u32) -> u32 {
+        assert_eq!((generation, frames), (25, 960));
+        // SAFETY: this serial fixture retains the counter through stopped unbind.
+        unsafe { *raw.cast::<u32>() += 1 };
+        0
+    }
+    fn render(runtime: &mut StationRuntime) {
+        let mut output = [1.0; 1920];
+        assert_eq!(
+            // SAFETY: fake audio has no background owner; the fixture lends exact stereo output.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            0
+        );
+        assert!(output.iter().all(|sample| *sample == 0.0));
+    }
+    for fail_receive in [true, false] {
+        let (mut runtime, mut control) = runtime(25);
+        runtime
+            .hardware_state()
+            .publish_requests(ControllerRequests {
+                transmit: true,
+                render_admitted: true,
+                ..ControllerRequests::default()
+            });
+        let mut calls = 0_u32;
+        // SAFETY: this counter/code remains live through stopped unbind; no hardware opens.
+        unsafe {
+            runtime.bind_programme_fence(Some(usbradioplus_runtime::ProgrammeFence {
+                context: ptr::from_mut(&mut calls).cast(),
+                permit: deny,
+            }))
+        }
+        .unwrap();
+        runtime.start().unwrap();
+        render(&mut runtime);
+        let original_epoch = control.transmit_loudness().unwrap().epoch;
+        assert!(matches!(
+            runtime.retire_programme(&mut control, &factory(), radio_provider(), 25, 11),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        crate::media::tests::FAIL_NEXT_APPLY.set(true);
+        if fail_receive {
+            update_tick(&mut runtime, true);
+            render(&mut runtime);
+        } else {
+            render(&mut runtime);
+            update_tick(&mut runtime, true);
+        }
+        assert!(matches!(
+            runtime.retire_programme(&mut control, &factory(), radio_provider(), 25, 11),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        update_tick(&mut runtime, true);
+        render(&mut runtime);
+        assert!(
+            runtime
+                .retire_programme(&mut control, &factory(), radio_provider(), 25, 11)
+                .is_err()
+        );
+        render(&mut runtime);
+        assert_ne!(control.transmit_loudness().unwrap().epoch, original_epoch);
+        assert_eq!(
+            // SAFETY: the fixture is the only callback owner; this is completed-render feedback.
+            unsafe {
+                (*runtime._transmit_context.get())
+                    .feedback_record
+                    .programme_retirement_id
+            },
+            0
+        );
+        assert!(
+            calls >= 4,
+            "both forward and reverse renders must invoke the same gate"
+        );
+        runtime.stop().unwrap();
+        // SAFETY: successful stop quiesced all borrowers before releasing the counter.
+        unsafe { runtime.bind_programme_fence(None) }.unwrap();
+    }
 }

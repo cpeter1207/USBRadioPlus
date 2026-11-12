@@ -21,6 +21,11 @@ _Static_assert(offsetof(UrpAstProgrammeRetirement, accepted_abi_version) == 24,
 	       "RPPR dispatch acknowledgment offset");
 _Static_assert(URP_AST_OPTION_PROGRAMME_RETIRE == 0x52505052, "RPPR option identity");
 
+_Static_assert(sizeof(UrpProgrammeFenceBinding) == 32, "RPPF sized binding layout");
+_Static_assert(offsetof(UrpProgrammeFenceBinding, accepted_abi_version) == 24,
+	       "RPPF retention acknowledgment offset");
+_Static_assert(URP_AST_OPTION_PROGRAMME_FENCE == 0x52505046, "RPPF option identity");
+
 int main(void)
 {
 	const size_t existing =
@@ -28,7 +33,9 @@ int main(void)
 	assert(sizeof(UrpAstDescriptor) >= existing + 2 * sizeof(void *));
 	assert(URP_AST_DESCRIPTOR_FEEDBACK_MIN_SIZE == existing + 2 * sizeof(void *));
 	assert(URP_AST_DESCRIPTOR_PROGRAMME_BUFFERING_MIN_SIZE == existing + 3 * sizeof(void *));
-	assert(URP_AST_DESCRIPTOR_PROGRAMME_RETIRE_MIN_SIZE == sizeof(UrpAstDescriptor));
+	assert(URP_AST_DESCRIPTOR_PROGRAMME_RETIRE_MIN_SIZE == existing + 5 * sizeof(void *));
+	assert(URP_AST_DESCRIPTOR_PROGRAMME_FENCE_MIN_SIZE == existing + 7 * sizeof(void *));
+	assert(URP_AST_DESCRIPTOR_PROGRAMME_FENCE_MIN_SIZE == sizeof(UrpAstDescriptor));
 	assert(offsetof(UrpAstDescriptor, native_feedback_bind) == existing);
 	assert(offsetof(UrpAstDescriptor, channel_feedback_bind) == existing + sizeof(void *));
 	const UrpAstDescriptor *api = usbradioplus_product_descriptor_v1();
@@ -36,6 +43,16 @@ int main(void)
 	assert(api->native_feedback_bind != NULL && api->channel_feedback_bind != NULL);
 	assert(api->link_programme_buffering != NULL);
 	assert(api->native_programme_retire != NULL && api->channel_programme_retire != NULL);
+	assert(api->struct_size >= URP_AST_DESCRIPTOR_PROGRAMME_FENCE_MIN_SIZE);
+	assert(api->native_programme_fence_bind != NULL &&
+	       api->channel_programme_fence_bind != NULL);
+	UrpProgrammeFenceBinding fence = {
+		.struct_size = sizeof(fence),
+		.abi_version = URP_PROGRAMME_FENCE_ABI_VERSION,
+	};
+	assert(api->native_programme_fence_bind(NULL, &fence) == URP_AST_INVALID_ARGUMENT);
+	assert(api->channel_programme_fence_bind(NULL, &fence) == URP_AST_INVALID_ARGUMENT);
+	assert(fence.accepted_abi_version == 0);
 	UrpProgrammeBuffering buffering = {.struct_size = sizeof(buffering), .abi_version = 1};
 	assert(api->link_programme_buffering(NULL, &buffering) == URP_AST_INVALID_ARGUMENT);
 	assert(buffering.flags == 0 && buffering.struct_size == sizeof(buffering));

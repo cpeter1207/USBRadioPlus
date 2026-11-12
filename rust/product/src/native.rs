@@ -477,8 +477,8 @@ pub(crate) unsafe extern "C" fn programme_fence_bind(
     ffi_status(|| {
         // SAFETY: the serialized caller lends the complete sized writable record.
         let port = unsafe { crate::programme_fence(binding)? };
-        // SAFETY: this control call borrows the unique live native owner.
         let station =
+            // SAFETY: this control call borrows the unique live native owner.
             unsafe { handle.cast::<NativeStation>().as_mut() }.ok_or(Status::InvalidArgument)?;
         // SAFETY: caller retains code/context until stopped unbind or destruction.
         unsafe { station.runtime.bind_programme_fence(port) }.map_err(|_| Status::ChannelBusy)?;

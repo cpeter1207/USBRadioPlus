@@ -737,12 +737,12 @@ typedef uint32_t (*UrpProgrammePermit)(void *, uint64_t generation, uint32_t fra
  * A missing capability cannot qualify private programme. An absent binding
  * preserves ordinary PCM behavior; it is not an implicit private-media permit. */
 typedef struct UrpProgrammeFenceBinding {
-    uint32_t struct_size; /**< At least this prefix; no larger than option data. */
-    uint32_t abi_version; /**< URP_PROGRAMME_FENCE_ABI_VERSION. */
-    void *context; /**< Borrowed state; may be null. */
-    UrpProgrammePermit permit; /**< Null explicitly unbinds while stopped. */
-    uint32_t accepted_abi_version; /**< Initialize zero; one only after retention. */
-    uint32_t reserved; /**< Must be zero. */
+	uint32_t struct_size;	       /**< At least this prefix; no larger than option data. */
+	uint32_t abi_version;	       /**< URP_PROGRAMME_FENCE_ABI_VERSION. */
+	void *context;		       /**< Borrowed state; may be null. */
+	UrpProgrammePermit permit;     /**< Null explicitly unbinds while stopped. */
+	uint32_t accepted_abi_version; /**< Initialize zero; one only after retention. */
+	uint32_t reserved;	       /**< Must be zero. */
 } UrpProgrammeFenceBinding;
 
 /** Exact native PCM/metadata callback contract shared by every host adapter. */
@@ -1637,10 +1637,10 @@ typedef struct UrpAstDescriptor {
 	/** Same operation on the existing channel taskprocessor owner. */
 	int (*channel_programme_retire)(void *channel, uint64_t expected_radio_generation,
 					uint64_t request_id);
-    /** Retain a final-programme fence on the quiescent native owner; require ACK. */
-    int (*native_programme_fence_bind)(void *native, UrpProgrammeFenceBinding *binding);
-    /** Same stopped-only operation on the existing channel taskprocessor owner. */
-    int (*channel_programme_fence_bind)(void *channel, UrpProgrammeFenceBinding *binding);
+	/** Retain a final-programme fence on the quiescent native owner; require ACK. */
+	int (*native_programme_fence_bind)(void *native, UrpProgrammeFenceBinding *binding);
+	/** Same stopped-only operation on the existing channel taskprocessor owner. */
+	int (*channel_programme_fence_bind)(void *channel, UrpProgrammeFenceBinding *binding);
 } UrpAstDescriptor;
 
 /** Complete optional feedback capability, preserving every preceding descriptor field. */
@@ -1659,9 +1659,9 @@ typedef struct UrpAstDescriptor {
 	 sizeof(((UrpAstDescriptor *)0)->channel_programme_retire))
 
 /** Complete optional native/channel post-DSP programme fence capability. */
-#define URP_AST_DESCRIPTOR_PROGRAMME_FENCE_MIN_SIZE \
-    (offsetof(UrpAstDescriptor, channel_programme_fence_bind) + \
-     sizeof(((UrpAstDescriptor *)0)->channel_programme_fence_bind))
+#define URP_AST_DESCRIPTOR_PROGRAMME_FENCE_MIN_SIZE                                                \
+	(offsetof(UrpAstDescriptor, channel_programme_fence_bind) +                                \
+	 sizeof(((UrpAstDescriptor *)0)->channel_programme_fence_bind))
 
 #ifdef __cplusplus
 extern "C" {

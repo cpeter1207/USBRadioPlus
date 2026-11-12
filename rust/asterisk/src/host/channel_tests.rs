@@ -2380,3 +2380,113 @@ fn receive_policy_option_rejects_foreign_commands_and_forwards_unaligned_payload
         );
     }
 }
+
+#[test]
+fn programme_fence_option_requires_exact_successful_retention_ack() {
+    let _fixture = Fixture::new();
+    unsafe extern "C" fn retain(
+        channel: *mut c_void,
+        raw: *mut crate::UrpProgrammeFenceBinding,
+    ) -> c_int {
+        // SAFETY: the taskprocessor lends the complete local copy and case selector.
+        let (binding, case) = unsafe { (&mut *raw, *channel.cast::<u32>()) };
+        assert_eq!(
+            binding.struct_size as usize,
+            size_of::<crate::UrpProgrammeFenceBinding>(),
+            "the task must advertise only its actually copied prefix"
+        );
+        if case != 8 {
+            binding.accepted_abi_version = 1;
+        }
+        match case {
+            9 => binding.abi_version = 2,
+            10 => binding.struct_size -= 1,
+            11 => binding.context = ptr::dangling_mut(),
+            12 => binding.permit = None,
+            13 => binding.reserved = 1,
+            _ => {}
+        }
+        if case == 7 { -1 } else { URP_AST_OK }
+    }
+    unsafe extern "C" fn deny(_: *mut c_void, _: u64, _: u32) -> u32 {
+        0
+    }
+    // SAFETY: all descriptor fields are scalars, pointers, and nullable callbacks.
+    let mut descriptor: UrpAstDescriptor = unsafe { zeroed() };
+    let mut case = 0_u32;
+    let mut channel = Channel {
+        _name: "usb".into(),
+        descriptor: &descriptor,
+        rust_channel: AtomicPtr::new(ptr::from_mut(&mut case).cast()),
+        control: ptr::null_mut(),
+        dsp: ptr::null_mut(),
+        format: ptr::null_mut(),
+        sample_rate_hz: ADVANCED_RATE_HZ,
+        frame_samples: 960,
+        owner: AtomicPtr::new(ptr::null_mut()),
+        worker: Mutex::new(None),
+        delivery_stop: AtomicBool::new(false),
+        service_failed: AtomicBool::new(false),
+        jitter_pending: AtomicBool::new(false),
+        jitter_applied: Mutex::new(None),
+        pending_transmit: AtomicU64::new(0),
+        direct: AtomicBool::new(false),
+    };
+    let mut owner = FakeChannel::new(ptr::from_mut(&mut channel).cast());
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct Extended {
+        binding: crate::UrpProgrammeFenceBinding,
+        tail: u64,
+    }
+    for selected in 0..18 {
+        case = selected;
+        descriptor.channel_programme_fence_bind = if case == 5 { None } else { Some(retain) };
+        with_state(|state| state.taskprocessor_push_result = if case == 6 { -1 } else { 0 });
+        let mut value = Extended {
+            binding: crate::UrpProgrammeFenceBinding {
+                struct_size: size_of::<crate::UrpProgrammeFenceBinding>() as u32,
+                abi_version: 1,
+                context: ptr::null_mut(),
+                permit: Some(deny),
+                accepted_abi_version: 0,
+                reserved: 0,
+            },
+            tail: 0xdead_beef,
+        };
+        let mut length = size_of::<Extended>() as c_int;
+        match case {
+            0 => value.binding.struct_size -= 1,
+            1 => value.binding.abi_version = 2,
+            2 => value.binding.reserved = 1,
+            3 => value.binding.accepted_abi_version = 1,
+            4 => length = 4,
+            15 => value.binding.permit = None,
+            16 => value.binding.struct_size = length as u32,
+            17 => value.binding.struct_size = length as u32 + 1,
+            _ => {}
+        }
+        // Byte-aligned input and a physically short declared span must be safe.
+        let mut bytes = [0_u8; size_of::<Extended>() + 1];
+        // SAFETY: the entire test allocation has room for the unaligned record.
+        let raw = unsafe { bytes.as_mut_ptr().add(1).cast::<Extended>() };
+        // SAFETY: the test exclusively owns this complete writable allocation.
+        unsafe { raw.write_unaligned(value) };
+        // SAFETY: the owner and exactly length readable/writable bytes are lent synchronously.
+        let result = unsafe { setoption(owner.as_ptr(), 0x5250_5046, raw.cast(), length) };
+        // SAFETY: the complete local allocation still belongs to this fixture.
+        let after = unsafe { raw.read_unaligned() };
+        let success = matches!(case, 14..=16);
+        assert_eq!(result == 0, success, "case {case}");
+        assert_eq!(
+            after.binding.accepted_abi_version,
+            if success {
+                1
+            } else {
+                value.binding.accepted_abi_version
+            },
+            "case {case}"
+        );
+        assert_eq!(after.tail, value.tail);
+    }
+}

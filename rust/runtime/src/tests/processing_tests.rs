@@ -2234,8 +2234,8 @@ fn optional_receive_stages_preserve_history_on_transmit_edits_and_reset_on_mask_
 
 #[test]
 fn programme_fence_suppresses_real_delayed_composite_before_control_retirement() {
-    // SAFETY: the versioned provider code/table outlive these serial test graphs.
     let provider =
+        // SAFETY: the versioned provider code/table outlive these serial test graphs.
         unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
     let factory =
         NativeProcessingFactory::new_explicit(provider, None, "/unused/agc.so", 960).unwrap();
@@ -2328,8 +2328,8 @@ fn programme_fence_callback_and_mute_do_not_touch_the_rust_heap() {
     let input = [0.25; 960];
     let mut output = [0.0; 960];
     crate::allocation::without_heap(|| {
-        // SAFETY: prepared exact disjoint spans and the same serial graph/meter owner.
         assert_eq!(
+            // SAFETY: prepared exact disjoint spans and the same serial graph/meter owner.
             unsafe { metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 960) },
             PORT_OK
         );
@@ -2358,8 +2358,8 @@ fn programme_fence_leaves_real_ctcss_dcs_and_ptt_signaling_unchanged() {
         SessionConfig, TransmitControls, TransmitSignaling,
     };
     // These released providers are software-only DSP/session objects, not audio hardware.
-    // SAFETY: both immutable tables and their code live for this process.
     let graph =
+        // SAFETY: both immutable tables and their code live for this process.
         unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
     // SAFETY: the radio core is the immutable software session provider, with no device access.
     let radio = unsafe { RadioProvider::from_raw_descriptor(rptadv_radio_descriptor()) }.unwrap();
