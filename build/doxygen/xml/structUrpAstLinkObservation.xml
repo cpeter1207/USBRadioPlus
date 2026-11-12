@@ -1,0 +1,193 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstLinkObservation" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstLinkObservation</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1aaf102033e271525fd4c084596810d5b9" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstLinkObservation::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstLinkObservation::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="510" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="510" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1aeed3923a828b13e75d604751aba73ec5" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstLinkObservation::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstLinkObservation::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="514" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="514" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1a773807ac628ac5ff1c5b42b01580b9c6" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::processed_blocks</definition>
+        <argsstring></argsstring>
+        <name>processed_blocks</name>
+        <qualifiedname>UrpAstLinkObservation::processed_blocks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Successfully processed blocks. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="518" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="518" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1a7051510ab324cff62962c0b47640cc3c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::bypassed_blocks</definition>
+        <argsstring></argsstring>
+        <name>bypassed_blocks</name>
+        <qualifiedname>UrpAstLinkObservation::bypassed_blocks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Frames bypassed because their direction, rate, or size did not match. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="522" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="522" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1ab53fb20877c6004a8ccb918204767fdc" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::failed_blocks</definition>
+        <argsstring></argsstring>
+        <name>failed_blocks</name>
+        <qualifiedname>UrpAstLinkObservation::failed_blocks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Graph failures which retained the original PCM. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="526" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="526" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1a06c37f70b367b3259471ee921033f9e1" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::loudness_epoch</definition>
+        <argsstring></argsstring>
+        <name>loudness_epoch</name>
+        <qualifiedname>UrpAstLinkObservation::loudness_epoch</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Mandatory output-meter epoch; silence does not reset it. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="528" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="528" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1a4a8eadaee86a19236bfb0b1f01e100f6" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstLinkObservation::loudness_sample_count</definition>
+        <argsstring></argsstring>
+        <name>loudness_sample_count</name>
+        <qualifiedname>UrpAstLinkObservation::loudness_sample_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Observed samples in the epoch, including idle silence. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="530" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="530" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1ada7b665016e20a6914fbba5bc132efd4" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstLinkObservation::loudness_valid</definition>
+        <argsstring></argsstring>
+        <name>loudness_valid</name>
+        <qualifiedname>UrpAstLinkObservation::loudness_valid</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when integrated_lufs is measured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="532" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="532" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1ad78440e4a6cdffc6327a133e76865fc5" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstLinkObservation::true_peak_valid</definition>
+        <argsstring></argsstring>
+        <name>true_peak_valid</name>
+        <qualifiedname>UrpAstLinkObservation::true_peak_valid</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when true_peak_dbtp is measured. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="534" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="534" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1a3af2656a0fa201d3f3f35dd917682bdb" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpAstLinkObservation::integrated_lufs</definition>
+        <argsstring></argsstring>
+        <name>integrated_lufs</name>
+        <qualifiedname>UrpAstLinkObservation::integrated_lufs</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Gated integrated output LUFS, meaningful only when loudness_valid is set. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="536" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="536" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstLinkObservation_1ab858d088e12aa1ac228624ad0ac94f76" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpAstLinkObservation::true_peak_dbtp</definition>
+        <argsstring></argsstring>
+        <name>true_peak_dbtp</name>
+        <qualifiedname>UrpAstLinkObservation::true_peak_dbtp</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum output dBTP, meaningful only when true_peak_valid is set. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="538" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="538" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Lock-free processing counters for one attached incoming-link graph. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="506" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="506" bodyend="539"/>
+    <listofallmembers>
+      <member refid="structUrpAstLinkObservation_1aeed3923a828b13e75d604751aba73ec5" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>abi_version</name></member>
+      <member refid="structUrpAstLinkObservation_1a7051510ab324cff62962c0b47640cc3c" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>bypassed_blocks</name></member>
+      <member refid="structUrpAstLinkObservation_1ab53fb20877c6004a8ccb918204767fdc" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>failed_blocks</name></member>
+      <member refid="structUrpAstLinkObservation_1a3af2656a0fa201d3f3f35dd917682bdb" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>integrated_lufs</name></member>
+      <member refid="structUrpAstLinkObservation_1a06c37f70b367b3259471ee921033f9e1" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>loudness_epoch</name></member>
+      <member refid="structUrpAstLinkObservation_1a4a8eadaee86a19236bfb0b1f01e100f6" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>loudness_sample_count</name></member>
+      <member refid="structUrpAstLinkObservation_1ada7b665016e20a6914fbba5bc132efd4" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>loudness_valid</name></member>
+      <member refid="structUrpAstLinkObservation_1a773807ac628ac5ff1c5b42b01580b9c6" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>processed_blocks</name></member>
+      <member refid="structUrpAstLinkObservation_1aaf102033e271525fd4c084596810d5b9" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>struct_size</name></member>
+      <member refid="structUrpAstLinkObservation_1ab858d088e12aa1ac228624ad0ac94f76" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>true_peak_dbtp</name></member>
+      <member refid="structUrpAstLinkObservation_1ad78440e4a6cdffc6327a133e76865fc5" prot="public" virt="non-virtual"><scope>UrpAstLinkObservation</scope><name>true_peak_valid</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

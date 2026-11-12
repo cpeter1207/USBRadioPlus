@@ -1,0 +1,2 @@
+cargo:rerun-if-changed=/usr/include/rptadvremote/rptadvremote.h
+cargo:rerun-if-changed=/usr/include/rptadv_hamlib_adapter/rptadv_hamlib_adapter.h

@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpProgrammeFenceBinding" kind="struct" language="C++" prot="public">
+    <compoundname>UrpProgrammeFenceBinding</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpProgrammeFenceBinding_1a587095ff46e9df6418b4dc4d9c292014" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeFenceBinding::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpProgrammeFenceBinding::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>At least this prefix; no larger than option data. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="744" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="744" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeFenceBinding_1aad5d023ebe1200df532c4ec797b0a559" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeFenceBinding::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpProgrammeFenceBinding::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_PROGRAMME_FENCE_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="745" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="745" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeFenceBinding_1a7ce127c4781a3b312f51e2d31611aec0" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* UrpProgrammeFenceBinding::context</definition>
+        <argsstring></argsstring>
+        <name>context</name>
+        <qualifiedname>UrpProgrammeFenceBinding::context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed state; may be null. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="746" column="6" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="746" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeFenceBinding_1ab35db24b36c9ea930d434dc7993e089c" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__product_8h_1a8fbdbb5b3d42608ed9ee6a1b18f87aa0" kindref="member">UrpProgrammePermit</ref></type>
+        <definition>UrpProgrammePermit UrpProgrammeFenceBinding::permit</definition>
+        <argsstring></argsstring>
+        <name>permit</name>
+        <qualifiedname>UrpProgrammeFenceBinding::permit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Null explicitly unbinds while stopped. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="747" column="20" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="747" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeFenceBinding_1a895b1f7431e5dfcd95c02fa53e229e63" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeFenceBinding::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>UrpProgrammeFenceBinding::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Initialize zero; one only after retention. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="748" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="748" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeFenceBinding_1ab98d60a876973f914b5842691e635f16" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeFenceBinding::reserved</definition>
+        <argsstring></argsstring>
+        <name>reserved</name>
+        <qualifiedname>UrpProgrammeFenceBinding::reserved</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must be zero. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="749" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="749" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Writable sized prefix shared by descriptor binds and ast_channel_setoption. Require zero return AND accepted_abi_version=1. Bind/rebind/unbind only after confirmed callback quiescence. Successful stop retains the binding for restart; failed start/stop does not authorize releasing it. Context/code remain live through stopped unbind/rebind or quiescent destruction/module unload. A missing capability cannot qualify private programme. An absent binding preserves ordinary PCM behavior; it is not an implicit private-media permit. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="743" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="743" bodyend="750"/>
+    <listofallmembers>
+      <member refid="structUrpProgrammeFenceBinding_1aad5d023ebe1200df532c4ec797b0a559" prot="public" virt="non-virtual"><scope>UrpProgrammeFenceBinding</scope><name>abi_version</name></member>
+      <member refid="structUrpProgrammeFenceBinding_1a895b1f7431e5dfcd95c02fa53e229e63" prot="public" virt="non-virtual"><scope>UrpProgrammeFenceBinding</scope><name>accepted_abi_version</name></member>
+      <member refid="structUrpProgrammeFenceBinding_1a7ce127c4781a3b312f51e2d31611aec0" prot="public" virt="non-virtual"><scope>UrpProgrammeFenceBinding</scope><name>context</name></member>
+      <member refid="structUrpProgrammeFenceBinding_1ab35db24b36c9ea930d434dc7993e089c" prot="public" virt="non-virtual"><scope>UrpProgrammeFenceBinding</scope><name>permit</name></member>
+      <member refid="structUrpProgrammeFenceBinding_1ab98d60a876973f914b5842691e635f16" prot="public" virt="non-virtual"><scope>UrpProgrammeFenceBinding</scope><name>reserved</name></member>
+      <member refid="structUrpProgrammeFenceBinding_1a587095ff46e9df6418b4dc4d9c292014" prot="public" virt="non-virtual"><scope>UrpProgrammeFenceBinding</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

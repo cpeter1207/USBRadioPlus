@@ -1,0 +1,366 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpRadioFeedback" kind="struct" language="C++" prot="public">
+    <compoundname>UrpRadioFeedback</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a9e035923648baa80d9fbcb78d8b3ff8f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpRadioFeedback::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Published prefix size; may grow. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="647" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="647" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1aa21a57d2bd7e26dfcbb4df10e5a43402" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpRadioFeedback::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_RADIO_FEEDBACK_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="648" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="648" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a9d4a4c076bb5754681c32d774ea7a979" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::generation_id</definition>
+        <argsstring></argsstring>
+        <name>generation_id</name>
+        <qualifiedname>UrpRadioFeedback::generation_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Physical radio lifecycle generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="649" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="649" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a74a6c075bf96927c49c171bb0f87efad" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::sample_index</definition>
+        <argsstring></argsstring>
+        <name>sample_index</name>
+        <qualifiedname>UrpRadioFeedback::sample_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>End of the latest successful native TX render. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="650" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="650" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a1f5ccb2d5cf202c09618b93871835572" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::frame_count</definition>
+        <argsstring></argsstring>
+        <name>frame_count</name>
+        <qualifiedname>UrpRadioFeedback::frame_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Upcoming controller callback frame count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="651" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="651" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1aaacde8717b656f6bcb0ee824a7ddf92b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::flags</definition>
+        <argsstring></argsstring>
+        <name>flags</name>
+        <qualifiedname>UrpRadioFeedback::flags</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Independent URP_RADIO_FEEDBACK_* validity bits. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="652" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="652" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1af917a47fa82beb75c172aefed8749c11" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::request_id</definition>
+        <argsstring></argsstring>
+        <name>request_id</name>
+        <qualifiedname>UrpRadioFeedback::request_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Changes with controller or rendered PTT demand. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="653" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="653" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a4cf03bbb4094fb77bcf609ed12e45a52" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::service_request_id</definition>
+        <argsstring></argsstring>
+        <name>service_request_id</name>
+        <qualifiedname>UrpRadioFeedback::service_request_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Request associated with service; zero if unknown. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="654" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="654" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a8c0fa9f4088111f9eadd5c92bfbd9b1b" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::readback_request_id</definition>
+        <argsstring></argsstring>
+        <name>readback_request_id</name>
+        <qualifiedname>UrpRadioFeedback::readback_request_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Request current at independent readback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="655" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="655" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1aadbb1a835b7524e27fa1d820cbc7d26c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::service_generation</definition>
+        <argsstring></argsstring>
+        <name>service_generation</name>
+        <qualifiedname>UrpRadioFeedback::service_generation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Service lifecycle generation, zero if absent. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="656" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="656" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1aa40e41be6466631afba7fc25ced8e402" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::readback_generation</definition>
+        <argsstring></argsstring>
+        <name>readback_generation</name>
+        <qualifiedname>UrpRadioFeedback::readback_generation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Readback lifecycle generation, zero if absent. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="657" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="657" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1af8bb51560d29cd9517416d272d8b182c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::acquired_sample_index</definition>
+        <argsstring></argsstring>
+        <name>acquired_sample_index</name>
+        <qualifiedname>UrpRadioFeedback::acquired_sample_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>TX position sampled before acquisition. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="658" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="658" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a4024021368ef4263798d5e05db3af804" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::acquisition_age_frames</definition>
+        <argsstring></argsstring>
+        <name>acquisition_age_frames</name>
+        <qualifiedname>UrpRadioFeedback::acquisition_age_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Native frames since that acquisition. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="659" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="659" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a4a69dc28a82f30ea10442ef4b3ae9e18" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::physical_duplex</definition>
+        <argsstring></argsstring>
+        <name>physical_duplex</name>
+        <qualifiedname>UrpRadioFeedback::physical_duplex</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configured hardware duplex: half0, full1. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="660" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="660" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1aa7231e7c5656f5b8fcdd87d745e89339" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::requested_ptt</definition>
+        <argsstring></argsstring>
+        <name>requested_ptt</name>
+        <qualifiedname>UrpRadioFeedback::requested_ptt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Controller demand, before signaling tails. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="661" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="661" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a6cacafadedd3d926012475f28258a965" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::rendered_ptt</definition>
+        <argsstring></argsstring>
+        <name>rendered_ptt</name>
+        <qualifiedname>UrpRadioFeedback::rendered_ptt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Radio demand, including signaling tails. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="662" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="662" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a3d0c781663ef7d0d5d3ef486fdf6de29" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::serviced_ptt</definition>
+        <argsstring></argsstring>
+        <name>serviced_ptt</name>
+        <qualifiedname>UrpRadioFeedback::serviced_ptt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Completed output service value when valid. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="663" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="663" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a7ec1d9b0abcf16772341ce01c127ef12" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedback::observed_ptt</definition>
+        <argsstring></argsstring>
+        <name>observed_ptt</name>
+        <qualifiedname>UrpRadioFeedback::observed_ptt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Independent readback value when valid. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="664" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="664" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a745dbb02272fa196787a126b64c0d5e2" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpRadioFeedback::transmitter_state</definition>
+        <argsstring></argsstring>
+        <name>transmitter_state</name>
+        <qualifiedname>UrpRadioFeedback::transmitter_state</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Existing radio state after prior render. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="665" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="665" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1aadd5cebc30aa70be8ae2698b8cfcdb74" prot="public" static="no" mutable="no">
+        <type><ref refid="structUrpProgrammeBuffering" kindref="compound">UrpProgrammeBuffering</ref></type>
+        <definition>UrpProgrammeBuffering UrpRadioFeedback::programme_buffering</definition>
+        <argsstring></argsstring>
+        <name>programme_buffering</name>
+        <qualifiedname>UrpRadioFeedback::programme_buffering</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Optional TX-only conservative bound. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="666" column="23" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="666" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedback_1a77d9b1299dd95654f92d676ef324bdfa" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpRadioFeedback::programme_retirement_id</definition>
+        <argsstring></argsstring>
+        <name>programme_retirement_id</name>
+        <qualifiedname>UrpRadioFeedback::programme_retirement_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Committed fresh-history request, or zero. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="667" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="667" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Immutable prefix borrowed immediately before the serial controller TX call. Positions refer to completed radio renders, not DAC or measured RF time. GPIO completed writes remain service evidence; offline/default false never becomes observed OFF. Acquisition age advances without refreshing cached facts. Transmitter state is the existing 0/1/2/4/5 state after the preceding render; fine STE, receiver settling and rekey completion are not measured here. Consumers require matching lifecycle/request identities and their own freshness policy before interpreting service or readback as current-request evidence. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>UrpProgrammeBuffering</label>
+        <link refid="structUrpProgrammeBuffering"/>
+      </node>
+      <node id="1">
+        <label>UrpRadioFeedback</label>
+        <link refid="structUrpRadioFeedback"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>programme_buffering</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="rust/product/include/usbradioplus_product.h" line="646" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="646" bodyend="668"/>
+    <listofallmembers>
+      <member refid="structUrpRadioFeedback_1aa21a57d2bd7e26dfcbb4df10e5a43402" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>abi_version</name></member>
+      <member refid="structUrpRadioFeedback_1af8bb51560d29cd9517416d272d8b182c" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>acquired_sample_index</name></member>
+      <member refid="structUrpRadioFeedback_1a4024021368ef4263798d5e05db3af804" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>acquisition_age_frames</name></member>
+      <member refid="structUrpRadioFeedback_1aaacde8717b656f6bcb0ee824a7ddf92b" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>flags</name></member>
+      <member refid="structUrpRadioFeedback_1a1f5ccb2d5cf202c09618b93871835572" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>frame_count</name></member>
+      <member refid="structUrpRadioFeedback_1a9d4a4c076bb5754681c32d774ea7a979" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>generation_id</name></member>
+      <member refid="structUrpRadioFeedback_1a7ec1d9b0abcf16772341ce01c127ef12" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>observed_ptt</name></member>
+      <member refid="structUrpRadioFeedback_1a4a69dc28a82f30ea10442ef4b3ae9e18" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>physical_duplex</name></member>
+      <member refid="structUrpRadioFeedback_1aadd5cebc30aa70be8ae2698b8cfcdb74" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>programme_buffering</name></member>
+      <member refid="structUrpRadioFeedback_1a77d9b1299dd95654f92d676ef324bdfa" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>programme_retirement_id</name></member>
+      <member refid="structUrpRadioFeedback_1aa40e41be6466631afba7fc25ced8e402" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>readback_generation</name></member>
+      <member refid="structUrpRadioFeedback_1a8c0fa9f4088111f9eadd5c92bfbd9b1b" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>readback_request_id</name></member>
+      <member refid="structUrpRadioFeedback_1a6cacafadedd3d926012475f28258a965" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>rendered_ptt</name></member>
+      <member refid="structUrpRadioFeedback_1af917a47fa82beb75c172aefed8749c11" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>request_id</name></member>
+      <member refid="structUrpRadioFeedback_1aa7231e7c5656f5b8fcdd87d745e89339" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>requested_ptt</name></member>
+      <member refid="structUrpRadioFeedback_1a74a6c075bf96927c49c171bb0f87efad" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>sample_index</name></member>
+      <member refid="structUrpRadioFeedback_1aadbb1a835b7524e27fa1d820cbc7d26c" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>service_generation</name></member>
+      <member refid="structUrpRadioFeedback_1a4cf03bbb4094fb77bcf609ed12e45a52" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>service_request_id</name></member>
+      <member refid="structUrpRadioFeedback_1a3d0c781663ef7d0d5d3ef486fdf6de29" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>serviced_ptt</name></member>
+      <member refid="structUrpRadioFeedback_1a9e035923648baa80d9fbcb78d8b3ff8f" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>struct_size</name></member>
+      <member refid="structUrpRadioFeedback_1a745dbb02272fa196787a126b64c0d5e2" prot="public" virt="non-virtual"><scope>UrpRadioFeedback</scope><name>transmitter_state</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PlcMode","RingError"],"struct":["PreparedRing","RingConsumer","RingObservation","RingProducer","RingProvider","RingSettings"]};

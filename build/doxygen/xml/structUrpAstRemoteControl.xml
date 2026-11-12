@@ -1,0 +1,149 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstRemoteControl" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstRemoteControl</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstRemoteControl_1aa0531dbf8432eacdfb0e3c06733356a0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstRemoteControl::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstRemoteControl::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact complete envelope size. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1321" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1321" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstRemoteControl_1a0051f08efa3228a2dcdf91548dbc8c9d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstRemoteControl::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstRemoteControl::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1322" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1322" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstRemoteControl_1a7bbf5b73e796ca6a9da12a4f506e2185" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstRemoteControl::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>UrpAstRemoteControl::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Zero on input, one after recognized dispatch. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1323" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1323" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstRemoteControl_1aed1df908ba4e32ac97fd5fc82ca4384f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstRemoteControl::operation</definition>
+        <argsstring></argsstring>
+        <name>operation</name>
+        <qualifiedname>UrpAstRemoteControl::operation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>SERVICE, QUIESCE, SUBMIT, or READY. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1324" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1324" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstRemoteControl_1af9f45570a97441ea071e3bc910724e3b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstRemoteControl::source_flags</definition>
+        <argsstring></argsstring>
+        <name>source_flags</name>
+        <qualifiedname>UrpAstRemoteControl::source_flags</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>SUBMIT: local1, active2. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1325" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1325" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstRemoteControl_1a6344028c1076448a15d77c9bb766db7a" prot="public" static="no" mutable="no">
+        <type><ref refid="structUrpRemoteOperation" kindref="compound">UrpRemoteOperation</ref></type>
+        <definition>UrpRemoteOperation UrpAstRemoteControl::request</definition>
+        <argsstring></argsstring>
+        <name>request</name>
+        <qualifiedname>UrpAstRemoteControl::request</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed operation copied during SUBMIT. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1326" column="20" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1326" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstRemoteControl_1ac010c0ecfaa73caa02bdd1047dc110a4" prot="public" static="no" mutable="no">
+        <type><ref refid="structUrpRemoteTicket" kindref="compound">UrpRemoteTicket</ref></type>
+        <definition>UrpRemoteTicket UrpAstRemoteControl::ticket</definition>
+        <argsstring></argsstring>
+        <name>ticket</name>
+        <qualifiedname>UrpAstRemoteControl::ticket</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Output only; success transfers unique ownership. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1327" column="17" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1327" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Synchronous taskprocessor envelope; contains no retained caller buffer. accepted_abi_version acknowledges recognized dispatch even when pending/error. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1">
+        <label>UrpAstRemoteControl</label>
+        <link refid="structUrpAstRemoteControl"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>request</edgelabel>
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>ticket</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>UrpRemoteOperation</label>
+        <link refid="structUrpRemoteOperation"/>
+      </node>
+      <node id="3">
+        <label>UrpRemoteTicket</label>
+        <link refid="structUrpRemoteTicket"/>
+      </node>
+    </collaborationgraph>
+    <location file="rust/product/include/usbradioplus_product.h" line="1320" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1320" bodyend="1328"/>
+    <listofallmembers>
+      <member refid="structUrpAstRemoteControl_1a0051f08efa3228a2dcdf91548dbc8c9d" prot="public" virt="non-virtual"><scope>UrpAstRemoteControl</scope><name>abi_version</name></member>
+      <member refid="structUrpAstRemoteControl_1a7bbf5b73e796ca6a9da12a4f506e2185" prot="public" virt="non-virtual"><scope>UrpAstRemoteControl</scope><name>accepted_abi_version</name></member>
+      <member refid="structUrpAstRemoteControl_1aed1df908ba4e32ac97fd5fc82ca4384f" prot="public" virt="non-virtual"><scope>UrpAstRemoteControl</scope><name>operation</name></member>
+      <member refid="structUrpAstRemoteControl_1a6344028c1076448a15d77c9bb766db7a" prot="public" virt="non-virtual"><scope>UrpAstRemoteControl</scope><name>request</name></member>
+      <member refid="structUrpAstRemoteControl_1af9f45570a97441ea071e3bc910724e3b" prot="public" virt="non-virtual"><scope>UrpAstRemoteControl</scope><name>source_flags</name></member>
+      <member refid="structUrpAstRemoteControl_1aa0531dbf8432eacdfb0e3c06733356a0" prot="public" virt="non-virtual"><scope>UrpAstRemoteControl</scope><name>struct_size</name></member>
+      <member refid="structUrpAstRemoteControl_1ac010c0ecfaa73caa02bdd1047dc110a4" prot="public" virt="non-virtual"><scope>UrpAstRemoteControl</scope><name>ticket</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

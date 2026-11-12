@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpRadioFeedbackPort" kind="struct" language="C++" prot="public">
+    <compoundname>UrpRadioFeedbackPort</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpRadioFeedbackPort_1ab755cd10d7f244af42dc548cbc9444bd" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedbackPort::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpRadioFeedbackPort::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Complete readable prefix; larger tails are ignored. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="682" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="682" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedbackPort_1a5535ed2256909b6def5f2c5f2080837d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRadioFeedbackPort::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpRadioFeedbackPort::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_RADIO_FEEDBACK_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="683" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="683" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedbackPort_1a3662c574a07a8c2647452f4fea0f0f80" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* UrpRadioFeedbackPort::context</definition>
+        <argsstring></argsstring>
+        <name>context</name>
+        <qualifiedname>UrpRadioFeedbackPort::context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Borrowed serial TX context, permitted to be null. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="684" column="6" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="684" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRadioFeedbackPort_1a826dace8ef3a09b10495c65b0310b9ae" prot="public" static="no" mutable="no">
+        <type><ref refid="usbradioplus__product_8h_1a1f3dc19973bb8278e3c1187e8f10402e" kindref="member">UrpRadioFeedbackPublish</ref></type>
+        <definition>UrpRadioFeedbackPublish UrpRadioFeedbackPort::publish</definition>
+        <argsstring></argsstring>
+        <name>publish</name>
+        <qualifiedname>UrpRadioFeedbackPort::publish</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Retained until stopped unbind/rebind or destruction. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="686" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="686" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Borrowed stopped-only binding. A null publish callback unbinds. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="3">
+        <label>UrpProgrammeBuffering</label>
+        <link refid="structUrpProgrammeBuffering"/>
+      </node>
+      <node id="2">
+        <label>UrpRadioFeedback</label>
+        <link refid="structUrpRadioFeedback"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>programme_buffering</edgelabel>
+        </childnode>
+      </node>
+      <node id="1">
+        <label>UrpRadioFeedbackPort</label>
+        <link refid="structUrpRadioFeedbackPort"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>publish</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="rust/product/include/usbradioplus_product.h" line="681" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="681" bodyend="687"/>
+    <listofallmembers>
+      <member refid="structUrpRadioFeedbackPort_1a5535ed2256909b6def5f2c5f2080837d" prot="public" virt="non-virtual"><scope>UrpRadioFeedbackPort</scope><name>abi_version</name></member>
+      <member refid="structUrpRadioFeedbackPort_1a3662c574a07a8c2647452f4fea0f0f80" prot="public" virt="non-virtual"><scope>UrpRadioFeedbackPort</scope><name>context</name></member>
+      <member refid="structUrpRadioFeedbackPort_1a826dace8ef3a09b10495c65b0310b9ae" prot="public" virt="non-virtual"><scope>UrpRadioFeedbackPort</scope><name>publish</name></member>
+      <member refid="structUrpRadioFeedbackPort_1ab755cd10d7f244af42dc548cbc9444bd" prot="public" virt="non-virtual"><scope>UrpRadioFeedbackPort</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

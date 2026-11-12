@@ -1,0 +1,193 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpProgrammeBuffering" kind="struct" language="C++" prot="public">
+    <compoundname>UrpProgrammeBuffering</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1a4664ecfd7c15dd16690a9465240827b5" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeBuffering::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpProgrammeBuffering::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Readable prefix, at least 64. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="609" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="609" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1ac98cf90b66c53a58d6b3f3516281e510" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeBuffering::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpProgrammeBuffering::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="610" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="610" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1a20fc573574f308a4daaf33a1fdbd961a" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeBuffering::flags</definition>
+        <argsstring></argsstring>
+        <name>flags</name>
+        <qualifiedname>UrpProgrammeBuffering::flags</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Independent URP_PROGRAMME_* validity bits. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="611" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="611" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1a8c7d9f3dc92543524c6e0022a4003ddf" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeBuffering::reserved</definition>
+        <argsstring></argsstring>
+        <name>reserved</name>
+        <qualifiedname>UrpProgrammeBuffering::reserved</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Zero. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="612" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="612" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1a77a0c73d17bcbcd904a5b2ebc8df4760" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpProgrammeBuffering::prepared_max_delay_frames</definition>
+        <argsstring></argsstring>
+        <name>prepared_max_delay_frames</name>
+        <qualifiedname>UrpProgrammeBuffering::prepared_max_delay_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Conservative maximum in graph frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="613" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="613" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1af83021514ccc3ebe7578fff4b8c35c7a" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpProgrammeBuffering::current_max_delay_frames</definition>
+        <argsstring></argsstring>
+        <name>current_max_delay_frames</name>
+        <qualifiedname>UrpProgrammeBuffering::current_max_delay_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Conservative last-block delay. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="614" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="614" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1a24fb3d5c10f81a929a855945222da90c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpProgrammeBuffering::accepted_frames</definition>
+        <argsstring></argsstring>
+        <name>accepted_frames</name>
+        <qualifiedname>UrpProgrammeBuffering::accepted_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Actual accepted input, including setup warmup. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="615" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="615" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1a3baaab1e5a743a07959182179badc63a" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpProgrammeBuffering::delivered_frames</definition>
+        <argsstring></argsstring>
+        <name>delivered_frames</name>
+        <qualifiedname>UrpProgrammeBuffering::delivered_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Graph output; bridge padding is excluded. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="616" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="616" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1ae95825328d40df940f039e5b8f4a13ee" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpProgrammeBuffering::output_fifo_frames</definition>
+        <argsstring></argsstring>
+        <name>output_fifo_frames</name>
+        <qualifiedname>UrpProgrammeBuffering::output_fifo_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Actual current bridge FIFO occupancy. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="617" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="617" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1a1d79a405c84b58969495e47494a7f90a" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeBuffering::zero_prefix_frames</definition>
+        <argsstring></argsstring>
+        <name>zero_prefix_frames</name>
+        <qualifiedname>UrpProgrammeBuffering::zero_prefix_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Leading adapter zeros, not all graph silence. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="618" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="618" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpProgrammeBuffering_1ab4375a161c8766637a194d22f3f14c60" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpProgrammeBuffering::zero_suffix_frames</definition>
+        <argsstring></argsstring>
+        <name>zero_suffix_frames</name>
+        <qualifiedname>UrpProgrammeBuffering::zero_suffix_frames</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Trailing adapter zeros. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="619" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="619" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>No wall-clock or exact source sample is inferred. Bounds count retained/delayed programme, including lookahead/conversion and bridge queues; ordinary IIR/gain adaptation state is separate. Unknown raw/custom graphs remain unqualified. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="608" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="608" bodyend="620"/>
+    <listofallmembers>
+      <member refid="structUrpProgrammeBuffering_1ac98cf90b66c53a58d6b3f3516281e510" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>abi_version</name></member>
+      <member refid="structUrpProgrammeBuffering_1a24fb3d5c10f81a929a855945222da90c" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>accepted_frames</name></member>
+      <member refid="structUrpProgrammeBuffering_1af83021514ccc3ebe7578fff4b8c35c7a" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>current_max_delay_frames</name></member>
+      <member refid="structUrpProgrammeBuffering_1a3baaab1e5a743a07959182179badc63a" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>delivered_frames</name></member>
+      <member refid="structUrpProgrammeBuffering_1a20fc573574f308a4daaf33a1fdbd961a" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>flags</name></member>
+      <member refid="structUrpProgrammeBuffering_1ae95825328d40df940f039e5b8f4a13ee" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>output_fifo_frames</name></member>
+      <member refid="structUrpProgrammeBuffering_1a77a0c73d17bcbcd904a5b2ebc8df4760" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>prepared_max_delay_frames</name></member>
+      <member refid="structUrpProgrammeBuffering_1a8c7d9f3dc92543524c6e0022a4003ddf" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>reserved</name></member>
+      <member refid="structUrpProgrammeBuffering_1a4664ecfd7c15dd16690a9465240827b5" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>struct_size</name></member>
+      <member refid="structUrpProgrammeBuffering_1a1d79a405c84b58969495e47494a7f90a" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>zero_prefix_frames</name></member>
+      <member refid="structUrpProgrammeBuffering_1ab4375a161c8766637a194d22f3f14c60" prot="public" virt="non-virtual"><scope>UrpProgrammeBuffering</scope><name>zero_suffix_frames</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,1329 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstDescriptor" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstDescriptor</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aad50a6f8c8f1f312df4b154fb9944015" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDescriptor::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstDescriptor::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1345" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1345" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ac14b57fe1bf3cf5ecc36016ad37128c9" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstDescriptor::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstDescriptor::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1349" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1349" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a9ebf82eb78490b2764d2cfb41c84002e" prot="public" static="no" mutable="no">
+        <type>const char *</type>
+        <definition>const char* UrpAstDescriptor::capability_name</definition>
+        <argsstring></argsstring>
+        <name>capability_name</name>
+        <qualifiedname>UrpAstDescriptor::capability_name</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>NUL-terminated capability name. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1353" column="12" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1353" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1abb6f3534047960a515f1e876b56ab319" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::driver_create) (const struct UrpAstDriverCreateArgs *args, void **output)</definition>
+        <argsstring>)(const struct UrpAstDriverCreateArgs *args, void **output)</argsstring>
+        <name>driver_create</name>
+        <qualifiedname>UrpAstDescriptor::driver_create</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Construct a driver. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1357" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1357" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a6dd2c7dca232d03647b3586b695bd7c1" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::driver_reload) (void *driver, const uint8_t *source, uint32_t source_length, const uint8_t *text, uint32_t text_length)</definition>
+        <argsstring>)(void *driver, const uint8_t *source, uint32_t source_length, const uint8_t *text, uint32_t text_length)</argsstring>
+        <name>driver_reload</name>
+        <qualifiedname>UrpAstDescriptor::driver_reload</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stage configuration for a reload transaction. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1361" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1361" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a61f5b26ef5209bf76ea6e2755374c41e" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::driver_reload_finish) (void *driver, uint32_t commit)</definition>
+        <argsstring>)(void *driver, uint32_t commit)</argsstring>
+        <name>driver_reload_finish</name>
+        <qualifiedname>UrpAstDescriptor::driver_reload_finish</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Publish or discard staged configuration. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1366" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1366" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1af16c0c05eae863a908c082ac133753d0" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::driver_channel_name) (void *driver, uint32_t index, uint8_t *output, uint32_t output_capacity, uint32_t *output_length)</definition>
+        <argsstring>)(void *driver, uint32_t index, uint8_t *output, uint32_t output_capacity, uint32_t *output_length)</argsstring>
+        <name>driver_channel_name</name>
+        <qualifiedname>UrpAstDescriptor::driver_channel_name</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Enumerate configured channel names. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1370" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1370" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a47195797d43a3dcfe71d1a003ec94f2d" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::driver_active_channel) (void *driver, uint8_t *output, uint32_t output_capacity, uint32_t *output_length)</definition>
+        <argsstring>)(void *driver, uint8_t *output, uint32_t output_capacity, uint32_t *output_length)</argsstring>
+        <name>driver_active_channel</name>
+        <qualifiedname>UrpAstDescriptor::driver_active_channel</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read the selected tuning channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1375" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1375" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a21c19c0e1b0b4a5a5880f7fa0daac728" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::driver_set_active_channel) (void *driver, const uint8_t *channel_name, uint32_t channel_name_length)</definition>
+        <argsstring>)(void *driver, const uint8_t *channel_name, uint32_t channel_name_length)</argsstring>
+        <name>driver_set_active_channel</name>
+        <qualifiedname>UrpAstDescriptor::driver_set_active_channel</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Select a reserved tuning channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1380" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1380" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a5ffc989bf7f9a0469b526846004af896" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::driver_destroy) (void *driver)</definition>
+        <argsstring>)(void *driver)</argsstring>
+        <name>driver_destroy</name>
+        <qualifiedname>UrpAstDescriptor::driver_destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Destroy a driver. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1385" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1385" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ace4eae2951e6a933950d911acddfa0da" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_prepare) (void *driver, const uint8_t *channel_name, uint32_t channel_name_length, uint32_t sample_rate_hz, uint32_t maximum_frame_count, void **output)</definition>
+        <argsstring>)(void *driver, const uint8_t *channel_name, uint32_t channel_name_length, uint32_t sample_rate_hz, uint32_t maximum_frame_count, void **output)</argsstring>
+        <name>link_prepare</name>
+        <qualifiedname>UrpAstDescriptor::link_prepare</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Prepare an incoming-link graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1389" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1389" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a6b38455ab73f6beb7e3c54b347bef7e4" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_prepare_reload) (void *driver, const uint8_t *channel_name, uint32_t channel_name_length, uint32_t sample_rate_hz, uint32_t maximum_frame_count, void **output)</definition>
+        <argsstring>)(void *driver, const uint8_t *channel_name, uint32_t channel_name_length, uint32_t sample_rate_hz, uint32_t maximum_frame_count, void **output)</argsstring>
+        <name>link_prepare_reload</name>
+        <qualifiedname>UrpAstDescriptor::link_prepare_reload</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Prepare an incoming-link graph against staged configuration. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1394" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1394" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1adf05abc153f00199e1b447d1325e26c9" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_reload_unchanged) (void *driver, void *link, const uint8_t *name, uint32_t name_length, uint32_t sample_rate_hz, uint32_t maximum_frame_count, uint32_t *output)</definition>
+        <argsstring>)(void *driver, void *link, const uint8_t *name, uint32_t name_length, uint32_t sample_rate_hz, uint32_t maximum_frame_count, uint32_t *output)</argsstring>
+        <name>link_reload_unchanged</name>
+        <qualifiedname>UrpAstDescriptor::link_reload_unchanged</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Retain a live link graph when its effective processing is unchanged. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1400" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1400" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1abbe5e03aab63c6666f21738e12c6aa97" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_process) (void *link, uint32_t direction, uint32_t sample_rate_hz, int16_t *samples, uint32_t sample_count)</definition>
+        <argsstring>)(void *link, uint32_t direction, uint32_t sample_rate_hz, int16_t *samples, uint32_t sample_count)</argsstring>
+        <name>link_process</name>
+        <qualifiedname>UrpAstDescriptor::link_process</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Process an incoming-link frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1406" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1406" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ae0cf27f65f5733cbdeae5c49a2d640dc" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_observe) (void *link, struct UrpAstLinkObservation *output)</definition>
+        <argsstring>)(void *link, struct UrpAstLinkObservation *output)</argsstring>
+        <name>link_observe</name>
+        <qualifiedname>UrpAstDescriptor::link_observe</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read incoming-link counters. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1411" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1411" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a48797f3556c97d46234fc5be75d024a7" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::link_destroy) (void *link)</definition>
+        <argsstring>)(void *link)</argsstring>
+        <name>link_destroy</name>
+        <qualifiedname>UrpAstDescriptor::link_destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Destroy an incoming-link graph. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1415" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1415" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ac8f8ec1af5b1ec4cffb4a12bee85442e" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_reserve) (void *driver, const struct UrpAstChannelReserveArgs *args, void **output)</definition>
+        <argsstring>)(void *driver, const struct UrpAstChannelReserveArgs *args, void **output)</argsstring>
+        <name>channel_reserve</name>
+        <qualifiedname>UrpAstDescriptor::channel_reserve</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Reserve and prepare a channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1419" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1419" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ad406432fbfa85fb188714449b2fb7a6f" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_start) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_start</name>
+        <qualifiedname>UrpAstDescriptor::channel_start</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Start a channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1424" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1424" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ad0a94502edd62caefb3d77b208003ba4" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_stop) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_stop</name>
+        <qualifiedname>UrpAstDescriptor::channel_stop</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stop a channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1428" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1428" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ad24ff41504f44944e9de5533b6076350" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_reload_prepare) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_reload_prepare</name>
+        <qualifiedname>UrpAstDescriptor::channel_reload_prepare</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Prepare a channel reload. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1432" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1432" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1af71943bf4224d38328ffeec7ee795298" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_reload_activate) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_reload_activate</name>
+        <qualifiedname>UrpAstDescriptor::channel_reload_activate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Adopt a prepared channel reload. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1436" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1436" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aabe5a58bbbfb2a24686f88f49c3f5b7f" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_reload_finish) (void *channel, uint32_t commit)</definition>
+        <argsstring>)(void *channel, uint32_t commit)</argsstring>
+        <name>channel_reload_finish</name>
+        <qualifiedname>UrpAstDescriptor::channel_reload_finish</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Commit or roll back a channel reload. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1440" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1440" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a172d882655ec43f417092da58347558a" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_write_voice) (void *channel, const int16_t *samples, uint32_t sample_count)</definition>
+        <argsstring>)(void *channel, const int16_t *samples, uint32_t sample_count)</argsstring>
+        <name>channel_write_voice</name>
+        <qualifiedname>UrpAstDescriptor::channel_write_voice</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Submit a voice frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1444" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1444" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a5a22618a3646128b58e965bad2e27888" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_write_text) (void *channel, const uint8_t *text, uint32_t text_length)</definition>
+        <argsstring>)(void *channel, const uint8_t *text, uint32_t text_length)</argsstring>
+        <name>channel_write_text</name>
+        <qualifiedname>UrpAstDescriptor::channel_write_text</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Submit a text frame. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1448" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1448" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a0b44a0d51882e3119598322031fd46d2" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_set_transmit) (void *channel, uint32_t keyed, uint32_t forced_ctcss_tenths_hz)</definition>
+        <argsstring>)(void *channel, uint32_t keyed, uint32_t forced_ctcss_tenths_hz)</argsstring>
+        <name>channel_set_transmit</name>
+        <qualifiedname>UrpAstDescriptor::channel_set_transmit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Publish transmitter key state. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1452" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1452" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1af8a1b83a8fcfd084cd9e8a9abc29ba00" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_set_dtmf) (void *channel, uint32_t enabled)</definition>
+        <argsstring>)(void *channel, uint32_t enabled)</argsstring>
+        <name>channel_set_dtmf</name>
+        <qualifiedname>UrpAstDescriptor::channel_set_dtmf</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configure DTMF detection. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1456" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1456" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a955cdc1345e08a3e645d6c8b1421765d" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_set_echo) (void *channel, uint32_t enabled)</definition>
+        <argsstring>)(void *channel, uint32_t enabled)</argsstring>
+        <name>channel_set_echo</name>
+        <qualifiedname>UrpAstDescriptor::channel_set_echo</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configure retained legacy echo. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1460" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1460" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a4cb15f687652911aa87d2ba855e0187f" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_set_direct_callbacks) (void *channel, const struct UrpAstDirectCallbacks *callbacks)</definition>
+        <argsstring>)(void *channel, const struct UrpAstDirectCallbacks *callbacks)</argsstring>
+        <name>channel_set_direct_callbacks</name>
+        <qualifiedname>UrpAstDescriptor::channel_set_direct_callbacks</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Attach direct native callbacks before the first station start. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1464" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1464" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ad553c9cb299b67c9d7f7946c746288bb" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_get_jitter_config) (void *channel, struct UrpAstJitterConfig *output)</definition>
+        <argsstring>)(void *channel, struct UrpAstJitterConfig *output)</argsstring>
+        <name>channel_get_jitter_config</name>
+        <qualifiedname>UrpAstDescriptor::channel_get_jitter_config</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read resolved jitter-buffer settings. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1469" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1469" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a97c92885b1495bdebd094264561dbc82" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_command) (void *channel, struct UrpAstChannelCommand *command)</definition>
+        <argsstring>)(void *channel, struct UrpAstChannelCommand *command)</argsstring>
+        <name>channel_command</name>
+        <qualifiedname>UrpAstDescriptor::channel_command</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Execute one typed tuning or hardware primitive. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1473" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1473" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ad9b1ad00859960164f34b92928301289" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_get_status) (void *channel, struct UrpAstChannelStatus *output)</definition>
+        <argsstring>)(void *channel, struct UrpAstChannelStatus *output)</argsstring>
+        <name>channel_get_status</name>
+        <qualifiedname>UrpAstDescriptor::channel_get_status</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read one typed status snapshot. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1477" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1477" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aae2f9129ab1dfbeae77f28694a1c1733" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_service) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_service</name>
+        <qualifiedname>UrpAstDescriptor::channel_service</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Deliver pending frames. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1481" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1481" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ac5ef90f8e7a84d699a8f67a05f9614f8" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::channel_destroy) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_destroy</name>
+        <qualifiedname>UrpAstDescriptor::channel_destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Release a channel. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1485" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1485" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a7c26912077479d656adf661e5171b4d0" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_create) (const struct UrpNativeCreateArgs *args, void **output)</definition>
+        <argsstring>)(const struct UrpNativeCreateArgs *args, void **output)</argsstring>
+        <name>native_create</name>
+        <qualifiedname>UrpAstDescriptor::native_create</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Prepare a stopped native station and clear output on failure. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1487" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1487" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a77c192b4d040f999d0116d644f373202" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_start) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_start</name>
+        <qualifiedname>UrpAstDescriptor::native_start</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Apply selected gains, then start GPIO and audio. Failure stops GPIO; successful mixer writes remain applied and the station can be retried. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1490" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1490" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a27afcc5cbd259160fec51904099e2a91" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_stop) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_stop</name>
+        <qualifiedname>UrpAstDescriptor::native_stop</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Stop native audio and unkey hardware; returns provider failures. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1492" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1492" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a1b6ed9ae63d720a5bd3ddb15db0dfe65" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::native_destroy) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_destroy</name>
+        <qualifiedname>UrpAstDescriptor::native_destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Uses the audio provider&apos;s synchronous stream-destroy contract. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1494" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1494" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a619b7cfceb98b49f0bd1224b21d581ba" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_site_bind) (void *native, uint32_t bank, const struct UrpAstSiteBinding *request)</definition>
+        <argsstring>)(void *native, uint32_t bank, const struct UrpAstSiteBinding *request)</argsstring>
+        <name>native_site_bind</name>
+        <qualifiedname>UrpAstDescriptor::native_site_bind</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue native ownership, bank 0 CM119 or 1 parallel; poll for the new generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1496" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1496" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a0784c2938c471eefe1f87438f94890dc" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_site_publish) (void *native, uint32_t bank, const struct UrpAstSiteRequest *request)</definition>
+        <argsstring>)(void *native, uint32_t bank, const struct UrpAstSiteRequest *request)</argsstring>
+        <name>native_site_publish</name>
+        <qualifiedname>UrpAstDescriptor::native_site_publish</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue native output intent; success is acceptance, not electrical confirmation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1499" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1499" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aa227de5d59b2cad4588ca67a013431e8" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_site_snapshot) (void *native, uint32_t bank, struct UrpAstSiteSnapshot *output)</definition>
+        <argsstring>)(void *native, uint32_t bank, struct UrpAstSiteSnapshot *output)</argsstring>
+        <name>native_site_snapshot</name>
+        <qualifiedname>UrpAstDescriptor::native_site_snapshot</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read native cached state; never physical device I/O. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1502" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1502" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ab812a47f55d561309de4e5fe812d2a2d" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_site_bind) (void *channel, uint32_t bank, const struct UrpAstSiteBinding *request)</definition>
+        <argsstring>)(void *channel, uint32_t bank, const struct UrpAstSiteBinding *request)</argsstring>
+        <name>channel_site_bind</name>
+        <qualifiedname>UrpAstDescriptor::channel_site_bind</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue channel ownership on its serialized control owner; banks as above. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1504" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1504" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a40e9a431a8e3bee7c5b48ceaec5c2d8e" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_site_publish) (void *channel, uint32_t bank, const struct UrpAstSiteRequest *request)</definition>
+        <argsstring>)(void *channel, uint32_t bank, const struct UrpAstSiteRequest *request)</argsstring>
+        <name>channel_site_publish</name>
+        <qualifiedname>UrpAstDescriptor::channel_site_publish</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Queue channel output intent on the same owner. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1507" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1507" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a693f0566ee454a05c8fac3b609ebb047" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_site_snapshot) (void *channel, uint32_t bank, struct UrpAstSiteSnapshot *output)</definition>
+        <argsstring>)(void *channel, uint32_t bank, struct UrpAstSiteSnapshot *output)</argsstring>
+        <name>channel_site_snapshot</name>
+        <qualifiedname>UrpAstDescriptor::channel_site_snapshot</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read channel cached state on the same owner, never on audio callbacks. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1510" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1510" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a30eb608490f55a776438c49efc37d174" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_processing_validate) (const struct UrpNativeProcessingArgs *args, UrpNativeProcessingDiagnostic diagnostic, void *context)</definition>
+        <argsstring>)(const struct UrpNativeProcessingArgs *args, UrpNativeProcessingDiagnostic diagnostic, void *context)</argsstring>
+        <name>native_processing_validate</name>
+        <qualifiedname>UrpAstDescriptor::native_processing_validate</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Validate shared source profiles without opening devices or graphs. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1513" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1513" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1afee7a44818e922e01111c433e2032b9b" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_link_prepare) (const struct UrpNativeProcessingArgs *args, const void *ffmpeg, uint32_t maximum_frames, void **output)</definition>
+        <argsstring>)(const struct UrpNativeProcessingArgs *args, const void *ffmpeg, uint32_t maximum_frames, void **output)</argsstring>
+        <name>native_link_prepare</name>
+        <qualifiedname>UrpAstDescriptor::native_link_prepare</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Prepare a native 48 kHz link graph; absent profiles return a null handle. The caller retains the FFmpeg provider until link_destroy has returned. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1518" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1518" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a694a63b9e648e971f4e4c88a3d9f18d6" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_process_f32) (void *link, uint32_t direction, uint32_t sample_rate_hz, float *samples, uint32_t sample_count)</definition>
+        <argsstring>)(void *link, uint32_t direction, uint32_t sample_rate_hz, float *samples, uint32_t sample_count)</argsstring>
+        <name>link_process_f32</name>
+        <qualifiedname>UrpAstDescriptor::link_process_f32</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Process normalized-F32 PCM with the same direction and bounds as link_process. One serial owner calls this operation; it must quiesce before link_destroy. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1523" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1523" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a637dea3738f8afb6fd1c0b8950e4e594" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_configuration_resolve) (const struct UrpNativeProcessingArgs *args, UrpNativeProcessingDiagnostic diagnostic, void *diagnostic_context, void **output)</definition>
+        <argsstring>)(const struct UrpNativeProcessingArgs *args, UrpNativeProcessingDiagnostic diagnostic, void *diagnostic_context, void **output)</argsstring>
+        <name>native_configuration_resolve</name>
+        <qualifiedname>UrpAstDescriptor::native_configuration_resolve</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Resolve native settings without hardware access. Output is cleared on failure; success transfers an owner released only through native_configuration_destroy. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1527" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1527" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a776d82cce5962d3d8b5f9e1bda94a9f6" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_configuration_visit) (const void *configuration, UrpNativeConfigurationSink sink, void *context)</definition>
+        <argsstring>)(const void *configuration, UrpNativeConfigurationSink sink, void *context)</argsstring>
+        <name>native_configuration_visit</name>
+        <qualifiedname>UrpAstDescriptor::native_configuration_visit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Visit a borrowed request; retain no pointer after the callback returns. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1531" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1531" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a8e29b849211158246a09d0621bcdd138" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::native_configuration_destroy) (void *configuration)</definition>
+        <argsstring>)(void *configuration)</argsstring>
+        <name>native_configuration_destroy</name>
+        <qualifiedname>UrpAstDescriptor::native_configuration_destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Release an owned resolution after its visitors return; null is harmless. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1534" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1534" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a6c4a34cc8dca9e640fe110af578ac84e" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_get_status) (void *native, struct UrpNativePhysicalStatus *output)</definition>
+        <argsstring>)(void *native, struct UrpNativePhysicalStatus *output)</argsstring>
+        <name>native_get_status</name>
+        <qualifiedname>UrpAstDescriptor::native_get_status</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read a physical snapshot on the serialized control owner. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1536" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1536" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a7b73a84f475ad561099ddf244cdbd9ed" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_command) (void *native, struct UrpAstChannelCommand *command)</definition>
+        <argsstring>)(void *native, struct UrpAstChannelCommand *command)</argsstring>
+        <name>native_command</name>
+        <qualifiedname>UrpAstDescriptor::native_command</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Execute the shared maintenance catalog, with mutable command results. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1538" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1538" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a8ed3c4cd4d9cadd5e3f7256b9d87f18c" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_set_transmit) (void *native, uint32_t keyed, uint32_t forced_ctcss_tenths_hz)</definition>
+        <argsstring>)(void *native, uint32_t keyed, uint32_t forced_ctcss_tenths_hz)</argsstring>
+        <name>native_set_transmit</name>
+        <qualifiedname>UrpAstDescriptor::native_set_transmit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Publish only manual PTT and optional forced CTCSS; neither changes controller demand. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1540" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1540" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ae2852a4be525d4feb5917e9f71a837e5" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_clear_manual) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_clear_manual</name>
+        <qualifiedname>UrpAstDescriptor::native_clear_manual</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Release temporary maintenance intent; ordinary controller activity remains. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1542" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1542" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aff7628f61778dc5b241f8fd4d92b52b5" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_prepare_update) (void *native, const struct UrpNativeCreateArgs *args, void **output)</definition>
+        <argsstring>)(void *native, const struct UrpNativeCreateArgs *args, void **output)</argsstring>
+        <name>native_prepare_update</name>
+        <qualifiedname>UrpAstDescriptor::native_prepare_update</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Prepare a same-device update using this station&apos;s retained providers/callbacks. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1544" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1544" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a0760fd2020c19f6acdc9228e625b3844" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_begin_update) (void *native, void *prepared)</definition>
+        <argsstring>)(void *native, void *prepared)</argsstring>
+        <name>native_begin_update</name>
+        <qualifiedname>UrpAstDescriptor::native_begin_update</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Transfer prepared ownership into the existing callback mailbox. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1547" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1547" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ad1074d0447cf0743bf18c58320d02f1a" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_accept_update) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_accept_update</name>
+        <qualifiedname>UrpAstDescriptor::native_accept_update</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Return ReloadPending until both callbacks acknowledge adoption. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1549" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1549" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ab312580b917d22af6478de528b41b701" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_finish_update) (void *native, uint32_t commit)</definition>
+        <argsstring>)(void *native, uint32_t commit)</argsstring>
+        <name>native_finish_update</name>
+        <qualifiedname>UrpAstDescriptor::native_finish_update</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Commit or roll back, retaining rollback state while callback acknowledgments are pending. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1552" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1552" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a47df25b36ec155bc57136f4401228629" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::native_destroy_update) (void *prepared)</definition>
+        <argsstring>)(void *prepared)</argsstring>
+        <name>native_destroy_update</name>
+        <qualifiedname>UrpAstDescriptor::native_destroy_update</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Release an unconsumed or already transferred prepared token; null is harmless. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1554" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1554" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a91fcbcd7e3cf5aafade442a0a4d02f85" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_status_text) (void *native, UrpNativeProcessingDiagnostic sink, void *context)</definition>
+        <argsstring>)(void *native, UrpNativeProcessingDiagnostic sink, void *context)</argsstring>
+        <name>native_status_text</name>
+        <qualifiedname>UrpAstDescriptor::native_status_text</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Emit existing physical measurement keys; borrowed text expires on callback return. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1556" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1556" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a56fdf7ee2bba10391272514ea61340d3" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_processing_status_text) (void *native, UrpNativeProcessingDiagnostic sink, void *context)</definition>
+        <argsstring>)(void *native, UrpNativeProcessingDiagnostic sink, void *context)</argsstring>
+        <name>native_processing_status_text</name>
+        <qualifiedname>UrpAstDescriptor::native_processing_status_text</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Emit the existing native callback counters; borrowed text expires on callback return. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1558" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1558" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ac0d5b250d3745dc18a704d3771d0d3fe" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_observer_create) (void *link, void **output)</definition>
+        <argsstring>)(void *link, void **output)</argsstring>
+        <name>link_observer_create</name>
+        <qualifiedname>UrpAstDescriptor::link_observer_create</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Retain existing counters before publishing a quiescent link to PCM processing. Success transfers one independent observer lease. Output is cleared on failure. This control-plane allocation neither retains nor accesses the graph/provider. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1564" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1564" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a67c9e62b7ab88f06f94cdf066be0bf55" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_observer_read) (const void *observer, struct UrpAstLinkObservation *output)</definition>
+        <argsstring>)(const void *observer, struct UrpAstLinkObservation *output)</argsstring>
+        <name>link_observer_read</name>
+        <qualifiedname>UrpAstDescriptor::link_observer_read</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Read counters concurrently with PCM processing, other reads or graph destruction. The observer remains valid after link_destroy; retain it until all reads return. Output must be initialized <ref refid="structUrpAstLinkObservation" kindref="compound">UrpAstLinkObservation</ref> ABI 1 storage. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1569" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1569" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a790388f2d103f64cce9afba9b96d0fa6" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::link_observer_destroy) (void *observer)</definition>
+        <argsstring>)(void *observer)</argsstring>
+        <name>link_observer_destroy</name>
+        <qualifiedname>UrpAstDescriptor::link_observer_destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Destroy one independent observer after its reads return; null is harmless. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1571" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1571" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a43c4d7a082b6b5dc773762ce02fa5fbb" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_service) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_service</name>
+        <qualifiedname>UrpAstDescriptor::native_service</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Advance remote DSP adoption on the original serialized control owner. This never waits for CAT I/O, graph preparation or callback acknowledgments. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1574" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1574" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a0a1eaffd43d6189fe2b664706ca1ae49" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_remote_submit) (void *native, const UrpRemoteOperation *operation, uint32_t source_flags, void **ticket)</definition>
+        <argsstring>)(void *native, const UrpRemoteOperation *operation, uint32_t source_flags, void **ticket)</argsstring>
+        <name>native_remote_submit</name>
+        <qualifiedname>UrpAstDescriptor::native_remote_submit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Submit without physical I/O. Source flags: local1, active2. Success transfers a ticket retained independently of the originating host object. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1577" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1577" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aa265a2dca976885ec8a60caa64109648" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_remote_submit) (void *channel, const UrpRemoteOperation *operation, uint32_t source_flags, void **ticket)</definition>
+        <argsstring>)(void *channel, const UrpRemoteOperation *operation, uint32_t source_flags, void **ticket)</argsstring>
+        <name>channel_remote_submit</name>
+        <qualifiedname>UrpAstDescriptor::channel_remote_submit</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Same nonblocking submission on an ASL channel&apos;s taskprocessor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1580" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1580" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a65daac2562a2858377b3ff5b1e2d2fda" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::remote_source) (void *ticket, uint32_t flags)</definition>
+        <argsstring>)(void *ticket, uint32_t flags)</argsstring>
+        <name>remote_source</name>
+        <qualifiedname>UrpAstDescriptor::remote_source</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Publish active1/valid2; revocation is terminal for this ticket. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1583" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1583" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a734d43551f2269216fafc59034ae87d0" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::remote_take) (void *ticket, UrpNativeProcessingDiagnostic sink, void *context)</definition>
+        <argsstring>)(void *ticket, UrpNativeProcessingDiagnostic sink, void *context)</argsstring>
+        <name>remote_take</name>
+        <qualifiedname>UrpAstDescriptor::remote_take</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Copy a version1 JSON completion through the synchronous UTF-8 sink. Zero means copied; URP_AST_RELOAD_PENDING means no result. The document&apos;s kind identifies applied, error, value, status, memories, scans, scan or capabilities. It contains machine values, never rendered telemetry. Status flags distinguish requested/applied/observed presence; observed_fields alone identifies which observed state fields are physical readings. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1590" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1590" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a59812bf6b2d0b439689eb2050dd69693" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpAstDescriptor::remote_destroy) (void *ticket)</definition>
+        <argsstring>)(void *ticket)</argsstring>
+        <name>remote_destroy</name>
+        <qualifiedname>UrpAstDescriptor::remote_destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Revoke and release after source/take calls stop; never waits for CAT. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1592" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1592" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a3d5f33189ec4d01a7131cee216f4caa8" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_quiesce) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_quiesce</name>
+        <qualifiedname>UrpAstDescriptor::native_quiesce</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Poll safe physical retirement after stopping callbacks. Zero permits native_destroy; ReloadPending or any error retains handle and contexts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1595" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1595" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1ab67bf20df4dcd6ad33f24ebcd71419bc" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_quiesce) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_quiesce</name>
+        <qualifiedname>UrpAstDescriptor::channel_quiesce</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Same retirement on the channel&apos;s serialized taskprocessor. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1597" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1597" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a8ee93ad6316ec3951e83d75fe96001f1" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_configuration_remote_options) (void *configuration, UrpRemoteCommandOptions *output)</definition>
+        <argsstring>)(void *configuration, UrpRemoteCommandOptions *output)</argsstring>
+        <name>native_configuration_remote_options</name>
+        <qualifiedname>UrpAstDescriptor::native_configuration_remote_options</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Inspect controller command policy on an existing native_configuration_resolve owner. Output is an initialized complete ABI-one record; no device or rig is opened. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1600" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1600" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1adb6d8407b138a5e54d67127a1eadb379" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_activation_status) (void *native)</definition>
+        <argsstring>)(void *native)</argsstring>
+        <name>native_activation_status</name>
+        <qualifiedname>UrpAstDescriptor::native_activation_status</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Copy activation readiness without I/O: zero after initial RF/DSP admission, one while opening, or the original negative failure. Pump native_service separately; thread creation alone is not readiness. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1605" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1605" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aeaae248a380e3eb561319bdfaa4d3c08" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_activation_status) (void *channel)</definition>
+        <argsstring>)(void *channel)</argsstring>
+        <name>channel_activation_status</name>
+        <qualifiedname>UrpAstDescriptor::channel_activation_status</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Same readiness observation on the existing channel control owner. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1607" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1607" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1aad755a8b3d1699aa51188424a5fc0f1d" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_processing_status_text) (void *channel, UrpNativeProcessingDiagnostic sink, void *context)</definition>
+        <argsstring>)(void *channel, UrpNativeProcessingDiagnostic sink, void *context)</argsstring>
+        <name>channel_processing_status_text</name>
+        <qualifiedname>UrpAstDescriptor::channel_processing_status_text</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Synchronous UTF-8 processing diagnostics on the serialized channel owner. Includes final transmit programme integrated LUFS and maximum dBTP since the reported graph meter epoch; unavailable values are explicit text. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1611" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1611" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a681d5f449db9c7731cff34b5d8e0a645" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_feedback_bind) (void *native, const struct UrpRadioFeedbackPort *port)</definition>
+        <argsstring>)(void *native, const struct UrpRadioFeedbackPort *port)</argsstring>
+        <name>native_feedback_bind</name>
+        <qualifiedname>UrpAstDescriptor::native_feedback_bind</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Optional stopped-only binding; copies the readable port prefix. Does no I/O. Null/short/version-mismatched records fail without changing the prior binding. Any start attempt fences rebinding until successful synchronous stop. The callback runs on the existing serial TX owner before controller rendering. Callback/context remain live until stopped unbind/rebind or quiescent destruction; successful stop retains the binding for a subsequent restart. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1620" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1620" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a1d5887092f6d960b15862bb94c24a527" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_feedback_bind) (void *channel, const struct UrpRadioFeedbackPort *port)</definition>
+        <argsstring>)(void *channel, const struct UrpRadioFeedbackPort *port)</argsstring>
+        <name>channel_feedback_bind</name>
+        <qualifiedname>UrpAstDescriptor::channel_feedback_bind</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Same capability on an existing serialized Asterisk station; survives reload. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1622" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1622" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a5e6175c5c93f919a462ef0533d85b493" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::link_programme_buffering) (void *link, struct UrpProgrammeBuffering *output)</definition>
+        <argsstring>)(void *link, struct UrpProgrammeBuffering *output)</argsstring>
+        <name>link_programme_buffering</name>
+        <qualifiedname>UrpAstDescriptor::link_programme_buffering</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Optional no-allocation query on the same serial owner as link processing. Output is an initialized ABI-one record with reserved zero. Invalid requests change neither output nor link state; larger output tails remain untouched. Missing capability/unknown bounds never prevent ordinary graph processing. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1627" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1627" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a4c5d23589549733e8faba1157c1ea08a" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_programme_retire) (void *native, uint64_t expected_radio_generation, uint64_t request_id)</definition>
+        <argsstring>)(void *native, uint64_t expected_radio_generation, uint64_t request_id)</argsstring>
+        <name>native_programme_retire</name>
+        <qualifiedname>UrpAstDescriptor::native_programme_retire</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Explicit final-TX programme retirement on the active serialized native owner. expected_radio_generation must match the immutable physical session, including on repeated polls; replaced/unknown generations fail before preparation. Nonzero IDs increase monotonically within a physical station lifetime. Repeat the same ID to poll one transaction: RELOAD_PENDING retains all ownership; zero acknowledges a committed fresh TX graph with no predecessor crossfade or rollback to revoked programme. Prior/superseded IDs fail. Ordinary updates and remote DSP work serialize with this request. RX/RNNoise, signaling, hardware gains and ordinary unkey behavior remain unchanged. The caller gates programme until matching completed-render feedback; no new callback is bound. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1639" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1639" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a21643aa323d656aa2b86a533f9965cea" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_programme_retire) (void *channel, uint64_t expected_radio_generation, uint64_t request_id)</definition>
+        <argsstring>)(void *channel, uint64_t expected_radio_generation, uint64_t request_id)</argsstring>
+        <name>channel_programme_retire</name>
+        <qualifiedname>UrpAstDescriptor::channel_programme_retire</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Same operation on the existing channel taskprocessor owner. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1642" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1642" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a1da7bf6b0e604f709c67032550a6816e" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::native_programme_fence_bind) (void *native, UrpProgrammeFenceBinding *binding)</definition>
+        <argsstring>)(void *native, UrpProgrammeFenceBinding *binding)</argsstring>
+        <name>native_programme_fence_bind</name>
+        <qualifiedname>UrpAstDescriptor::native_programme_fence_bind</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Retain a final-programme fence on the quiescent native owner; require ACK. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1645" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1645" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstDescriptor_1a9438ff6d29da5e1d42410171366b1dd1" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpAstDescriptor::channel_programme_fence_bind) (void *channel, UrpProgrammeFenceBinding *binding)</definition>
+        <argsstring>)(void *channel, UrpProgrammeFenceBinding *binding)</argsstring>
+        <name>channel_programme_fence_bind</name>
+        <qualifiedname>UrpAstDescriptor::channel_programme_fence_bind</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Same stopped-only operation on the existing channel taskprocessor owner. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1647" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1647" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Versioned product operations. Check struct_size before accessing an appended tail. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="1341" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1341" bodyend="1648"/>
+    <listofallmembers>
+      <member refid="structUrpAstDescriptor_1ac14b57fe1bf3cf5ecc36016ad37128c9" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>abi_version</name></member>
+      <member refid="structUrpAstDescriptor_1a9ebf82eb78490b2764d2cfb41c84002e" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>capability_name</name></member>
+      <member refid="structUrpAstDescriptor_1aeaae248a380e3eb561319bdfaa4d3c08" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_activation_status</name></member>
+      <member refid="structUrpAstDescriptor_1a97c92885b1495bdebd094264561dbc82" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_command</name></member>
+      <member refid="structUrpAstDescriptor_1ac5ef90f8e7a84d699a8f67a05f9614f8" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_destroy</name></member>
+      <member refid="structUrpAstDescriptor_1a1d5887092f6d960b15862bb94c24a527" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_feedback_bind</name></member>
+      <member refid="structUrpAstDescriptor_1ad553c9cb299b67c9d7f7946c746288bb" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_get_jitter_config</name></member>
+      <member refid="structUrpAstDescriptor_1ad9b1ad00859960164f34b92928301289" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_get_status</name></member>
+      <member refid="structUrpAstDescriptor_1aad755a8b3d1699aa51188424a5fc0f1d" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_processing_status_text</name></member>
+      <member refid="structUrpAstDescriptor_1a9438ff6d29da5e1d42410171366b1dd1" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_programme_fence_bind</name></member>
+      <member refid="structUrpAstDescriptor_1a21643aa323d656aa2b86a533f9965cea" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_programme_retire</name></member>
+      <member refid="structUrpAstDescriptor_1ab67bf20df4dcd6ad33f24ebcd71419bc" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_quiesce</name></member>
+      <member refid="structUrpAstDescriptor_1af71943bf4224d38328ffeec7ee795298" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_reload_activate</name></member>
+      <member refid="structUrpAstDescriptor_1aabe5a58bbbfb2a24686f88f49c3f5b7f" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_reload_finish</name></member>
+      <member refid="structUrpAstDescriptor_1ad24ff41504f44944e9de5533b6076350" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_reload_prepare</name></member>
+      <member refid="structUrpAstDescriptor_1aa265a2dca976885ec8a60caa64109648" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_remote_submit</name></member>
+      <member refid="structUrpAstDescriptor_1ac8f8ec1af5b1ec4cffb4a12bee85442e" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_reserve</name></member>
+      <member refid="structUrpAstDescriptor_1aae2f9129ab1dfbeae77f28694a1c1733" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_service</name></member>
+      <member refid="structUrpAstDescriptor_1a4cb15f687652911aa87d2ba855e0187f" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_set_direct_callbacks</name></member>
+      <member refid="structUrpAstDescriptor_1af8a1b83a8fcfd084cd9e8a9abc29ba00" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_set_dtmf</name></member>
+      <member refid="structUrpAstDescriptor_1a955cdc1345e08a3e645d6c8b1421765d" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_set_echo</name></member>
+      <member refid="structUrpAstDescriptor_1a0b44a0d51882e3119598322031fd46d2" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_set_transmit</name></member>
+      <member refid="structUrpAstDescriptor_1ab812a47f55d561309de4e5fe812d2a2d" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_site_bind</name></member>
+      <member refid="structUrpAstDescriptor_1a40e9a431a8e3bee7c5b48ceaec5c2d8e" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_site_publish</name></member>
+      <member refid="structUrpAstDescriptor_1a693f0566ee454a05c8fac3b609ebb047" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_site_snapshot</name></member>
+      <member refid="structUrpAstDescriptor_1ad406432fbfa85fb188714449b2fb7a6f" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_start</name></member>
+      <member refid="structUrpAstDescriptor_1ad0a94502edd62caefb3d77b208003ba4" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_stop</name></member>
+      <member refid="structUrpAstDescriptor_1a5a22618a3646128b58e965bad2e27888" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_write_text</name></member>
+      <member refid="structUrpAstDescriptor_1a172d882655ec43f417092da58347558a" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>channel_write_voice</name></member>
+      <member refid="structUrpAstDescriptor_1a47195797d43a3dcfe71d1a003ec94f2d" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>driver_active_channel</name></member>
+      <member refid="structUrpAstDescriptor_1af16c0c05eae863a908c082ac133753d0" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>driver_channel_name</name></member>
+      <member refid="structUrpAstDescriptor_1abb6f3534047960a515f1e876b56ab319" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>driver_create</name></member>
+      <member refid="structUrpAstDescriptor_1a5ffc989bf7f9a0469b526846004af896" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>driver_destroy</name></member>
+      <member refid="structUrpAstDescriptor_1a6dd2c7dca232d03647b3586b695bd7c1" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>driver_reload</name></member>
+      <member refid="structUrpAstDescriptor_1a61f5b26ef5209bf76ea6e2755374c41e" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>driver_reload_finish</name></member>
+      <member refid="structUrpAstDescriptor_1a21c19c0e1b0b4a5a5880f7fa0daac728" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>driver_set_active_channel</name></member>
+      <member refid="structUrpAstDescriptor_1a48797f3556c97d46234fc5be75d024a7" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_destroy</name></member>
+      <member refid="structUrpAstDescriptor_1ae0cf27f65f5733cbdeae5c49a2d640dc" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_observe</name></member>
+      <member refid="structUrpAstDescriptor_1ac0d5b250d3745dc18a704d3771d0d3fe" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_observer_create</name></member>
+      <member refid="structUrpAstDescriptor_1a790388f2d103f64cce9afba9b96d0fa6" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_observer_destroy</name></member>
+      <member refid="structUrpAstDescriptor_1a67c9e62b7ab88f06f94cdf066be0bf55" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_observer_read</name></member>
+      <member refid="structUrpAstDescriptor_1ace4eae2951e6a933950d911acddfa0da" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_prepare</name></member>
+      <member refid="structUrpAstDescriptor_1a6b38455ab73f6beb7e3c54b347bef7e4" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_prepare_reload</name></member>
+      <member refid="structUrpAstDescriptor_1abbe5e03aab63c6666f21738e12c6aa97" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_process</name></member>
+      <member refid="structUrpAstDescriptor_1a694a63b9e648e971f4e4c88a3d9f18d6" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_process_f32</name></member>
+      <member refid="structUrpAstDescriptor_1a5e6175c5c93f919a462ef0533d85b493" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_programme_buffering</name></member>
+      <member refid="structUrpAstDescriptor_1adf05abc153f00199e1b447d1325e26c9" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>link_reload_unchanged</name></member>
+      <member refid="structUrpAstDescriptor_1ad1074d0447cf0743bf18c58320d02f1a" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_accept_update</name></member>
+      <member refid="structUrpAstDescriptor_1adb6d8407b138a5e54d67127a1eadb379" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_activation_status</name></member>
+      <member refid="structUrpAstDescriptor_1a0760fd2020c19f6acdc9228e625b3844" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_begin_update</name></member>
+      <member refid="structUrpAstDescriptor_1ae2852a4be525d4feb5917e9f71a837e5" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_clear_manual</name></member>
+      <member refid="structUrpAstDescriptor_1a7b73a84f475ad561099ddf244cdbd9ed" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_command</name></member>
+      <member refid="structUrpAstDescriptor_1a8e29b849211158246a09d0621bcdd138" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_configuration_destroy</name></member>
+      <member refid="structUrpAstDescriptor_1a8ee93ad6316ec3951e83d75fe96001f1" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_configuration_remote_options</name></member>
+      <member refid="structUrpAstDescriptor_1a637dea3738f8afb6fd1c0b8950e4e594" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_configuration_resolve</name></member>
+      <member refid="structUrpAstDescriptor_1a776d82cce5962d3d8b5f9e1bda94a9f6" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_configuration_visit</name></member>
+      <member refid="structUrpAstDescriptor_1a7c26912077479d656adf661e5171b4d0" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_create</name></member>
+      <member refid="structUrpAstDescriptor_1a1b6ed9ae63d720a5bd3ddb15db0dfe65" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_destroy</name></member>
+      <member refid="structUrpAstDescriptor_1a47df25b36ec155bc57136f4401228629" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_destroy_update</name></member>
+      <member refid="structUrpAstDescriptor_1a681d5f449db9c7731cff34b5d8e0a645" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_feedback_bind</name></member>
+      <member refid="structUrpAstDescriptor_1ab312580b917d22af6478de528b41b701" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_finish_update</name></member>
+      <member refid="structUrpAstDescriptor_1a6c4a34cc8dca9e640fe110af578ac84e" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_get_status</name></member>
+      <member refid="structUrpAstDescriptor_1afee7a44818e922e01111c433e2032b9b" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_link_prepare</name></member>
+      <member refid="structUrpAstDescriptor_1aff7628f61778dc5b241f8fd4d92b52b5" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_prepare_update</name></member>
+      <member refid="structUrpAstDescriptor_1a56fdf7ee2bba10391272514ea61340d3" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_processing_status_text</name></member>
+      <member refid="structUrpAstDescriptor_1a30eb608490f55a776438c49efc37d174" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_processing_validate</name></member>
+      <member refid="structUrpAstDescriptor_1a1da7bf6b0e604f709c67032550a6816e" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_programme_fence_bind</name></member>
+      <member refid="structUrpAstDescriptor_1a4c5d23589549733e8faba1157c1ea08a" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_programme_retire</name></member>
+      <member refid="structUrpAstDescriptor_1a3d5f33189ec4d01a7131cee216f4caa8" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_quiesce</name></member>
+      <member refid="structUrpAstDescriptor_1a0a1eaffd43d6189fe2b664706ca1ae49" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_remote_submit</name></member>
+      <member refid="structUrpAstDescriptor_1a43c4d7a082b6b5dc773762ce02fa5fbb" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_service</name></member>
+      <member refid="structUrpAstDescriptor_1a8ed3c4cd4d9cadd5e3f7256b9d87f18c" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_set_transmit</name></member>
+      <member refid="structUrpAstDescriptor_1a619b7cfceb98b49f0bd1224b21d581ba" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_site_bind</name></member>
+      <member refid="structUrpAstDescriptor_1a0784c2938c471eefe1f87438f94890dc" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_site_publish</name></member>
+      <member refid="structUrpAstDescriptor_1aa227de5d59b2cad4588ca67a013431e8" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_site_snapshot</name></member>
+      <member refid="structUrpAstDescriptor_1a77c192b4d040f999d0116d644f373202" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_start</name></member>
+      <member refid="structUrpAstDescriptor_1a91fcbcd7e3cf5aafade442a0a4d02f85" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_status_text</name></member>
+      <member refid="structUrpAstDescriptor_1a27afcc5cbd259160fec51904099e2a91" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>native_stop</name></member>
+      <member refid="structUrpAstDescriptor_1a59812bf6b2d0b439689eb2050dd69693" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>remote_destroy</name></member>
+      <member refid="structUrpAstDescriptor_1a65daac2562a2858377b3ff5b1e2d2fda" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>remote_source</name></member>
+      <member refid="structUrpAstDescriptor_1a734d43551f2269216fafc59034ae87d0" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>remote_take</name></member>
+      <member refid="structUrpAstDescriptor_1aad50a6f8c8f1f312df4b154fb9944015" prot="public" virt="non-virtual"><scope>UrpAstDescriptor</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

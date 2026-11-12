@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstProgrammeRetirement" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstProgrammeRetirement</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstProgrammeRetirement_1afc734fd39657bf48f61e26ccb35e9cf7" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstProgrammeRetirement::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstProgrammeRetirement::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Readable prefix, at least 32 and no larger than option data. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="713" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="713" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProgrammeRetirement_1a292c0cfbe803992d6d1ec65c68c5ada1" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstProgrammeRetirement::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstProgrammeRetirement::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_AST_PROGRAMME_RETIRE_OPTION_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="714" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="714" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProgrammeRetirement_1a3adff3fd0be920e70178640e1a14f9e3" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstProgrammeRetirement::expected_radio_generation</definition>
+        <argsstring></argsstring>
+        <name>expected_radio_generation</name>
+        <qualifiedname>UrpAstProgrammeRetirement::expected_radio_generation</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero physical lifecycle generation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="715" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="715" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProgrammeRetirement_1a29dbcad6e54ac82d2870a27213df77e6" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpAstProgrammeRetirement::request_id</definition>
+        <argsstring></argsstring>
+        <name>request_id</name>
+        <qualifiedname>UrpAstProgrammeRetirement::request_id</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero increasing station-scoped retirement identity. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="716" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="716" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProgrammeRetirement_1ada5fa151784d0970fa65464dd493fc0e" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstProgrammeRetirement::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>UrpAstProgrammeRetirement::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Initialize zero; one only after actual SDK dispatch. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="717" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="717" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstProgrammeRetirement_1a8f0bb1df8df97443f1d845381097492b" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpAstProgrammeRetirement::result</definition>
+        <argsstring></argsstring>
+        <name>result</name>
+        <qualifiedname>UrpAstProgrammeRetirement::result</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>SDK result: zero committed, RELOAD_PENDING, or a negative failure. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="718" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="718" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Require zero setoption return and accepted_abi_version=1, then inspect result. Dispatch acceptance is distinct from retirement completion. No pointer/context is retained; larger readable envelopes preserve their additional tail. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="712" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="712" bodyend="719"/>
+    <listofallmembers>
+      <member refid="structUrpAstProgrammeRetirement_1a292c0cfbe803992d6d1ec65c68c5ada1" prot="public" virt="non-virtual"><scope>UrpAstProgrammeRetirement</scope><name>abi_version</name></member>
+      <member refid="structUrpAstProgrammeRetirement_1ada5fa151784d0970fa65464dd493fc0e" prot="public" virt="non-virtual"><scope>UrpAstProgrammeRetirement</scope><name>accepted_abi_version</name></member>
+      <member refid="structUrpAstProgrammeRetirement_1a3adff3fd0be920e70178640e1a14f9e3" prot="public" virt="non-virtual"><scope>UrpAstProgrammeRetirement</scope><name>expected_radio_generation</name></member>
+      <member refid="structUrpAstProgrammeRetirement_1a29dbcad6e54ac82d2870a27213df77e6" prot="public" virt="non-virtual"><scope>UrpAstProgrammeRetirement</scope><name>request_id</name></member>
+      <member refid="structUrpAstProgrammeRetirement_1a8f0bb1df8df97443f1d845381097492b" prot="public" virt="non-virtual"><scope>UrpAstProgrammeRetirement</scope><name>result</name></member>
+      <member refid="structUrpAstProgrammeRetirement_1afc734fd39657bf48f61e26ccb35e9cf7" prot="public" virt="non-virtual"><scope>UrpAstProgrammeRetirement</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

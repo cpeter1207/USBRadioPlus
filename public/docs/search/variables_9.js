@@ -1,0 +1,24 @@
+var searchData=
+[
+  ['last_5fcommand_5ferror_0',['last_command_error',['../structUrpAstSiteSnapshot.html#a1efa35a2519c6991acb6f12de090bbee',1,'UrpAstSiteSnapshot']]],
+  ['last_5finput_5fxrun_5fmonotonic_5fns_1',['last_input_xrun_monotonic_ns',['../structUrpAstChannelStatus.html#a5b7b9c9460999ad756833d1925fcf287',1,'UrpAstChannelStatus::last_input_xrun_monotonic_ns'],['../structUrpNativePhysicalStatus.html#a4e42c9384cb2f4b2ff2a332e901e75f4',1,'UrpNativePhysicalStatus::last_input_xrun_monotonic_ns']]],
+  ['last_5foutput_5fxrun_5fmonotonic_5fns_2',['last_output_xrun_monotonic_ns',['../structUrpAstChannelStatus.html#a6e9487bcc6c525f927c5b8fc61d4e00f',1,'UrpAstChannelStatus::last_output_xrun_monotonic_ns'],['../structUrpNativePhysicalStatus.html#a42d5d43aa9183a9f17ba0f8e62f5dde2',1,'UrpNativePhysicalStatus::last_output_xrun_monotonic_ns']]],
+  ['link_5fdestroy_3',['link_destroy',['../structUrpAstDescriptor.html#a48797f3556c97d46234fc5be75d024a7',1,'UrpAstDescriptor']]],
+  ['link_5fobserve_4',['link_observe',['../structUrpAstDescriptor.html#ae0cf27f65f5733cbdeae5c49a2d640dc',1,'UrpAstDescriptor']]],
+  ['link_5fobserver_5fcreate_5',['link_observer_create',['../structUrpAstDescriptor.html#ac0d5b250d3745dc18a704d3771d0d3fe',1,'UrpAstDescriptor']]],
+  ['link_5fobserver_5fdestroy_6',['link_observer_destroy',['../structUrpAstDescriptor.html#a790388f2d103f64cce9afba9b96d0fa6',1,'UrpAstDescriptor']]],
+  ['link_5fobserver_5fread_7',['link_observer_read',['../structUrpAstDescriptor.html#a67c9e62b7ab88f06f94cdf066be0bf55',1,'UrpAstDescriptor']]],
+  ['link_5fprepare_8',['link_prepare',['../structUrpAstDescriptor.html#ace4eae2951e6a933950d911acddfa0da',1,'UrpAstDescriptor']]],
+  ['link_5fprepare_5freload_9',['link_prepare_reload',['../structUrpAstDescriptor.html#a6b38455ab73f6beb7e3c54b347bef7e4',1,'UrpAstDescriptor']]],
+  ['link_5fprocess_10',['link_process',['../structUrpAstDescriptor.html#abbe5e03aab63c6666f21738e12c6aa97',1,'UrpAstDescriptor']]],
+  ['link_5fprocess_5ff32_11',['link_process_f32',['../structUrpAstDescriptor.html#a694a63b9e648e971f4e4c88a3d9f18d6',1,'UrpAstDescriptor']]],
+  ['link_5fprogramme_5fbuffering_12',['link_programme_buffering',['../structUrpAstDescriptor.html#a5e6175c5c93f919a462ef0533d85b493',1,'UrpAstDescriptor']]],
+  ['link_5freload_5funchanged_13',['link_reload_unchanged',['../structUrpAstDescriptor.html#adf05abc153f00199e1b447d1325e26c9',1,'UrpAstDescriptor']]],
+  ['load_14',['load',['../structurp__asterisk__loader__descriptor.html#a61f991ca9b6d12721a7a14b53f9a8c19',1,'urp_asterisk_loader_descriptor']]],
+  ['log_15',['log',['../structUrpAstOperations.html#a5860f671b39d913beaa903f876d0e621',1,'UrpAstOperations']]],
+  ['logging_5fenabled_16',['logging_enabled',['../structUrpAstJitterConfig.html#a12523a874af0a7321df13b6b276b2bb0',1,'UrpAstJitterConfig']]],
+  ['logical_5fptt_17',['logical_ptt',['../structUrpAstChannelStatus.html#a729d029d39e102bcdecbd61461dd93e0',1,'UrpAstChannelStatus::logical_ptt'],['../structUrpNativePhysicalStatus.html#accd399f81a87b554e37e86d33df6386b',1,'UrpNativePhysicalStatus::logical_ptt']]],
+  ['loudness_5fepoch_18',['loudness_epoch',['../structUrpAstLinkObservation.html#a06c37f70b367b3259471ee921033f9e1',1,'UrpAstLinkObservation']]],
+  ['loudness_5fsample_5fcount_19',['loudness_sample_count',['../structUrpAstLinkObservation.html#a4a8eadaee86a19236bfb0b1f01e100f6',1,'UrpAstLinkObservation']]],
+  ['loudness_5fvalid_20',['loudness_valid',['../structUrpAstLinkObservation.html#ada7b665016e20a6914fbba5bc132efd4',1,'UrpAstLinkObservation']]]
+];

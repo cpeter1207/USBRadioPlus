@@ -1,0 +1,1 @@
+{"rustc":8277423686421874925,"features":"[]","declared_features":"[]","target":6876152420896209704,"profile":2651127879496748883,"path":14591247804681572918,"deps":[[716538342536136932,"usbradioplus_core",false,18064442679843266164]],"local":[{"Precalculated":"1794501654.947986028s (src/link/tests.rs)"}],"rustflags":["-D","warnings"],"config":2069994364910194474,"compile_kind":0}

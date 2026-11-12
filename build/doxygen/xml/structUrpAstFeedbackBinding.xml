@@ -1,0 +1,124 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpAstFeedbackBinding" kind="struct" language="C++" prot="public">
+    <compoundname>UrpAstFeedbackBinding</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpAstFeedbackBinding_1a9ae3be778b0b423951b39a434655e756" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstFeedbackBinding::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpAstFeedbackBinding::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact size of this envelope. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="698" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="698" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstFeedbackBinding_1a67c1ce05699987c95bf2b5c3561f06b8" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstFeedbackBinding::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpAstFeedbackBinding::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>URP_AST_FEEDBACK_OPTION_ABI_VERSION. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="699" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="699" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstFeedbackBinding_1aa7e9f3f297a5fe429543a1e22a992ce1" prot="public" static="no" mutable="no">
+        <type><ref refid="structUrpRadioFeedbackPort" kindref="compound">UrpRadioFeedbackPort</ref></type>
+        <definition>UrpRadioFeedbackPort UrpAstFeedbackBinding::port</definition>
+        <argsstring></argsstring>
+        <name>port</name>
+        <qualifiedname>UrpAstFeedbackBinding::port</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Sized prefix copied only after stopped admission. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="700" column="22" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="700" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstFeedbackBinding_1a31569863cb9761de98dc719ebbf8da9d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstFeedbackBinding::accepted_abi_version</definition>
+        <argsstring></argsstring>
+        <name>accepted_abi_version</name>
+        <qualifiedname>UrpAstFeedbackBinding::accepted_abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Initialize zero; set to one only on successful bind. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="701" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="701" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpAstFeedbackBinding_1afc94e2505536de05bd8cc7f4d6b6b0b0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpAstFeedbackBinding::reserved</definition>
+        <argsstring></argsstring>
+        <name>reserved</name>
+        <qualifiedname>UrpAstFeedbackBinding::reserved</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must be zero. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="702" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="702" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Borrowed ast_channel_setoption(block=0) envelope. Require zero return and accepted_abi_version=1: older Asterisk technologies can accept unknown options. The taskprocessor copies the port synchronously before acknowledging retention. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="1">
+        <label>UrpAstFeedbackBinding</label>
+        <link refid="structUrpAstFeedbackBinding"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>port</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>UrpProgrammeBuffering</label>
+        <link refid="structUrpProgrammeBuffering"/>
+      </node>
+      <node id="3">
+        <label>UrpRadioFeedback</label>
+        <link refid="structUrpRadioFeedback"/>
+        <childnode refid="4" relation="usage">
+          <edgelabel>programme_buffering</edgelabel>
+        </childnode>
+      </node>
+      <node id="2">
+        <label>UrpRadioFeedbackPort</label>
+        <link refid="structUrpRadioFeedbackPort"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>publish</edgelabel>
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="rust/product/include/usbradioplus_product.h" line="697" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="697" bodyend="703"/>
+    <listofallmembers>
+      <member refid="structUrpAstFeedbackBinding_1a67c1ce05699987c95bf2b5c3561f06b8" prot="public" virt="non-virtual"><scope>UrpAstFeedbackBinding</scope><name>abi_version</name></member>
+      <member refid="structUrpAstFeedbackBinding_1a31569863cb9761de98dc719ebbf8da9d" prot="public" virt="non-virtual"><scope>UrpAstFeedbackBinding</scope><name>accepted_abi_version</name></member>
+      <member refid="structUrpAstFeedbackBinding_1aa7e9f3f297a5fe429543a1e22a992ce1" prot="public" virt="non-virtual"><scope>UrpAstFeedbackBinding</scope><name>port</name></member>
+      <member refid="structUrpAstFeedbackBinding_1afc94e2505536de05bd8cc7f4d6b6b0b0" prot="public" virt="non-virtual"><scope>UrpAstFeedbackBinding</scope><name>reserved</name></member>
+      <member refid="structUrpAstFeedbackBinding_1a9ae3be778b0b423951b39a434655e756" prot="public" virt="non-virtual"><scope>UrpAstFeedbackBinding</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpNativeProcessingArgs" kind="struct" language="C++" prot="public">
+    <compoundname>UrpNativeProcessingArgs</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpNativeProcessingArgs_1a96c4d86e2413112c37903230af506a0e" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeProcessingArgs::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpNativeProcessingArgs::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Complete structure size in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="108" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="108" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeProcessingArgs_1a33060a539e50e21a75bb25bea96f301d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeProcessingArgs::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpNativeProcessingArgs::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Processing request ABI, one. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="110" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="110" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeProcessingArgs_1ad9295442476302ba5e21de775119dcc9" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpNativeProcessingArgs::configuration</definition>
+        <argsstring></argsstring>
+        <name>configuration</name>
+        <qualifiedname>UrpNativeProcessingArgs::configuration</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>UTF-8 processing configuration, not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="112" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="112" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeProcessingArgs_1a8c3500dd8689f9506152b321114ce456" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeProcessingArgs::configuration_length</definition>
+        <argsstring></argsstring>
+        <name>configuration_length</name>
+        <qualifiedname>UrpNativeProcessingArgs::configuration_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configuration byte count; zero selects no explicit profiles. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="114" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="114" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeProcessingArgs_1ab86d8b9cee857106946c26435cfbcd72" prot="public" static="no" mutable="no">
+        <type>const uint8_t *</type>
+        <definition>const uint8_t* UrpNativeProcessingArgs::node</definition>
+        <argsstring></argsstring>
+        <name>node</name>
+        <qualifiedname>UrpNativeProcessingArgs::node</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>UTF-8 node name, not NUL terminated. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="116" column="15" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="116" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativeProcessingArgs_1a5b0ff38b41be76ff1f6a0b7dd970307f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativeProcessingArgs::node_length</definition>
+        <argsstring></argsstring>
+        <name>node_length</name>
+        <qualifiedname>UrpNativeProcessingArgs::node_length</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Node-name byte count. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="118" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="118" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Borrowed processing sections and node selectors, without hardware settings. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="106" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="106" bodyend="119"/>
+    <listofallmembers>
+      <member refid="structUrpNativeProcessingArgs_1a33060a539e50e21a75bb25bea96f301d" prot="public" virt="non-virtual"><scope>UrpNativeProcessingArgs</scope><name>abi_version</name></member>
+      <member refid="structUrpNativeProcessingArgs_1ad9295442476302ba5e21de775119dcc9" prot="public" virt="non-virtual"><scope>UrpNativeProcessingArgs</scope><name>configuration</name></member>
+      <member refid="structUrpNativeProcessingArgs_1a8c3500dd8689f9506152b321114ce456" prot="public" virt="non-virtual"><scope>UrpNativeProcessingArgs</scope><name>configuration_length</name></member>
+      <member refid="structUrpNativeProcessingArgs_1ab86d8b9cee857106946c26435cfbcd72" prot="public" virt="non-virtual"><scope>UrpNativeProcessingArgs</scope><name>node</name></member>
+      <member refid="structUrpNativeProcessingArgs_1a5b0ff38b41be76ff1f6a0b7dd970307f" prot="public" virt="non-virtual"><scope>UrpNativeProcessingArgs</scope><name>node_length</name></member>
+      <member refid="structUrpNativeProcessingArgs_1a96c4d86e2413112c37903230af506a0e" prot="public" virt="non-virtual"><scope>UrpNativeProcessingArgs</scope><name>struct_size</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,113 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpRemoteTicket" kind="struct" language="C++" prot="public">
+    <compoundname>UrpRemoteTicket</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpRemoteTicket_1a9fbabb1602b0ba928d75b9905c6899ef" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteTicket::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpRemoteTicket::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact complete record size. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1296" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1296" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteTicket_1abde6cd013b6649f6f14fff2adcd5108c" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpRemoteTicket::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpRemoteTicket::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>One. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1297" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1297" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteTicket_1a5fb9e6a56f79d5917f5893b584f1de01" prot="public" static="no" mutable="no">
+        <type>void *</type>
+        <definition>void* UrpRemoteTicket::context</definition>
+        <argsstring></argsstring>
+        <name>context</name>
+        <qualifiedname>UrpRemoteTicket::context</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Unique SDK ticket, never the channel or peer. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1298" column="6" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1298" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteTicket_1a7dcc2787bb12847b3ff18d4930a0ec3c" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpRemoteTicket::source) (void *ticket, uint32_t flags)</definition>
+        <argsstring>)(void *ticket, uint32_t flags)</argsstring>
+        <name>source</name>
+        <qualifiedname>UrpRemoteTicket::source</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Active1/valid2, terminal revocation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1299" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1299" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteTicket_1aa7ce78ce85cfe3814e160bda4ffbdfeb" prot="public" static="no" mutable="no">
+        <type>int(*</type>
+        <definition>int(* UrpRemoteTicket::take) (void *ticket, UrpNativeProcessingDiagnostic sink, void *context)</definition>
+        <argsstring>)(void *ticket, UrpNativeProcessingDiagnostic sink, void *context)</argsstring>
+        <name>take</name>
+        <qualifiedname>UrpRemoteTicket::take</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Copy JSON. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1300" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1300" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpRemoteTicket_1aad7130cc50b2c60508e55321e0065f70" prot="public" static="no" mutable="no">
+        <type>void(*</type>
+        <definition>void(* UrpRemoteTicket::destroy) (void *ticket)</definition>
+        <argsstring>)(void *ticket)</argsstring>
+        <name>destroy</name>
+        <qualifiedname>UrpRemoteTicket::destroy</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cancel and release without waiting. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1302" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1302" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Owned nonblocking remote ticket; callback functions remain live through destroy. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="1295" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1295" bodyend="1303"/>
+    <listofallmembers>
+      <member refid="structUrpRemoteTicket_1abde6cd013b6649f6f14fff2adcd5108c" prot="public" virt="non-virtual"><scope>UrpRemoteTicket</scope><name>abi_version</name></member>
+      <member refid="structUrpRemoteTicket_1a5fb9e6a56f79d5917f5893b584f1de01" prot="public" virt="non-virtual"><scope>UrpRemoteTicket</scope><name>context</name></member>
+      <member refid="structUrpRemoteTicket_1aad7130cc50b2c60508e55321e0065f70" prot="public" virt="non-virtual"><scope>UrpRemoteTicket</scope><name>destroy</name></member>
+      <member refid="structUrpRemoteTicket_1a7dcc2787bb12847b3ff18d4930a0ec3c" prot="public" virt="non-virtual"><scope>UrpRemoteTicket</scope><name>source</name></member>
+      <member refid="structUrpRemoteTicket_1a9fbabb1602b0ba928d75b9905c6899ef" prot="public" virt="non-virtual"><scope>UrpRemoteTicket</scope><name>struct_size</name></member>
+      <member refid="structUrpRemoteTicket_1aa7ce78ce85cfe3814e160bda4ffbdfeb" prot="public" virt="non-virtual"><scope>UrpRemoteTicket</scope><name>take</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -1,0 +1,42 @@
+<map id="src/chan_usbradioplus_shim.c" name="src/chan_usbradioplus_shim.c">
+<area shape="rect" id="Node000001" title="Compose released providers and forward Asterisk module lifecycle." alt="" coords="809,5,976,45"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,108,92,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="809,28,674,30,500,39,305,60,207,76,112,96,84,105,83,100,111,91,206,70,305,54,499,34,674,25,809,23"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="106,269,181,295"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="809,31,636,36,430,48,251,67,190,80,169,87,157,95,144,112,136,132,129,176,131,219,139,255,133,256,126,220,123,175,131,131,140,110,154,91,167,83,188,75,250,62,430,42,636,31,809,26"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="419,108,489,133"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="810,36,664,55,583,73,503,96,485,104,483,99,501,91,581,67,663,50,809,30"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="513,93,672,148"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="833,48,686,93,684,88,831,43"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="697,101,886,141"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="874,47,824,93,820,89,870,43"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="911,108,1077,133"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="915,43,973,97,970,101,911,47"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="1102,93,1297,148"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="955,43,1101,87,1099,92,954,48"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="1321,101,1512,141"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="977,35,1132,59,1309,91,1329,95,1328,100,1308,96,1131,64,976,41"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="1536,101,1753,141"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="977,30,1223,52,1374,69,1525,91,1551,95,1550,101,1524,96,1373,75,1223,57,976,35"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="1777,108,1965,133"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="976,26,1125,31,1322,43,1544,62,1766,91,1819,102,1818,107,1766,96,1543,67,1322,48,1125,37,976,31"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="1990,108,2121,133"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="976,26,1488,47,1772,66,1889,77,1979,91,2015,101,2014,106,1977,96,1889,83,1771,71,1487,52,976,32"/>
+<area shape="rect" id="Node000013" title=" " alt="" coords="2145,108,2283,133"/>
+<area shape="poly" id="edge12_Node000001_Node000013" title=" " alt="" coords="976,26,1227,32,1561,45,1892,64,2029,76,2133,91,2173,101,2171,106,2132,96,2029,82,1892,69,1561,50,1227,38,976,31"/>
+<area shape="rect" id="Node000014" href="$usbradioplus__asterisk_8h.html" title="Versioned loader ABI for the Rust&#45;owned USBRadioPlus Asterisk host." alt="" coords="167,108,343,133"/>
+<area shape="poly" id="edge13_Node000001_Node000014" title=" " alt="" coords="809,37,605,59,362,96,311,107,310,102,362,91,605,54,809,32"/>
+<area shape="rect" id="Node000016" href="$usbradioplus__product_8h.html" title="Shared USBRadioPlus product ABI. Handles are opaque and host callbacks and provider descriptors must ..." alt="" coords="285,196,458,221"/>
+<area shape="poly" id="edge21_Node000001_Node000016" title=" " alt="" coords="809,30,703,35,585,46,479,65,438,79,409,95,393,114,383,137,374,183,369,182,378,135,389,111,406,91,435,74,477,60,584,40,703,30,809,25"/>
+<area shape="rect" id="Node000015" title=" " alt="" coords="212,269,283,295"/>
+<area shape="poly" id="edge14_Node000014_Node000015" title=" " alt="" coords="257,134,251,256,246,255,252,133"/>
+<area shape="poly" id="edge15_Node000014_Node000016" title=" " alt="" coords="273,131,346,186,343,190,269,136"/>
+<area shape="poly" id="edge17_Node000016_Node000003" title=" " alt="" coords="335,224,194,268,193,263,334,219"/>
+<area shape="poly" id="edge19_Node000016_Node000015" title=" " alt="" coords="353,224,281,265,278,260,350,219"/>
+<area shape="rect" id="Node000017" title=" " alt="" coords="307,269,382,295"/>
+<area shape="poly" id="edge16_Node000016_Node000017" title=" " alt="" coords="369,223,356,258,351,256,364,221"/>
+<area shape="rect" id="Node000018" title=" " alt="" coords="406,269,489,295"/>
+<area shape="poly" id="edge18_Node000016_Node000018" title=" " alt="" coords="385,219,427,258,423,262,382,223"/>
+<area shape="rect" id="Node000019" title=" " alt="" coords="513,269,584,295"/>
+<area shape="poly" id="edge20_Node000016_Node000019" title=" " alt="" coords="401,219,508,262,506,267,399,224"/>
+</map>

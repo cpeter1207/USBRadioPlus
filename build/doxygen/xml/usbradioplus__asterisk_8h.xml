@@ -1,0 +1,303 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="usbradioplus__asterisk_8h" kind="file" language="C++">
+    <compoundname>usbradioplus_asterisk.h</compoundname>
+    <includes local="no">stdint.h</includes>
+    <includes refid="usbradioplus__product_8h" local="yes">usbradioplus_product.h</includes>
+    <includedby refid="chan__usbradioplus__shim_8c" local="yes">src/chan_usbradioplus_shim.c</includedby>
+    <incdepgraph>
+      <node id="1">
+        <label>rust/asterisk/include/usbradioplus_asterisk.h</label>
+        <link refid="usbradioplus__asterisk_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>usbradioplus_product.h</label>
+        <link refid="usbradioplus__product_8h"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>stdarg.h</label>
+      </node>
+      <node id="6">
+        <label>stdbool.h</label>
+      </node>
+      <node id="5">
+        <label>stddef.h</label>
+      </node>
+      <node id="2">
+        <label>stdint.h</label>
+      </node>
+      <node id="7">
+        <label>stdlib.h</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="1">
+        <label>rust/asterisk/include/usbradioplus_asterisk.h</label>
+        <link refid="usbradioplus__asterisk_8h"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>src/chan_usbradioplus_shim.c</label>
+        <link refid="chan__usbradioplus__shim_8c"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="structurp__ast__link__attach" prot="public">urp_ast_link_attach</innerclass>
+    <innerclass refid="structurp__ast__provider__manifest" prot="public">urp_ast_provider_manifest</innerclass>
+    <innerclass refid="structurp__asterisk__loader__descriptor" prot="public">urp_asterisk_loader_descriptor</innerclass>
+    <sectiondef kind="define">
+      <memberdef kind="define" id="usbradioplus__asterisk_8h_1a6759e1d71eeaca12c4464cf431a7acda" prot="public" static="no">
+        <name>URP_AST_LOADER_ABI_VERSION</name>
+        <initializer>UINT32_C(5)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Current loader-descriptor ABI. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="16" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="16" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__asterisk_8h_1ad08a7d64b7254aaa085d97b024fab64c" prot="public" static="no">
+        <name>URP_AST_LOADER_OK</name>
+        <initializer>0</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Rust host loaded successfully. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="18" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="18" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__asterisk_8h_1ad5cc699bf038114727f85da5ee7aa71d" prot="public" static="no">
+        <name>URP_AST_LOADER_DECLINE</name>
+        <initializer>1</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Configuration or provider validation declined module loading. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="20" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="20" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__asterisk_8h_1a848d8685519fcbe7309604556e7d2f97" prot="public" static="no">
+        <name>URP_AST_LOADER_FAILURE</name>
+        <initializer>2</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Asterisk host registration failed after validation. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="22" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="22" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__asterisk_8h_1a40e7e3eea79e743761ab4bf8ad919133" prot="public" static="no">
+        <name>URP_AST_OPTION_DIRECT_CALLBACKS</name>
+        <initializer>0x52504144</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Private initial-alpha Asterisk option ID; call ast_channel_setoption with block=0. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="25" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="25" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__asterisk_8h_1a308cf18576c5d943a82ee4a82341e757" prot="public" static="no">
+        <name>URP_AST_OPTION_LINK_ATTACH</name>
+        <initializer>0x52504C41</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Peer binding option; call ast_channel_setoption on the reserved radio with block=0. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="41" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="41" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="define" id="usbradioplus__asterisk_8h_1a0be2ab963aab556c13218f94433691e2" prot="public" static="no">
+        <name>URP_AST_LINK_ATTACH_ABI_VERSION</name>
+        <initializer>UINT32_C(1)</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Exact peer-binding payload ABI. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="43" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="43" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="typedef">
+      <memberdef kind="typedef" id="usbradioplus__asterisk_8h_1a4da3165cbfcb458dd08d44986cb010b1" prot="public" static="no">
+        <type><ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref></type>
+        <definition>typedef UrpAstDirectCallbacks urp_ast_direct_callbacks</definition>
+        <argsstring></argsstring>
+        <name>urp_ast_direct_callbacks</name>
+        <briefdescription>
+<para>Borrowed direct RadioPlusAdvanced PCM endpoints, copied before call(). </para>
+        </briefdescription>
+        <detaileddescription>
+<para>Mutable normalized mono F32 at native 48000 Hz, exactly frame_count samples. Both functions and contexts are required. Each endpoint has one serial owner; RX and TX may run concurrently. Callbacks return zero on success and must not allocate, lock, block, log, call Asterisk, access files/network or change refcounts. The owner retains contexts and executable code until synchronous channel stop or hangup returns; USBRadioPlus never owns or frees contexts. Reload copies the same attachment before starting the replacement stream. No DSO lookup is used. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="38" column="31" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="38" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__asterisk_8h_1a17d3a7d015d1f98f55b5eb8464a9fc01" prot="public" static="no">
+        <type>int(*</type>
+        <definition>typedef int(* urp_ast_loader_load_fn) (const struct urp_ast_provider_manifest *providers, void *module_self)</definition>
+        <argsstring>)(const struct urp_ast_provider_manifest *providers, void *module_self)</argsstring>
+        <name>urp_ast_loader_load_fn</name>
+        <briefdescription>
+<para>Start the complete Rust-owned Asterisk host. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="77" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="77" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__asterisk_8h_1ad9afb2d9c3326c7e5eec5799b786ae94" prot="public" static="no">
+        <type>int(*</type>
+        <definition>typedef int(* urp_ast_loader_reload_fn) (void)</definition>
+        <argsstring>)(void)</argsstring>
+        <name>urp_ast_loader_reload_fn</name>
+        <briefdescription>
+<para>Reload the complete Rust-owned Asterisk host in place. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="80" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="80" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="typedef" id="usbradioplus__asterisk_8h_1a852d6f49d423b5faaaabf91ebcd8b5de" prot="public" static="no">
+        <type>int(*</type>
+        <definition>typedef int(* urp_ast_loader_unload_fn) (void)</definition>
+        <argsstring>)(void)</argsstring>
+        <name>urp_ast_loader_unload_fn</name>
+        <briefdescription>
+<para>Stop the complete Rust-owned Asterisk host. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="82" column="9" bodyfile="rust/asterisk/include/usbradioplus_asterisk.h" bodystart="82" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <sectiondef kind="func">
+      <memberdef kind="function" id="usbradioplus__asterisk_8h_1a4707173299fe3ba962e964adc89443ef" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>const struct <ref refid="structurp__asterisk__loader__descriptor" kindref="compound">urp_asterisk_loader_descriptor</ref> *</type>
+        <definition>const struct urp_asterisk_loader_descriptor * usbradioplus_asterisk_loader_descriptor</definition>
+        <argsstring>(void)</argsstring>
+        <name>usbradioplus_asterisk_loader_descriptor</name>
+        <param>
+          <type>void</type>
+        </param>
+        <briefdescription>
+<para>Return the immutable process-lifetime loader descriptor. </para>
+        </briefdescription>
+        <detaileddescription>
+<para><simplesect kind="return"><para>Descriptor for <computeroutput>URP_AST_LOADER_ABI_VERSION</computeroutput>. </para>
+</simplesect>
+</para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/asterisk/include/usbradioplus_asterisk.h" line="98" column="43" declfile="rust/asterisk/include/usbradioplus_asterisk.h" declline="98" declcolumn="43"/>
+        <referencedby refid="chan__usbradioplus__shim_8c_1ac3382bf6da54c56b37069bd76bbdf4f9" compoundref="chan__usbradioplus__shim_8c" startline="57" endline="84">load_module</referencedby>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+<para>Versioned loader ABI for the Rust-owned USBRadioPlus Asterisk host. </para>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#ifndef<sp/>USBRADIOPLUS_ASTERISK_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>USBRADIOPLUS_ASTERISK_H</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="7"><highlight class="normal"></highlight></codeline>
+<codeline lineno="8"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;stdint.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;<ref refid="usbradioplus__product_8h" kindref="compound">usbradioplus_product.h</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>__cplusplus</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="12"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="stringliteral">&quot;C&quot;</highlight><highlight class="normal"><sp/>{</highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="14"><highlight class="normal"></highlight></codeline>
+<codeline lineno="16" refid="usbradioplus__asterisk_8h_1a6759e1d71eeaca12c4464cf431a7acda" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LOADER_ABI_VERSION<sp/>UINT32_C(5)</highlight></codeline>
+<codeline lineno="18" refid="usbradioplus__asterisk_8h_1ad08a7d64b7254aaa085d97b024fab64c" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LOADER_OK<sp/>0</highlight></codeline>
+<codeline lineno="20" refid="usbradioplus__asterisk_8h_1ad5cc699bf038114727f85da5ee7aa71d" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LOADER_DECLINE<sp/>1</highlight></codeline>
+<codeline lineno="22" refid="usbradioplus__asterisk_8h_1a848d8685519fcbe7309604556e7d2f97" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LOADER_FAILURE<sp/>2</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="23"><highlight class="normal"></highlight></codeline>
+<codeline lineno="25" refid="usbradioplus__asterisk_8h_1a40e7e3eea79e743761ab4bf8ad919133" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_OPTION_DIRECT_CALLBACKS<sp/>0x52504144</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight></codeline>
+<codeline lineno="38" refid="usbradioplus__asterisk_8h_1a4da3165cbfcb458dd08d44986cb010b1" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/><ref refid="structUrpAstDirectCallbacks" kindref="compound">UrpAstDirectCallbacks</ref><sp/><ref refid="usbradioplus__asterisk_8h_1a4da3165cbfcb458dd08d44986cb010b1" kindref="member">urp_ast_direct_callbacks</ref>;</highlight></codeline>
+<codeline lineno="39"><highlight class="normal"></highlight></codeline>
+<codeline lineno="41" refid="usbradioplus__asterisk_8h_1a308cf18576c5d943a82ee4a82341e757" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_OPTION_LINK_ATTACH<sp/>0x52504C41</highlight></codeline>
+<codeline lineno="43" refid="usbradioplus__asterisk_8h_1a0be2ab963aab556c13218f94433691e2" refkind="member"><highlight class="normal"></highlight><highlight class="preprocessor">#define<sp/>URP_AST_LINK_ATTACH_ABI_VERSION<sp/>UINT32_C(1)</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="44"><highlight class="normal"></highlight></codeline>
+<codeline lineno="55" refid="structurp__ast__link__attach" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__ast__link__attach" kindref="compound">urp_ast_link_attach</ref><sp/>{</highlight></codeline>
+<codeline lineno="56" refid="structurp__ast__link__attach_1a729193f989c420059d35e7ea742f6de2" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__ast__link__attach_1a729193f989c420059d35e7ea742f6de2" kindref="member">struct_size</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="57" refid="structurp__ast__link__attach_1a79154c6fa2b595403fa58076649da03b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__ast__link__attach_1a79154c6fa2b595403fa58076649da03b" kindref="member">abi_version</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="58" refid="structurp__ast__link__attach_1adfd7e3d4c7d9444f800855298617af97" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__link__attach_1adfd7e3d4c7d9444f800855298617af97" kindref="member">peer_channel</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="59" refid="structurp__ast__link__attach_1a00422416e3db8e6a4679c7e7b5e417c8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__ast__link__attach_1a00422416e3db8e6a4679c7e7b5e417c8" kindref="member">accepted_abi_version</ref>;<sp/></highlight></codeline>
+<codeline lineno="60"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="61"><highlight class="normal"></highlight></codeline>
+<codeline lineno="63" refid="structurp__ast__provider__manifest" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__ast__provider__manifest" kindref="compound">urp_ast_provider_manifest</ref><sp/>{</highlight></codeline>
+<codeline lineno="64" refid="structurp__ast__provider__manifest_1a674c94f5187ea151039a50740943efa6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__ast__provider__manifest_1a674c94f5187ea151039a50740943efa6" kindref="member">struct_size</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="65" refid="structurp__ast__provider__manifest_1a9874c717da1c82bea12b081f3448757f" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__ast__provider__manifest_1a9874c717da1c82bea12b081f3448757f" kindref="member">abi_version</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="66" refid="structurp__ast__provider__manifest_1ae638969afe791415c8e553ad5630258b" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__provider__manifest_1ae638969afe791415c8e553ad5630258b" kindref="member">ffmpeg</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="67" refid="structurp__ast__provider__manifest_1a53afcb22fa62f8891ff583113db590ac" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__provider__manifest_1a53afcb22fa62f8891ff583113db590ac" kindref="member">rnnoise</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="68" refid="structurp__ast__provider__manifest_1abe6726cdb9300eddd345a5dcc7197657" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__provider__manifest_1abe6726cdb9300eddd345a5dcc7197657" kindref="member">ring</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="69" refid="structurp__ast__provider__manifest_1a1db75d68e818907bf151bdc462fd2778" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__provider__manifest_1a1db75d68e818907bf151bdc462fd2778" kindref="member">radio</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="70" refid="structurp__ast__provider__manifest_1a95ab8b18a88d84347282ac7175717c0d" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__provider__manifest_1a95ab8b18a88d84347282ac7175717c0d" kindref="member">samplerate</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="71" refid="structurp__ast__provider__manifest_1a7cdd455bd868b047d09e8feca83dfb26" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__provider__manifest_1a7cdd455bd868b047d09e8feca83dfb26" kindref="member">audio</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="72" refid="structurp__ast__provider__manifest_1a971533d0eed97634c9dda6800d7d04f8" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*<ref refid="structurp__ast__provider__manifest_1a971533d0eed97634c9dda6800d7d04f8" kindref="member">gpio</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="73" refid="structurp__ast__provider__manifest_1a5a0f3f011e5752c70141f483786d5075" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structUrpAstDescriptor" kindref="compound">UrpAstDescriptor</ref><sp/>*<ref refid="structurp__ast__provider__manifest_1a5a0f3f011e5752c70141f483786d5075" kindref="member">product</ref>;<sp/></highlight></codeline>
+<codeline lineno="74"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="75"><highlight class="normal"></highlight></codeline>
+<codeline lineno="77" refid="usbradioplus__asterisk_8h_1a17d3a7d015d1f98f55b5eb8464a9fc01" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>int<sp/>(*<ref refid="usbradioplus__asterisk_8h_1a17d3a7d015d1f98f55b5eb8464a9fc01" kindref="member">urp_ast_loader_load_fn</ref>)(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__ast__provider__manifest" kindref="compound">urp_ast_provider_manifest</ref><sp/>*providers,</highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/>*module_self);</highlight></codeline>
+<codeline lineno="80" refid="usbradioplus__asterisk_8h_1ad9afb2d9c3326c7e5eec5799b786ae94" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>int<sp/>(*<ref refid="usbradioplus__asterisk_8h_1ad9afb2d9c3326c7e5eec5799b786ae94" kindref="member">urp_ast_loader_reload_fn</ref>)(void);</highlight></codeline>
+<codeline lineno="82" refid="usbradioplus__asterisk_8h_1a852d6f49d423b5faaaabf91ebcd8b5de" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">typedef</highlight><highlight class="normal"><sp/>int<sp/>(*<ref refid="usbradioplus__asterisk_8h_1a852d6f49d423b5faaaabf91ebcd8b5de" kindref="member">urp_ast_loader_unload_fn</ref>)(void);</highlight></codeline>
+<codeline lineno="83"><highlight class="normal"></highlight></codeline>
+<codeline lineno="85" refid="structurp__asterisk__loader__descriptor" refkind="compound"><highlight class="normal"></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__asterisk__loader__descriptor" kindref="compound">urp_asterisk_loader_descriptor</ref><sp/>{</highlight></codeline>
+<codeline lineno="86" refid="structurp__asterisk__loader__descriptor_1a2cea0570821c7a704ed551032763c342" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__asterisk__loader__descriptor_1a2cea0570821c7a704ed551032763c342" kindref="member">struct_size</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="87" refid="structurp__asterisk__loader__descriptor_1aa9bbb2f70991b670a261fcc0509068ca" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>uint32_t<sp/><ref refid="structurp__asterisk__loader__descriptor_1aa9bbb2f70991b670a261fcc0509068ca" kindref="member">abi_version</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="88" refid="structurp__asterisk__loader__descriptor_1a53d2d8ff5c63096105952b3db28fe5ce" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">char</highlight><highlight class="normal"><sp/>*<ref refid="structurp__asterisk__loader__descriptor_1a53d2d8ff5c63096105952b3db28fe5ce" kindref="member">capability</ref>;<sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="89" refid="structurp__asterisk__loader__descriptor_1a61f991ca9b6d12721a7a14b53f9a8c19" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__asterisk_8h_1a17d3a7d015d1f98f55b5eb8464a9fc01" kindref="member">urp_ast_loader_load_fn</ref><sp/><ref refid="structurp__asterisk__loader__descriptor_1a61f991ca9b6d12721a7a14b53f9a8c19" kindref="member">load</ref>;<sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="90" refid="structurp__asterisk__loader__descriptor_1a08a68168c2de33f2188951bf509cf1a6" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__asterisk_8h_1ad9afb2d9c3326c7e5eec5799b786ae94" kindref="member">urp_ast_loader_reload_fn</ref><sp/><ref refid="structurp__asterisk__loader__descriptor_1a08a68168c2de33f2188951bf509cf1a6" kindref="member">reload</ref>;<sp/></highlight></codeline>
+<codeline lineno="91" refid="structurp__asterisk__loader__descriptor_1a542032d531d92f54f89f61f7d96ac8a7" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="usbradioplus__asterisk_8h_1a852d6f49d423b5faaaabf91ebcd8b5de" kindref="member">urp_ast_loader_unload_fn</ref><sp/><ref refid="structurp__asterisk__loader__descriptor_1a542032d531d92f54f89f61f7d96ac8a7" kindref="member">unload</ref>;<sp/></highlight></codeline>
+<codeline lineno="92"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="93"><highlight class="normal"></highlight></codeline>
+<codeline lineno="98" refid="usbradioplus__asterisk_8h_1a4707173299fe3ba962e964adc89443ef" refkind="member"><highlight class="normal"></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keyword">struct<sp/></highlight><highlight class="normal"><ref refid="structurp__asterisk__loader__descriptor" kindref="compound">urp_asterisk_loader_descriptor</ref><sp/>*<ref refid="usbradioplus__asterisk_8h_1a4707173299fe3ba962e964adc89443ef" kindref="member">usbradioplus_asterisk_loader_descriptor</ref>(</highlight><highlight class="keywordtype">void</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="99"><highlight class="normal"></highlight></codeline>
+<codeline lineno="100"><highlight class="normal"></highlight><highlight class="preprocessor">#ifdef<sp/>__cplusplus</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="101"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="102"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="103"><highlight class="normal"></highlight></codeline>
+<codeline lineno="104"><highlight class="normal"></highlight><highlight class="preprocessor">#endif</highlight></codeline>
+    </programlisting>
+    <location file="rust/asterisk/include/usbradioplus_asterisk.h"/>
+  </compounddef>
+</doxygen>

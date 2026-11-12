@@ -1,0 +1,641 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.8" xml:lang="en-US">
+  <compounddef id="structUrpNativePhysicalStatus" kind="struct" language="C++" prot="public">
+    <compoundname>UrpNativePhysicalStatus</compoundname>
+    <includes refid="usbradioplus__product_8h" local="no">usbradioplus_product.h</includes>
+    <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1ae968cc2457b4378b8e774f4257eef33d" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::struct_size</definition>
+        <argsstring></argsstring>
+        <name>struct_size</name>
+        <qualifiedname>UrpNativePhysicalStatus::struct_size</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Size of this structure in bytes. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1198" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1198" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1ad1e7f4192340d2a04343baf3995106c3" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::abi_version</definition>
+        <argsstring></argsstring>
+        <name>abi_version</name>
+        <qualifiedname>UrpNativePhysicalStatus::abi_version</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Must equal the adapter ABI version. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1200" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1200" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a578d45075c1eb74dad6da673c786057f" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::running</definition>
+        <argsstring></argsstring>
+        <name>running</name>
+        <qualifiedname>UrpNativePhysicalStatus::running</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while audio callbacks may remain active after a start attempt. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1202" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1202" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a4662199ed41aa1886f21935023ef3cf1" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::receive_input_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_input_peak</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_input_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest raw receive peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1204" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1204" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1ad32393b74d0d9f57b6d40140cdc70dd8" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::receive_input_rms</definition>
+        <argsstring></argsstring>
+        <name>receive_input_rms</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_input_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest raw receive RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1206" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1206" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a53623af230b61a8647629b3a9d3a3f1b" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::receive_output_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_output_peak</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_output_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest processed receive peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1208" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1208" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a705ffb238ec553d81ee9a93a79c572d8" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::receive_output_rms</definition>
+        <argsstring></argsstring>
+        <name>receive_output_rms</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_output_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest processed receive RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1210" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1210" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a61cab6eec1027f4adf49addc40c64d0d" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::receive_input_rail_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_input_rail_samples</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_input_rail_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Raw receive samples at a hardware rail in the latest callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1212" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1212" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1aa47f4b454eb3d2a7eb1f02667b592c65" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::receive_output_rail_samples</definition>
+        <argsstring></argsstring>
+        <name>receive_output_rail_samples</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_output_rail_samples</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Processed receive samples at a hardware rail in the latest callback. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1214" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1214" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1abd9b5fb8e3a0b300695abce2c0a8d331" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::receive_ctcss_decoder_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_ctcss_decoder_peak</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_ctcss_decoder_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Post-decoder-gain CTCSS half peak-to-peak level as normalized PCM. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1216" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1216" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a77cd083bbf0b8f7a6f808f001e2d8e20" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpNativePhysicalStatus::receive_rssi_peak</definition>
+        <argsstring></argsstring>
+        <name>receive_rssi_peak</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_rssi_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest compatibility discriminator-noise measurement. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1218" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1218" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a2926231991b7c9bdba802b61ab0770a0" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::receive_rssi_updated</definition>
+        <argsstring></argsstring>
+        <name>receive_rssi_updated</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_rssi_updated</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero when the latest callback completed an RSSI integration window. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1220" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1220" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1adeae044f31b59cd6b95ca5753bc444ee" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::transmit_program_peak</definition>
+        <argsstring></argsstring>
+        <name>transmit_program_peak</name>
+        <qualifiedname>UrpNativePhysicalStatus::transmit_program_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest post-processing transmitter-program peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1222" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1222" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1ad34c845b5634387c4b987efbce6476b2" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::transmit_program_rms</definition>
+        <argsstring></argsstring>
+        <name>transmit_program_rms</name>
+        <qualifiedname>UrpNativePhysicalStatus::transmit_program_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest post-processing transmitter-program RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1224" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1224" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a3d72d41f2a3f3202f8baf592dc39abad" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::transmit_output_peak</definition>
+        <argsstring></argsstring>
+        <name>transmit_output_peak</name>
+        <qualifiedname>UrpNativePhysicalStatus::transmit_output_peak</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest routed transmitter peak. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1226" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1226" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1ad9d8cec215bf8eef3820f0b3fb475f46" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float UrpNativePhysicalStatus::transmit_output_rms</definition>
+        <argsstring></argsstring>
+        <name>transmit_output_rms</name>
+        <qualifiedname>UrpNativePhysicalStatus::transmit_output_rms</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest routed transmitter RMS. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1228" column="7" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1228" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a585cac5b9347599f38df8ea11b5b1fca" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::input_overflow_count</definition>
+        <argsstring></argsstring>
+        <name>input_overflow_count</name>
+        <qualifiedname>UrpNativePhysicalStatus::input_overflow_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative PortAudio input overflows. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1230" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1230" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a6c12973462c417423dc72cd06d111b1c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::output_underflow_count</definition>
+        <argsstring></argsstring>
+        <name>output_underflow_count</name>
+        <qualifiedname>UrpNativePhysicalStatus::output_underflow_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative PortAudio output underflows. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1232" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1232" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1aa0dea46c08548e8c136e48fdb7a867ad" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::input_clip_sample_count</definition>
+        <argsstring></argsstring>
+        <name>input_clip_sample_count</name>
+        <qualifiedname>UrpNativePhysicalStatus::input_clip_sample_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative raw input samples at or beyond full scale. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1234" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1234" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1afea05d790dc6d719a49dabcea0b0072c" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::output_clip_sample_count</definition>
+        <argsstring></argsstring>
+        <name>output_clip_sample_count</name>
+        <qualifiedname>UrpNativePhysicalStatus::output_clip_sample_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative output samples at or beyond full scale. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1236" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1236" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a74a7ac8d4921507670e03aca44b217f5" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::callback_last_duration_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_last_duration_ns</name>
+        <qualifiedname>UrpNativePhysicalStatus::callback_last_duration_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Most recent audio-callback duration in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1238" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1238" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a33c5ded33853f2785f99f96418a5335f" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::callback_max_duration_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_max_duration_ns</name>
+        <qualifiedname>UrpNativePhysicalStatus::callback_max_duration_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum audio-callback duration in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1240" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1240" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a2f62d49178ac743b552cb259f01d7bed" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::callback_last_start_delay_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_last_start_delay_ns</name>
+        <qualifiedname>UrpNativePhysicalStatus::callback_last_start_delay_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Most recent callback start-gap excess in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1242" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1242" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a49da2629475517799450adbdc13ba6de" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::callback_max_start_delay_ns</definition>
+        <argsstring></argsstring>
+        <name>callback_max_start_delay_ns</name>
+        <qualifiedname>UrpNativePhysicalStatus::callback_max_start_delay_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Maximum callback start-gap excess in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1244" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1244" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1adfa33e20631236d2fc684ef45ecffec8" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::callback_late_start_count</definition>
+        <argsstring></argsstring>
+        <name>callback_late_start_count</name>
+        <qualifiedname>UrpNativePhysicalStatus::callback_late_start_count</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Cumulative late callback starts. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1246" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1246" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a4e42c9384cb2f4b2ff2a332e901e75f4" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::last_input_xrun_monotonic_ns</definition>
+        <argsstring></argsstring>
+        <name>last_input_xrun_monotonic_ns</name>
+        <qualifiedname>UrpNativePhysicalStatus::last_input_xrun_monotonic_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest input-xrun monotonic timestamp in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1248" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1248" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a42d5d43aa9183a9f17ba0f8e62f5dde2" prot="public" static="no" mutable="no">
+        <type>uint64_t</type>
+        <definition>uint64_t UrpNativePhysicalStatus::last_output_xrun_monotonic_ns</definition>
+        <argsstring></argsstring>
+        <name>last_output_xrun_monotonic_ns</name>
+        <qualifiedname>UrpNativePhysicalStatus::last_output_xrun_monotonic_ns</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Latest output-xrun monotonic timestamp in nanoseconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1250" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1250" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a781b15d80c2f42e7dc98c5d51ca81b1f" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpNativePhysicalStatus::input_latency_seconds</definition>
+        <argsstring></argsstring>
+        <name>input_latency_seconds</name>
+        <qualifiedname>UrpNativePhysicalStatus::input_latency_seconds</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>PortAudio input-latency estimate in seconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1252" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1252" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1ae275ed68b09d42ae2b2134a012c11858" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpNativePhysicalStatus::output_latency_seconds</definition>
+        <argsstring></argsstring>
+        <name>output_latency_seconds</name>
+        <qualifiedname>UrpNativePhysicalStatus::output_latency_seconds</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>PortAudio output-latency estimate in seconds. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1254" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1254" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a905011f930170a7fe6daa168b884d054" prot="public" static="no" mutable="no">
+        <type>double</type>
+        <definition>double UrpNativePhysicalStatus::native_sample_rate_hz</definition>
+        <argsstring></argsstring>
+        <name>native_sample_rate_hz</name>
+        <qualifiedname>UrpNativePhysicalStatus::native_sample_rate_hz</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Actual hardware-stream sample rate in hertz. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1256" column="8" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1256" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1acbf0ce548738b270c773d6f7d7ace147" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::carrier_active</definition>
+        <argsstring></argsstring>
+        <name>carrier_active</name>
+        <qualifiedname>UrpNativePhysicalStatus::carrier_active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while carrier is detected. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1258" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1258" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a4209867fe4e32a329fdabeca6c9f02c3" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::subaudible_active</definition>
+        <argsstring></argsstring>
+        <name>subaudible_active</name>
+        <qualifiedname>UrpNativePhysicalStatus::subaudible_active</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while CTCSS or DCS qualification is detected. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1260" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1260" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a9778fcfe81dfd213b221d19c15217249" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::receiver_keyed</definition>
+        <argsstring></argsstring>
+        <name>receiver_keyed</name>
+        <qualifiedname>UrpNativePhysicalStatus::receiver_keyed</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the local receiver is qualified. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1262" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1262" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1accd399f81a87b554e37e86d33df6386b" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::logical_ptt</definition>
+        <argsstring></argsstring>
+        <name>logical_ptt</name>
+        <qualifiedname>UrpNativePhysicalStatus::logical_ptt</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while logical PTT is active. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1264" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1264" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1ad5d1faa2857a5069f569cd5ac609fba9" prot="public" static="no" mutable="no">
+        <type>int32_t</type>
+        <definition>int32_t UrpNativePhysicalStatus::ctcss_decode_index</definition>
+        <argsstring></argsstring>
+        <name>ctcss_decode_index</name>
+        <qualifiedname>UrpNativePhysicalStatus::ctcss_decode_index</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Decoded CTCSS table index, or -1 when absent. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1266" column="9" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1266" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a4981084ad25b2994f3581252186ed098" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::dcs_valid</definition>
+        <argsstring></argsstring>
+        <name>dcs_valid</name>
+        <qualifiedname>UrpNativePhysicalStatus::dcs_valid</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Nonzero while the configured DCS code is valid. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1268" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1268" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1af93ddd5f2377c0f15fab4a69d4af095a" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::receive_mixer_level</definition>
+        <argsstring></argsstring>
+        <name>receive_mixer_level</name>
+        <qualifiedname>UrpNativePhysicalStatus::receive_mixer_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalized receiver hardware mixer level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1270" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1270" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1a3e0859a6ca184cd20fe491a32a7d6b52" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::transmit_a_mixer_level</definition>
+        <argsstring></argsstring>
+        <name>transmit_a_mixer_level</name>
+        <qualifiedname>UrpNativePhysicalStatus::transmit_a_mixer_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalized transmitter-A hardware mixer level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1272" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1272" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structUrpNativePhysicalStatus_1aac3006b13c32da64224830d9e264cd07" prot="public" static="no" mutable="no">
+        <type>uint32_t</type>
+        <definition>uint32_t UrpNativePhysicalStatus::transmit_b_mixer_level</definition>
+        <argsstring></argsstring>
+        <name>transmit_b_mixer_level</name>
+        <qualifiedname>UrpNativePhysicalStatus::transmit_b_mixer_level</qualifiedname>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Normalized transmitter-B hardware mixer level. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="rust/product/include/usbradioplus_product.h" line="1274" column="10" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1274" bodyend="-1"/>
+      </memberdef>
+    </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Immutable shared-product entry points. Site operations are serialized control-only. Physical-only native measurements; controller rings remain with the controller. </para>
+    </detaileddescription>
+    <location file="rust/product/include/usbradioplus_product.h" line="1196" column="1" bodyfile="rust/product/include/usbradioplus_product.h" bodystart="1196" bodyend="1275"/>
+    <listofallmembers>
+      <member refid="structUrpNativePhysicalStatus_1ad1e7f4192340d2a04343baf3995106c3" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>abi_version</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a74a7ac8d4921507670e03aca44b217f5" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>callback_last_duration_ns</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a2f62d49178ac743b552cb259f01d7bed" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>callback_last_start_delay_ns</name></member>
+      <member refid="structUrpNativePhysicalStatus_1adfa33e20631236d2fc684ef45ecffec8" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>callback_late_start_count</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a33c5ded33853f2785f99f96418a5335f" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>callback_max_duration_ns</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a49da2629475517799450adbdc13ba6de" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>callback_max_start_delay_ns</name></member>
+      <member refid="structUrpNativePhysicalStatus_1acbf0ce548738b270c773d6f7d7ace147" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>carrier_active</name></member>
+      <member refid="structUrpNativePhysicalStatus_1ad5d1faa2857a5069f569cd5ac609fba9" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>ctcss_decode_index</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a4981084ad25b2994f3581252186ed098" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>dcs_valid</name></member>
+      <member refid="structUrpNativePhysicalStatus_1aa0dea46c08548e8c136e48fdb7a867ad" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>input_clip_sample_count</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a781b15d80c2f42e7dc98c5d51ca81b1f" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>input_latency_seconds</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a585cac5b9347599f38df8ea11b5b1fca" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>input_overflow_count</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a4e42c9384cb2f4b2ff2a332e901e75f4" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>last_input_xrun_monotonic_ns</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a42d5d43aa9183a9f17ba0f8e62f5dde2" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>last_output_xrun_monotonic_ns</name></member>
+      <member refid="structUrpNativePhysicalStatus_1accd399f81a87b554e37e86d33df6386b" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>logical_ptt</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a905011f930170a7fe6daa168b884d054" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>native_sample_rate_hz</name></member>
+      <member refid="structUrpNativePhysicalStatus_1afea05d790dc6d719a49dabcea0b0072c" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>output_clip_sample_count</name></member>
+      <member refid="structUrpNativePhysicalStatus_1ae275ed68b09d42ae2b2134a012c11858" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>output_latency_seconds</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a6c12973462c417423dc72cd06d111b1c" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>output_underflow_count</name></member>
+      <member refid="structUrpNativePhysicalStatus_1abd9b5fb8e3a0b300695abce2c0a8d331" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_ctcss_decoder_peak</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a4662199ed41aa1886f21935023ef3cf1" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_input_peak</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a61cab6eec1027f4adf49addc40c64d0d" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_input_rail_samples</name></member>
+      <member refid="structUrpNativePhysicalStatus_1ad32393b74d0d9f57b6d40140cdc70dd8" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_input_rms</name></member>
+      <member refid="structUrpNativePhysicalStatus_1af93ddd5f2377c0f15fab4a69d4af095a" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_mixer_level</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a53623af230b61a8647629b3a9d3a3f1b" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_output_peak</name></member>
+      <member refid="structUrpNativePhysicalStatus_1aa47f4b454eb3d2a7eb1f02667b592c65" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_output_rail_samples</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a705ffb238ec553d81ee9a93a79c572d8" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_output_rms</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a77cd083bbf0b8f7a6f808f001e2d8e20" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_rssi_peak</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a2926231991b7c9bdba802b61ab0770a0" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receive_rssi_updated</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a9778fcfe81dfd213b221d19c15217249" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>receiver_keyed</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a578d45075c1eb74dad6da673c786057f" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>running</name></member>
+      <member refid="structUrpNativePhysicalStatus_1ae968cc2457b4378b8e774f4257eef33d" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>struct_size</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a4209867fe4e32a329fdabeca6c9f02c3" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>subaudible_active</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a3e0859a6ca184cd20fe491a32a7d6b52" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>transmit_a_mixer_level</name></member>
+      <member refid="structUrpNativePhysicalStatus_1aac3006b13c32da64224830d9e264cd07" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>transmit_b_mixer_level</name></member>
+      <member refid="structUrpNativePhysicalStatus_1a3d72d41f2a3f3202f8baf592dc39abad" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>transmit_output_peak</name></member>
+      <member refid="structUrpNativePhysicalStatus_1ad9d8cec215bf8eef3820f0b3fb475f46" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>transmit_output_rms</name></member>
+      <member refid="structUrpNativePhysicalStatus_1adeae044f31b59cd6b95ca5753bc444ee" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>transmit_program_peak</name></member>
+      <member refid="structUrpNativePhysicalStatus_1ad34c845b5634387c4b987efbce6476b2" prot="public" virt="non-virtual"><scope>UrpNativePhysicalStatus</scope><name>transmit_program_rms</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

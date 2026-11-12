@@ -1,0 +1,2 @@
+cargo:rerun-if-env-changed=USBRADIOPLUS_AGC_PLUGIN_PATH
+cargo:rustc-env=USBRADIOPLUS_AGC_PLUGIN_PATH=/usr/lib/usbradioplus/usbradioplus_agc.so
