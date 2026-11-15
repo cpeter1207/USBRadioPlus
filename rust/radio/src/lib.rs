@@ -432,6 +432,61 @@ pub struct TransmitConfig {
     pub output_b: OutputConfig,
 }
 
+/// Independent local receive-analysis settings; programme processing is unchanged.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SpeechAnalysisSettings {
+    /// Explicit analysis preprocessing selection, independent of VAD admission mode.
+    pub preprocessing_enabled: bool,
+    /// Apply the prepared bandpass before RNNoise.
+    pub bandpass_enabled: bool,
+    /// Lower half-amplitude band edge in Hz when the FIR is selected.
+    pub bandpass_low_hz: f32,
+    /// Upper half-amplitude band edge in Hz, below 24 kHz at the native rate.
+    pub bandpass_high_hz: f32,
+    /// Apply the released default RNNoise model; there is no strength control.
+    pub rnnoise_enabled: bool,
+    /// Earshot positive-frame probability threshold, inclusive 0 through 1.
+    pub threshold: f32,
+    /// Positive complete analysis frames required for admission, at least 1.
+    pub onset_frames: u32,
+    /// Programme retention in milliseconds, 0 through 300; not classifier lookback.
+    pub retention_ms: u32,
+}
+impl Default for SpeechAnalysisSettings {
+    fn default() -> Self {
+        Self {
+            preprocessing_enabled: false,
+            bandpass_enabled: true,
+            bandpass_low_hz: 300.0,
+            bandpass_high_hz: 3000.0,
+            rnnoise_enabled: true,
+            threshold: 0.5,
+            onset_frames: 1,
+            retention_ms: 160,
+        }
+    }
+}
+impl SpeechAnalysisSettings {
+    fn validate(&self) -> Result<(), RadioError> {
+        if !self.threshold.is_finite()
+            || !(0.0..=1.0).contains(&self.threshold)
+            || self.onset_frames == 0
+            || self.retention_ms > 300
+            || (self.preprocessing_enabled
+                && self.bandpass_enabled
+                && (!self.bandpass_low_hz.is_finite()
+                    || !self.bandpass_high_hz.is_finite()
+                    || self.bandpass_low_hz <= 0.0
+                    || self.bandpass_low_hz >= self.bandpass_high_hz
+                    || self.bandpass_high_hz >= NATIVE_SAMPLE_RATE_HZ as f32 / 2.0))
+        {
+            Err(RadioError::InvalidArgument)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 /// Complete immutable setup for one runtime generation.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SessionConfig {
@@ -453,6 +508,8 @@ pub struct SessionConfig {
     pub qualification: QualificationConfig,
     /// Transmitter signaling, level, and routing policy.
     pub transmit: TransmitConfig,
+    /// Sized outer-tail analysis policy, kept separate from embedded receive layout.
+    pub speech: SpeechAnalysisSettings,
 }
 
 impl SessionConfig {
@@ -473,6 +530,7 @@ impl SessionConfig {
             receive: ReceiveConfig::default(),
             qualification: QualificationConfig::default(),
             transmit: TransmitConfig::default(),
+            speech: SpeechAnalysisSettings::default(),
         }
     }
 }

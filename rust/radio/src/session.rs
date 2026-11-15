@@ -69,8 +69,31 @@ impl RadioProvider {
         else {
             return Err(RadioError::IncompatibleAdapter);
         };
+        let analysis_replacement_needed = if header.struct_size as usize
+            >= size_of::<RawSpeechCapabilities>()
+        {
+            // SAFETY: The checked advertised span covers the capability prefix.
+            let capability = unsafe { ptr::read(raw_descriptor.cast::<RawSpeechCapabilities>()) };
+            if capability.capabilities & 2 != 0 {
+                if (header.struct_size as usize) < size_of::<RawLocalSpeechDescriptor>() {
+                    return Err(RadioError::IncompatibleAdapter);
+                }
+                // SAFETY: This complete local capability tail is advertised and readable.
+                let local = unsafe { ptr::read(raw_descriptor.cast::<RawLocalSpeechDescriptor>()) };
+                Some(
+                    local
+                        .analysis_replacement_needed
+                        .ok_or(RadioError::IncompatibleAdapter)?,
+                )
+            } else {
+                None
+            }
+        } else {
+            None
+        };
         Ok(Self {
             functions: Functions {
+                analysis_replacement_needed,
                 create,
                 warm,
                 receive,
@@ -99,6 +122,11 @@ impl RadioProvider {
         ports: SessionPorts<'a>,
     ) -> Result<PreparedUpdate<'a>, RadioError> {
         validate_config(config)?;
+        if self.functions.analysis_replacement_needed.is_none()
+            && config.speech != SpeechAnalysisSettings::default()
+        {
+            return Err(RadioError::IncompatibleAdapter);
+        }
         let raw_config = config.as_raw();
         let raw_ports = ports.as_raw();
         if !raw_ports.program_ring.context.is_null()
@@ -137,6 +165,11 @@ impl RadioProvider {
         ports: SessionPorts<'a>,
     ) -> Result<PreparedSession<'a>, RadioError> {
         validate_config(config)?;
+        if self.functions.analysis_replacement_needed.is_none()
+            && config.speech != SpeechAnalysisSettings::default()
+        {
+            return Err(RadioError::IncompatibleAdapter);
+        }
         let raw_config = config.as_raw();
         let raw_ports = ports.as_raw();
         let mut session = ptr::null_mut();
@@ -431,6 +464,21 @@ impl ControlObserver<'_> {
         self.inner.validate_update(update)
     }
 
+    /// Read the level-triggered fresh-analysis requirement without clearing it.
+    /// A compatible plain-only provider has no selected frontend to replace.
+    pub fn analysis_replacement_needed(&self) -> Result<bool, RadioError> {
+        let Some(query) = self.inner.functions.analysis_replacement_needed else {
+            return Ok(false);
+        };
+        // SAFETY: The checked descriptor owns this live session and permits this atomic read.
+        match unsafe { query(self.inner.session.as_ptr()) } {
+            0 => Ok(false),
+            1 => Ok(true),
+            value if value < 0 => Err(error_from_result(value)),
+            _ => Err(RadioError::AdapterFailure),
+        }
+    }
+
     /// Read the latest independently published lock-free diagnostic values.
     pub fn snapshot(&self) -> Result<SessionSnapshot, RadioError> {
         let mut raw = RawSnapshot::default();
@@ -479,6 +527,7 @@ pub(super) enum EventOwner {
 }
 
 pub(super) fn validate_config(config: &SessionConfig) -> Result<(), RadioError> {
+    config.speech.validate()?;
     let (ctcss, dcs) = match config.transmit.signaling {
         TransmitSignaling::Disabled => {
             (CtcssTransmitConfig::default(), DcsTransmitConfig::default())

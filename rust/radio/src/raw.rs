@@ -64,6 +64,17 @@ pub(super) struct RawTransmitConfig {
 
 #[repr(C)]
 #[derive(Clone, Copy)]
+pub(super) struct RawSpeechConfig {
+    pub(super) speech_threshold: f32,
+    pub(super) speech_onset_frames: u32,
+    pub(super) preprocess_flags: u32,
+    pub(super) bandpass_low_hz: f32,
+    pub(super) bandpass_high_hz: f32,
+    pub(super) retention_ms: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
 pub(super) struct RawSessionConfig {
     pub(super) struct_size: u32,
     pub(super) abi_version: u32,
@@ -78,6 +89,7 @@ pub(super) struct RawSessionConfig {
     pub(super) receive: RawReceiveConfig,
     pub(super) qualification: RawQualificationConfig,
     pub(super) transmit: RawTransmitConfig,
+    pub(super) speech: RawSpeechConfig,
 }
 
 #[repr(C)]
@@ -275,6 +287,24 @@ pub(super) struct RawDescriptor {
     pub(super) session_destroy_update: Option<SessionDestroyUpdate>,
 }
 
+pub(super) type SessionAnalysisReplacementNeeded =
+    unsafe extern "C" fn(*const OpaqueSession) -> c_int;
+
+/// The four profile operations and five source-analysis operations precede the capability word.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub(super) struct RawSpeechCapabilities {
+    pub(super) prefix: RawDescriptor,
+    pub(super) _operations: [usize; 9],
+    pub(super) capabilities: u64,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub(super) struct RawLocalSpeechDescriptor {
+    pub(super) capability: RawSpeechCapabilities,
+    pub(super) analysis_replacement_needed: Option<SessionAnalysisReplacementNeeded>,
+}
+
 pub(super) const REQUIRED_DESCRIPTOR_SIZE: usize =
     offset_of!(RawDescriptor, session_destroy_update) + size_of::<Option<SessionDestroyUpdate>>();
 
@@ -292,6 +322,7 @@ pub(super) struct Functions {
     pub(super) apply_receive_update: SessionApplyUpdate,
     pub(super) apply_transmit_update: SessionApplyUpdate,
     pub(super) destroy_update: SessionDestroyUpdate,
+    pub(super) analysis_replacement_needed: Option<SessionAnalysisReplacementNeeded>,
 }
 
 impl SessionConfig {
@@ -380,7 +411,22 @@ impl SessionConfig {
             }),
             (true, true) => return Err(RadioError::InvalidArgument),
         };
+        if raw.speech.preprocess_flags & !7 != 0 {
+            return Err(RadioError::InvalidArgument);
+        }
+        let speech = SpeechAnalysisSettings {
+            preprocessing_enabled: raw.speech.preprocess_flags & 1 != 0,
+            bandpass_enabled: raw.speech.preprocess_flags & 2 != 0,
+            rnnoise_enabled: raw.speech.preprocess_flags & 4 != 0,
+            bandpass_low_hz: raw.speech.bandpass_low_hz,
+            bandpass_high_hz: raw.speech.bandpass_high_hz,
+            threshold: raw.speech.speech_threshold,
+            onset_frames: raw.speech.speech_onset_frames,
+            retention_ms: raw.speech.retention_ms,
+        };
+        speech.validate()?;
         let config = Self {
+            speech,
             generation_id: raw.generation_id,
             maximum_receive_frame_count: raw.maximum_receive_frame_count,
             maximum_transmit_frame_count: raw.maximum_transmit_frame_count,
@@ -453,6 +499,16 @@ impl SessionConfig {
         let transmit_ctcss_config = transmit_ctcss.unwrap_or_default();
         let transmit_dcs_config = transmit_dcs.unwrap_or_default();
         RawSessionConfig {
+            speech: RawSpeechConfig {
+                speech_threshold: self.speech.threshold,
+                speech_onset_frames: self.speech.onset_frames,
+                preprocess_flags: u32::from(self.speech.preprocessing_enabled)
+                    | (u32::from(self.speech.bandpass_enabled) << 1)
+                    | (u32::from(self.speech.rnnoise_enabled) << 2),
+                bandpass_low_hz: self.speech.bandpass_low_hz,
+                bandpass_high_hz: self.speech.bandpass_high_hz,
+                retention_ms: self.speech.retention_ms,
+            },
             struct_size: size_of::<RawSessionConfig>() as u32,
             abi_version: ABI_VERSION,
             generation_id: self.generation_id,

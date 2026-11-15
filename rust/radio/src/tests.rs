@@ -449,6 +449,147 @@ fn prepare(
 }
 
 #[test]
+fn local_analysis_settings_roundtrip_and_reject_unadvertised_processing() {
+    let mut config = SessionConfig::new(1, 960, 960);
+    config.speech = SpeechAnalysisSettings {
+        preprocessing_enabled: true,
+        threshold: 0.6125,
+        onset_frames: 4,
+        retention_ms: 0,
+        ..SpeechAnalysisSettings::default()
+    };
+    let raw = config.as_raw();
+    assert_eq!(raw.speech.preprocess_flags, 7);
+    assert_eq!(raw.speech.retention_ms, 0);
+    assert_eq!(raw.speech.speech_threshold, 0.6125);
+    let copied = config
+        .with_abi(|pointer| {
+            // SAFETY: with_abi lends the complete new sized configuration synchronously.
+            unsafe { SessionConfig::from_abi(pointer) }
+        })
+        .unwrap();
+    assert_eq!(copied.speech, config.speech);
+    let lifecycle = FakeLifecycle::default();
+    assert_eq!(
+        provider().prepare(&config, ports(&lifecycle)).err(),
+        Some(RadioError::IncompatibleAdapter)
+    );
+    assert_eq!(
+        provider().prepare_update(&config, ports(&lifecycle)).err(),
+        Some(RadioError::IncompatibleAdapter)
+    );
+    assert_eq!(lifecycle.destroy_calls.load(Ordering::Relaxed), 0);
+    config.speech = SpeechAnalysisSettings::default();
+    let (_, _, observer) = provider()
+        .prepare(&config, ports(&lifecycle))
+        .unwrap()
+        .split();
+    assert_eq!(observer.analysis_replacement_needed(), Ok(false));
+}
+
+unsafe extern "C" fn fake_analysis_replacement_needed(session: *const OpaqueSession) -> c_int {
+    if session.is_null() {
+        return RESULT_INVALID_ARGUMENT;
+    }
+    // SAFETY: fake_create prepared this fixture and the observer retains its owner.
+    match unsafe { (*session.cast::<FakeSession>()).config.generation_id } {
+        5001 => 1,
+        5002 => 2,
+        5003 => RESULT_PROVIDER_FAILED,
+        _ => 0,
+    }
+}
+
+fn local_speech_descriptor() -> RawLocalSpeechDescriptor {
+    let mut prefix = valid_descriptor();
+    prefix.struct_size = size_of::<RawLocalSpeechDescriptor>() as u32;
+    RawLocalSpeechDescriptor {
+        capability: RawSpeechCapabilities {
+            prefix,
+            _operations: [0; 9],
+            capabilities: 3,
+        },
+        analysis_replacement_needed: Some(fake_analysis_replacement_needed),
+    }
+}
+
+#[test]
+fn local_analysis_capability_requires_its_complete_query_and_valid_results() {
+    assert_eq!(size_of::<RawSpeechConfig>(), 24);
+    if size_of::<usize>() == 8 {
+        assert_eq!(size_of::<RawSpeechCapabilities>(), 192);
+        assert_eq!(size_of::<RawLocalSpeechDescriptor>(), 200);
+    }
+    let mut short = local_speech_descriptor().capability;
+    short.prefix.struct_size = size_of::<RawSpeechCapabilities>() as u32;
+    assert_eq!(
+        // SAFETY: this actual short allocation exposes precisely its advertised prefix.
+        unsafe { RadioProvider::from_raw_descriptor(ptr::from_ref(&short).cast()) }.err(),
+        Some(RadioError::IncompatibleAdapter)
+    );
+    let mut missing = local_speech_descriptor();
+    missing.analysis_replacement_needed = None;
+    assert_eq!(
+        // SAFETY: complete fixture descriptor, with an intentionally absent required query.
+        unsafe { RadioProvider::from_raw_descriptor(ptr::from_ref(&missing).cast()) }.err(),
+        Some(RadioError::IncompatibleAdapter)
+    );
+    let descriptor = local_speech_descriptor();
+    let provider =
+        // SAFETY: all copied fixture operations have static test-binary lifetime.
+        unsafe { RadioProvider::from_raw_descriptor(ptr::from_ref(&descriptor).cast()) }.unwrap();
+    for (generation, expected) in [
+        (5000, Ok(false)),
+        (5001, Ok(true)),
+        (5002, Err(RadioError::AdapterFailure)),
+        (5003, Err(RadioError::ProviderFailed)),
+    ] {
+        let mut config = SessionConfig::new(generation, 960, 960);
+        config.speech.preprocessing_enabled = true;
+        let lifecycle = FakeLifecycle::default();
+        let (_, _, observer) = provider
+            .prepare(&config, ports(&lifecycle))
+            .unwrap()
+            .split();
+        assert_eq!(observer.analysis_replacement_needed(), expected);
+    }
+}
+
+#[test]
+fn local_analysis_rejects_invalid_settings_and_short_raw_configuration() {
+    let lifecycle = FakeLifecycle::default();
+    for change in [
+        |speech: &mut SpeechAnalysisSettings| speech.threshold = f32::NAN,
+        |speech: &mut SpeechAnalysisSettings| speech.onset_frames = 0,
+        |speech: &mut SpeechAnalysisSettings| speech.retention_ms = 301,
+        |speech: &mut SpeechAnalysisSettings| {
+            speech.preprocessing_enabled = true;
+            speech.bandpass_high_hz = 24000.0;
+        },
+    ] {
+        let mut config = SessionConfig::new(1, 960, 960);
+        change(&mut config.speech);
+        assert_eq!(
+            provider().prepare(&config, ports(&lifecycle)).err(),
+            Some(RadioError::InvalidArgument)
+        );
+    }
+    let short = [4_u32];
+    assert_eq!(
+        // SAFETY: the actual short allocation has only the readable advertised size word.
+        unsafe { SessionConfig::from_abi(short.as_ptr().cast()) }.err(),
+        Some(RadioError::IncompatibleAdapter)
+    );
+    let mut raw = SessionConfig::new(1, 960, 960).as_raw();
+    raw.speech.preprocess_flags = 8;
+    assert_eq!(
+        // SAFETY: complete raw fixture with an intentionally unknown selection bit.
+        unsafe { SessionConfig::from_abi(ptr::from_ref(&raw).cast()) }.err(),
+        Some(RadioError::InvalidArgument)
+    );
+}
+
+#[test]
 fn descriptor_without_prepared_updates_is_rejected_before_session_creation() {
     let mut descriptor = valid_descriptor();
     descriptor.struct_size = 80;
@@ -742,11 +883,12 @@ fn rust_layout_matches_the_abi5_c_header() {
             size_of::<RawSessionConfig>(),
             align_of::<RawSessionConfig>()
         ),
-        (408, 8)
+        (432, 8)
     );
     assert_eq!(offset_of!(RawSessionConfig, receive), 48);
     assert_eq!(offset_of!(RawSessionConfig, qualification), 128);
     assert_eq!(offset_of!(RawSessionConfig, transmit), 160);
+    assert_eq!(offset_of!(RawSessionConfig, speech), 408);
     assert_eq!(size_of::<RawSessionPorts>(), 1_504);
     assert_eq!(offset_of!(RawSessionPorts, receive_ctcss_notch), 72);
     assert_eq!(offset_of!(RawSessionPorts, receive_noise_reduction), 1_288);
@@ -768,6 +910,18 @@ fn rust_layout_matches_the_abi5_c_header() {
     assert_eq!(size_of::<RawTransmitResult>(), 120);
     assert_eq!(size_of::<RawEvent>(), 24);
     assert_eq!(size_of::<RawSnapshot>(), 240);
+    assert_eq!(offset_of!(RawSnapshot, provider_failures), 96);
+    assert_eq!(offset_of!(RawSnapshot, program_ring), 144);
+    assert_eq!(offset_of!(RawSnapshot, vad_voice_sample_index), 224);
+    assert_eq!(offset_of!(RawSnapshot, vad_preroll_frames), 232);
+    assert_eq!(size_of::<RawSpeechConfig>(), 24);
+    assert_eq!(offset_of!(RawSpeechCapabilities, capabilities), 184);
+    assert_eq!(size_of::<RawSpeechCapabilities>(), 192);
+    assert_eq!(
+        offset_of!(RawLocalSpeechDescriptor, analysis_replacement_needed),
+        192
+    );
+    assert_eq!(size_of::<RawLocalSpeechDescriptor>(), 200);
     assert_eq!(size_of::<RingObservation>(), 48);
     assert_eq!(size_of::<ProgramRingResult>(), 64);
 }
