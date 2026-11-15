@@ -36,6 +36,32 @@ static AUDIO_DESTROYS: AtomicU32 = AtomicU32::new(0);
 static PERIODIC_AUDIO: AtomicBool = AtomicBool::new(false);
 static EXECUTE_TX_GRAPH: AtomicBool = AtomicBool::new(false);
 static TX_GRAPH_AUDIBLE: AtomicBool = AtomicBool::new(false);
+static ANALYSIS_REPLACEMENT: AtomicBool = AtomicBool::new(false);
+static ANALYSIS_PREPARE_FAIL: AtomicBool = AtomicBool::new(false);
+static ANALYSIS_PREPARATIONS: AtomicU32 = AtomicU32::new(0);
+static ANALYSIS_ADOPTIONS: AtomicU32 = AtomicU32::new(0);
+static ANALYSIS_RETIREMENTS: AtomicU32 = AtomicU32::new(0);
+
+pub(super) fn reset_analysis_fixture() {
+    ANALYSIS_REPLACEMENT.store(false, Ordering::Release);
+    ANALYSIS_PREPARE_FAIL.store(false, Ordering::Release);
+    ANALYSIS_PREPARATIONS.store(0, Ordering::Release);
+    ANALYSIS_ADOPTIONS.store(0, Ordering::Release);
+    ANALYSIS_RETIREMENTS.store(0, Ordering::Release);
+}
+
+pub(super) fn analysis_fault(needed: bool, fail_preparation: bool) {
+    ANALYSIS_REPLACEMENT.store(needed, Ordering::Release);
+    ANALYSIS_PREPARE_FAIL.store(fail_preparation, Ordering::Release);
+}
+
+pub(super) fn analysis_counters() -> (u32, u32, u32) {
+    (
+        ANALYSIS_PREPARATIONS.load(Ordering::Acquire),
+        ANALYSIS_ADOPTIONS.load(Ordering::Acquire),
+        ANALYSIS_RETIREMENTS.load(Ordering::Acquire),
+    )
+}
 
 pub(super) fn execute_tx_graph(enabled: bool) {
     EXECUTE_TX_GRAPH.store(enabled, Ordering::Release);
@@ -646,6 +672,9 @@ struct RadioDescriptor {
     apply_receive_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
     apply_transmit_update: Option<unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int>,
     destroy_update: Option<unsafe extern "C" fn(*mut c_void)>,
+    _profile_and_analysis_operations: [usize; 9],
+    speech_capabilities: u64,
+    analysis_replacement_needed: Option<unsafe extern "C" fn(*const c_void) -> c_int>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -669,6 +698,41 @@ unsafe extern "C" fn radio_create(
         .cast()
     };
     OK
+}
+
+unsafe extern "C" fn radio_prepare_update(
+    config: *const c_void,
+    ports: *const c_void,
+    output: *mut *mut c_void,
+) -> c_int {
+    ANALYSIS_PREPARATIONS.fetch_add(1, Ordering::Relaxed);
+    if ANALYSIS_PREPARE_FAIL.load(Ordering::Acquire) {
+        // SAFETY: the preparation wrapper lends this complete writable output.
+        unsafe { *output = ptr::null_mut() };
+        return -2;
+    }
+    // SAFETY: the same complete fixture arguments are forwarded synchronously.
+    unsafe { radio_create(config, ports, output) }
+}
+
+unsafe extern "C" fn radio_apply_receive_update(handle: *mut c_void, update: *mut c_void) -> c_int {
+    // SAFETY: both fixture owners are retained through the synchronous callback.
+    let result = unsafe { radio_apply_update(handle, update) };
+    if result == OK {
+        ANALYSIS_ADOPTIONS.fetch_add(1, Ordering::Relaxed);
+        ANALYSIS_REPLACEMENT.store(false, Ordering::Release);
+    }
+    result
+}
+
+unsafe extern "C" fn radio_analysis_replacement_needed(_handle: *const c_void) -> c_int {
+    i32::from(ANALYSIS_REPLACEMENT.load(Ordering::Acquire))
+}
+
+unsafe extern "C" fn radio_destroy_update(handle: *mut c_void) {
+    ANALYSIS_RETIREMENTS.fetch_add(1, Ordering::Relaxed);
+    // SAFETY: the existing mailbox transfers this uniquely owned fixture once.
+    unsafe { radio_destroy(handle) };
 }
 
 unsafe extern "C" fn radio_warm(_handle: *mut c_void) -> c_int {
@@ -839,10 +903,13 @@ static RADIO: RadioDescriptor = RadioDescriptor {
     pop_receive: Some(radio_pop),
     pop_transmit: Some(radio_pop),
     destroy: Some(radio_destroy),
-    prepare_update: Some(radio_create),
-    apply_receive_update: Some(radio_apply_update),
+    prepare_update: Some(radio_prepare_update),
+    apply_receive_update: Some(radio_apply_receive_update),
     apply_transmit_update: Some(radio_apply_update),
-    destroy_update: Some(radio_destroy),
+    destroy_update: Some(radio_destroy_update),
+    _profile_and_analysis_operations: [0; 9],
+    speech_capabilities: 2,
+    analysis_replacement_needed: Some(radio_analysis_replacement_needed),
 };
 
 #[repr(C)]

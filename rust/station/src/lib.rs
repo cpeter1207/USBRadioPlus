@@ -32,7 +32,8 @@ use usbradioplus_radio::{
     CarrierSource, CtcssReceiveConfig, CtcssToneIndex, CtcssToneMask, CtcssTransmitConfig,
     DcsReceiveConfig, DcsTransmitConfig, NoiseFilterProfile, OutputConfig, OutputRoute,
     QualificationConfig, RadioError, ReceiveConfig, ReceiveSignaling, SessionConfig,
-    SubaudibleSource, ToneOffMode, TransmitConfig, TransmitSignaling, VadMode,
+    SpeechAnalysisSettings, SubaudibleSource, ToneOffMode, TransmitConfig, TransmitSignaling,
+    VadMode,
 };
 use usbradioplus_runtime::NativeProcessingPlan;
 
@@ -118,6 +119,16 @@ pub fn radio_session_config(
         vad_hang_ms: receive.vad_hang_ms,
         vad_external_delay: transport == ControllerTransport::RptAdvanced
             && receive.vad_mode != ConfigVadMode::Off,
+    };
+    result.speech = SpeechAnalysisSettings {
+        preprocessing_enabled: receive.vad_preprocessing_enabled,
+        bandpass_enabled: receive.vad_bandpass_enabled,
+        rnnoise_enabled: receive.vad_rnnoise_enabled,
+        bandpass_low_hz: receive.vad_bandpass_low_hz as f32,
+        bandpass_high_hz: receive.vad_bandpass_high_hz as f32,
+        threshold: receive.effective_vad_threshold() as f32,
+        onset_frames: receive.effective_vad_onset_frames(),
+        retention_ms: receive.vad_retention_ms,
     };
     if result.receive.vad_external_delay {
         result.receive.native_squelch_delay_frames = 0;

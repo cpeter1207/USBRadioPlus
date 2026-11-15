@@ -2965,7 +2965,7 @@ unsafe extern "C" fn channel_command(
             command_value.flags = if mode == usbradioplus_core::VadMode::Off {
                 0
             } else {
-                7_680
+                configuration.station.receive.vad_retention_ms * 48
             };
             // SAFETY: the complete command was validated before dispatch.
             return unsafe { write_abi(command, command_value) };

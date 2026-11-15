@@ -311,6 +311,37 @@ fn native_processing_uses_only_the_local_and_transmit_chains() {
 }
 
 #[test]
+fn local_speech_analysis_settings_reach_station_native_policy() {
+    let mut config = channel();
+    let receive = &mut config.station.receive;
+    receive.vad_mode = ConfigVadMode::On;
+    receive.vad_preprocessing_enabled = true;
+    receive.vad_bandpass_low_hz = 400.0;
+    receive.vad_bandpass_high_hz = 2800.0;
+    receive.vad_rnnoise_enabled = false;
+    receive.vad_threshold = Some(0.6125);
+    receive.vad_onset_frames = Some(4);
+    receive.vad_retention_ms = 0;
+    receive.vad_hang_ms = 777;
+    receive.vox_hang_ms = 4321;
+    for transport in [
+        ControllerTransport::AppRpt,
+        ControllerTransport::RptAdvanced,
+    ] {
+        let got = radio_session_config(&config, transport, 9, 960).unwrap();
+        assert!(got.speech.preprocessing_enabled && got.speech.bandpass_enabled);
+        assert!(!got.speech.rnnoise_enabled);
+        assert_eq!(got.speech.bandpass_low_hz, 400.0);
+        assert_eq!(got.speech.bandpass_high_hz, 2800.0);
+        assert_eq!(got.speech.threshold, 0.6125);
+        assert_eq!(got.speech.onset_frames, 4);
+        assert_eq!(got.speech.retention_ms, 0);
+        assert_eq!(got.receive.vad_hang_ms, 777);
+        assert_eq!(got.receive.vox_hang_milliseconds, 4321);
+    }
+}
+
+#[test]
 fn vad_translation_preserves_vox_and_has_exactly_one_receive_delay_owner() {
     let mut config = channel();
     config.station.receive.squelch_delay_ms = 17;

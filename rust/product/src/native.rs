@@ -136,6 +136,22 @@ pub struct UrpNativeCreateArgs {
     pub maximum_frames: u32,
 }
 
+/// Custody of one local-analysis repair on the existing control-owned mailbox.
+/// A persistent preparation failure is latched until health or an explicit update.
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum AnalysisRecovery {
+    Idle,
+    ForwardPending,
+    Reversing,
+    Failed,
+}
+
+impl AnalysisRecovery {
+    fn owns_update(self) -> bool {
+        matches!(self, Self::ForwardPending | Self::Reversing)
+    }
+}
+
 struct NativeStation {
     maintenance: HardwareMaintenance,
     runtime: StationRuntime,
@@ -145,6 +161,7 @@ struct NativeStation {
     file_configuration: ChannelConfiguration,
     gains: [Option<f64>; 3],
     pending: Option<NativeUpdateConfiguration>,
+    analysis_recovery: AnalysisRecovery,
     remote: Option<ResolvedRemoteConfiguration>,
     remote_dsp: Option<usbradioplus_station::RemoteDspControl>,
 }
@@ -188,6 +205,13 @@ impl NativeStation {
     }
 
     fn finish_stopped_update(&mut self) -> Result<(), Status> {
+        if self.analysis_recovery.owns_update() {
+            // Stop has quiesced both owners; retain custody until rollback succeeds.
+            self.runtime
+                .finish_update(&mut self.control, false)
+                .map_err(update_error)?;
+            self.analysis_recovery = AnalysisRecovery::Failed;
+        }
         if self.pending.is_some() {
             // Successful stop quiesces both owners. The common mailbox drains
             // any unacknowledged forward slot before restoring its reverse.
@@ -200,6 +224,87 @@ impl NativeStation {
             self.pending = None;
         }
         Ok(())
+    }
+}
+
+impl NativeStation {
+    fn service_analysis(&mut self) -> Result<(), Status> {
+        if self.analysis_recovery.owns_update() {
+            let commit = self.analysis_recovery == AnalysisRecovery::ForwardPending;
+            return match self.runtime.finish_update(&mut self.control, commit) {
+                Ok(()) => {
+                    self.analysis_recovery = if commit {
+                        AnalysisRecovery::Idle
+                    } else {
+                        AnalysisRecovery::Failed
+                    };
+                    if commit {
+                        Ok(())
+                    } else {
+                        Err(Status::SetupFailed)
+                    }
+                }
+                Err(StationUpdateError::Pending) => Ok(()),
+                Err(_) => {
+                    // A failed forward or reverse never relinquishes its mailbox.
+                    self.analysis_recovery = AnalysisRecovery::Reversing;
+                    Err(Status::SetupFailed)
+                }
+            };
+        }
+        if !self.runtime.started()
+            || self.pending.is_some()
+            || self.runtime.programme_retirement_pending()
+            || self
+                .remote_dsp
+                .as_ref()
+                .is_some_and(usbradioplus_station::RemoteDspControl::is_busy)
+        {
+            return Ok(());
+        }
+        let needed = self
+            .control
+            .radio()
+            .radio()
+            .analysis_replacement_needed()
+            .map_err(|_| Status::SetupFailed)?;
+        if !needed {
+            self.analysis_recovery = AnalysisRecovery::Idle;
+            return Ok(());
+        }
+        if self.analysis_recovery == AnalysisRecovery::Failed {
+            return Err(Status::SetupFailed);
+        }
+        let preparation =
+            match self
+                .runtime
+                .snapshot_update(&self.control, &self.factory, self.radio_provider)
+            {
+                Ok(preparation) => preparation,
+                Err(StationUpdateError::Busy | StationUpdateError::Pending) => return Ok(()),
+                Err(_) => {
+                    self.analysis_recovery = AnalysisRecovery::Failed;
+                    return Err(Status::SetupFailed);
+                }
+            };
+        let prepared = match preparation.prepare(self.control.plan().clone()) {
+            Ok(prepared) => prepared,
+            Err(_) => {
+                self.analysis_recovery = AnalysisRecovery::Failed;
+                return Err(Status::SetupFailed);
+            }
+        };
+        match self.runtime.begin_update(&self.control, prepared) {
+            Ok(()) => {
+                self.analysis_recovery = AnalysisRecovery::ForwardPending;
+                Ok(())
+            }
+            Err(StationUpdateError::Busy | StationUpdateError::Pending) => Ok(()),
+            Err(_) => {
+                self.analysis_recovery = AnalysisRecovery::Failed;
+                Err(Status::SetupFailed)
+            }
+        }
     }
 }
 
@@ -349,6 +454,7 @@ pub(crate) unsafe extern "C" fn create(
             file_configuration,
             gains,
             pending: None,
+            analysis_recovery: AnalysisRecovery::Idle,
             remote,
             remote_dsp,
         });
@@ -374,7 +480,10 @@ pub(crate) unsafe extern "C" fn service(handle: *mut c_void) -> c_int {
         let station =
             // SAFETY: the host serializes this live station's non-audio control calls.
             unsafe { handle.cast::<NativeStation>().as_mut() }.ok_or(Status::InvalidArgument)?;
-        if let Some(control) = &mut station.remote_dsp {
+        if let (false, Some(control)) = (
+            station.analysis_recovery.owns_update(),
+            &mut station.remote_dsp,
+        ) {
             control.pump(
                 &mut station.runtime,
                 &mut station.control,
@@ -382,7 +491,7 @@ pub(crate) unsafe extern "C" fn service(handle: *mut c_void) -> c_int {
                 station.radio_provider,
             );
         }
-        Ok(())
+        station.service_analysis()
     })
 }
 
@@ -505,6 +614,7 @@ pub(crate) unsafe extern "C" fn programme_retire(
             return Err(Status::NotReady);
         }
         if station.pending.is_some()
+            || station.analysis_recovery.owns_update()
             || (station
                 .remote_dsp
                 .as_ref()
@@ -665,7 +775,7 @@ pub(crate) unsafe extern "C" fn prepare_update(
         {
             return Err(Status::InvalidArgument);
         }
-        if station.pending.is_some() {
+        if station.pending.is_some() || station.analysis_recovery.owns_update() {
             return Err(Status::ChannelBusy);
         }
         // SAFETY: validated request storage remains borrowed through this call.
@@ -742,7 +852,7 @@ pub(crate) unsafe extern "C" fn begin_update(handle: *mut c_void, update: *mut c
         if !station.runtime.started() {
             return Err(Status::NotReady);
         }
-        if station.pending.is_some() {
+        if station.pending.is_some() || station.analysis_recovery.owns_update() {
             return Err(Status::ChannelBusy);
         }
         let prepared = update.prepared.take().ok_or(Status::InvalidArgument)?;
@@ -768,6 +878,9 @@ pub(crate) unsafe extern "C" fn accept_update(handle: *mut c_void) -> c_int {
         // SAFETY: the owning control executor serializes this live station handle.
         let station = unsafe { handle.cast::<NativeStation>().as_mut() };
         let station = station.ok_or(Status::InvalidArgument)?;
+        if station.analysis_recovery.owns_update() {
+            return Err(Status::ChannelBusy);
+        }
         station
             .runtime
             .accept_update(&mut station.control)
@@ -780,6 +893,9 @@ pub(crate) unsafe extern "C" fn finish_update(handle: *mut c_void, commit: u32) 
         // SAFETY: ownership remains with the serialized caller until destruction.
         let station = unsafe { handle.cast::<NativeStation>().as_mut() };
         let station = station.ok_or(Status::InvalidArgument)?;
+        if station.analysis_recovery.owns_update() {
+            return Err(Status::ChannelBusy);
+        }
         let commit = crate::switch(i64::from(commit))?;
         station
             .runtime
@@ -791,6 +907,8 @@ pub(crate) unsafe extern "C" fn finish_update(handle: *mut c_void, commit: u32) 
             .map_err(|_| Status::SetupFailed)?;
         if let Some(configuration) = station.pending.take() {
             if commit {
+                // Only a genuinely completed explicit update rearms a failed attempt.
+                station.analysis_recovery = AnalysisRecovery::Idle;
                 station.file_configuration = configuration.file;
                 station.gains = configuration.gains;
                 station.maintenance.adopt_native_gain_intents(

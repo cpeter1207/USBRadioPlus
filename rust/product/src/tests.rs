@@ -3596,14 +3596,20 @@ fn multi_channel_activation_failure_rolls_every_owner_back_before_publication() 
 fn receive_policy_query_reports_resolved_modes_before_and_after_start() {
     let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
     provider_support::clear_failure();
-    for (mode, carrier, expected) in [
-        ("off", "dsp", 0),
-        ("kerchunk", "dsp", 1),
-        ("on", "dsp", 2),
-        ("kerchunk", "no", 2),
+    for (mode, carrier, expected, retention_ms) in [
+        ("off", "dsp", 0, 160),
+        ("kerchunk", "dsp", 1, 160),
+        ("on", "dsp", 2, 160),
+        ("kerchunk", "no", 2, 160),
+        ("on", "dsp", 2, 0),
+        ("on", "dsp", 2, 80),
+        ("on", "dsp", 2, 300),
+        ("kerchunk", "dsp", 1, 80),
     ] {
         let context = RefCell::new(Calls::default());
-        let text = format!("[usb]\n[receive]\nvad_mode={mode}\ncos_assignment={carrier}\n");
+        let text = format!(
+            "[usb]\n[receive]\nvad_mode={mode}\ncos_assignment={carrier}\nvad_retention_ms={retention_ms}\n"
+        );
         let driver = create_driver(&context, text.as_bytes());
         // SAFETY: the driver retains its reserved channel until destruction below.
         let channel = unsafe { reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED) };
@@ -3616,7 +3622,7 @@ fn receive_policy_query_reports_resolved_modes_before_and_after_start() {
         );
         assert_eq!(
             (policy.value, policy.flags),
-            (expected, if expected == 0 { 0 } else { 7680 })
+            (expected, if expected == 0 { 0 } else { retention_ms * 48 })
         );
         assert_eq!(
             // SAFETY: this fixture owns the prepared channel and all fake providers.
@@ -3632,7 +3638,7 @@ fn receive_policy_query_reports_resolved_modes_before_and_after_start() {
         );
         assert_eq!(
             (policy.value, policy.flags),
-            (expected, if expected == 0 { 0 } else { 7680 })
+            (expected, if expected == 0 { 0 } else { retention_ms * 48 })
         );
         assert_eq!(
             // SAFETY: stop quiesces the fixture before destroying its unique handles.
