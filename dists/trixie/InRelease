@@ -1,0 +1,46 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Origin: USBRadioPlus
+Label: USBRadioPlus
+Suite: trixie
+Codename: trixie
+Date: Sun, 15 Nov 2026 18:14:46 UTC
+Architectures: amd64 arm64
+Components: main
+Description: USBRadioPlus alpha packages for ASL3
+MD5Sum:
+ bca3758a10ff6de47a69f03692da1f4f 76453 main/binary-amd64/Packages
+ 1a0d0c6575202c54d22d0908bff03425 16103 main/binary-amd64/Packages.gz
+ d54f289013b4dd2d2fc1ad9476d88868 143 main/binary-amd64/Release
+ a0f57db9b0e390266dfaa77c9fadfb5a 76453 main/binary-arm64/Packages
+ 1d2dec46d8e817c421b67dfe3aabbf60 16021 main/binary-arm64/Packages.gz
+ 93c3386fbe84ff69eaa186077beaa099 143 main/binary-arm64/Release
+SHA1:
+ c8df78a53cf459f5c3324d5f706283bfdb568b53 76453 main/binary-amd64/Packages
+ 489cdf529b798f4dbdde6236a40ca6d28da8725a 16103 main/binary-amd64/Packages.gz
+ 5c3b7e0ccfa25bb832d1ace63468e9f21d9f1482 143 main/binary-amd64/Release
+ ac394dcd15a86d6f9a344a0e5a8f219dd8fa7502 76453 main/binary-arm64/Packages
+ 1d838071071e2a684b4e14d9d33b5fec1f2d0bae 16021 main/binary-arm64/Packages.gz
+ 234a7acd006c30c3dd33e966c9ca4f633beea1e9 143 main/binary-arm64/Release
+SHA256:
+ e05462ab467782769c4ed0d482da629d18083f145905d5b39db0522cf5bd7fec 76453 main/binary-amd64/Packages
+ 1173dbbadb2746196b8eb8dc76945d8a2f716ccb39e0599a4e9c7799044bc501 16103 main/binary-amd64/Packages.gz
+ 525681390319dc959bc0d941df033274e21b1dab533424b9761470f79a7bfc0d 143 main/binary-amd64/Release
+ 5caf9a061d370d22c4c3d61bb85b6de1d9f09e36b88aa529e38c8ce513b35ba0 76453 main/binary-arm64/Packages
+ 5b1ce8b4c7883f60d98114dc89376e39f879132bb2aa6d222d7ff74802db96f2 16021 main/binary-arm64/Packages.gz
+ 4c38a8e8ecc7bae18bdc031fd8aea866c11ab38f33db530244cad1e460c44a23 143 main/binary-arm64/Release
+-----BEGIN PGP SIGNATURE-----
+
+iQGzBAEBCgAdFiEEoNWnng9cRenmNnmVCVFQK6x5XlUFAmr59pYACgkQCVFQK6x5
+XlUaxwv/UaNIpFP79jOPbqLNeA8qsS8IZQLxaw46n1HfOR6qZlQxChDqnmC0dMt6
++T00zOOP3h6ulbsa4hEIz8qCiQ25o1kiuJKEZLnGXYOYpE4h0vUzzl47DjBIVBgV
+3++9KwovQsTPjSddFll/hJVVUeojMJalpg4kIDZdzsTnR4T87BLe1jbg43XlZlHh
+nlOoFfJ4NbySVX27Q/DTsjTyFjo8H5mE7Z56i/M7hf5EvNDwkRh0HvSlsrqamIRF
+359W/gmzboD+WvbB2nog8g26EPQ/vsW0XnKJEqek70YPmLN5W+dglcQct8+I82AV
+040USw582ucDIakvLfXczgRsxZNAdK/R0QziJFpyVJjOf16rCycyqljXt7FMtqzq
+fdgqPuGq/OJtLvL5cNbpHnLGkZ2VU6iAAGIXiWpK9Q7ZDzi6TCKgOqa75e3UUPwJ
+UWMQ4NGIXoS2r+sRW8x5kDVxz91mOOZu9lnD04MOJQt63Wal3yBi/bB1pHyDwkS5
+bYn1kc8H
+=QMh0
+-----END PGP SIGNATURE-----
