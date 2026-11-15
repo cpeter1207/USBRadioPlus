@@ -413,3 +413,31 @@ fn native_vad_aliases_use_receive_profiles_and_keep_diagnostic_origins() {
             .any(|w| w.name == "vad_mode" && w.supplied_value == "kerchunk" && w.fallback == "on")
     );
 }
+
+#[test]
+fn omitted_analysis_keys_preserve_existing_local_kerchunk_policy() {
+    // Sanitized nonsecret settings: logical duplex/delay remain controller-owned.
+    let source = "[524950]\nfull_duplex=yes\nsquelch_delay_ms=30\n[radio]\nsquelch_level=600\nradio_duplex_mode=half\n[radio 524950]\nvad_mode=kerchunk\nvad_hang_ms=1000\n";
+    let resolved = ResolvedNativeConfiguration::from_document(
+        &ConfigDocument::new(source),
+        "native.conf",
+        "524950",
+    )
+    .unwrap();
+    let station = &resolved.config().station;
+    let receive = &station.receive;
+    assert_eq!(station.duplex.radio_mode, RadioDuplexMode::Half);
+    assert_eq!(receive.vad_mode, VadMode::Kerchunk);
+    assert_eq!(receive.vad_hang_ms, 1000);
+    assert_eq!(receive.squelch_level, 600);
+    assert_eq!(receive.cos_assignment, CarrierSource::Dsp);
+    assert!(!receive.vad_preprocessing_enabled);
+    assert_eq!(receive.effective_vad_threshold(), 0.5);
+    assert_eq!(receive.effective_vad_onset_frames(), 1);
+    assert_eq!(receive.vad_retention_ms, 160);
+    assert_eq!((receive.vox_hang_ms, receive.vox_threshold), (2000, 0));
+    assert_eq!(
+        (receive.noise_filter_type, receive.noise_squelch_hysteresis),
+        (0, 3000)
+    );
+}

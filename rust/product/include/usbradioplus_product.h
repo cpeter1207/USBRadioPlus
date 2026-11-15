@@ -308,7 +308,9 @@ typedef void (*UrpNativeProcessingDiagnostic)(void *context, const uint8_t *text
 
 /** Read resolved receive policy before hardware activation. Target must be zero.
  * Value returns VAD mode 0 Off, 1 Kerchunk, or 2 On; flags returns the minimum
- * native preroll: zero for Off, 7680 frames for either active mode. */
+ * native programme retention: zero for Off, otherwise the configured retention
+ * in milliseconds multiplied by 48 (0..14400 frames). This is not classifier
+ * history or a backward speech mark. */
 #define URP_AST_COMMAND_GET_RECEIVE_POLICY 10
 
 /** Read receive policy through Asterisk with one exact UrpAstChannelCommand,
