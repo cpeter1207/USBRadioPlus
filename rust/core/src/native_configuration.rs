@@ -706,6 +706,39 @@ const ALIASES: &[Alias] = &[
     alias!("vad_mode", "receive", "vad_mode", Identity),
     alias!("vad_hang_ms", "receive", "vad_hang_ms", Identity),
     alias!(
+        "vad_preprocessing_enabled",
+        "receive",
+        "vad_preprocessing_enabled",
+        Identity
+    ),
+    alias!(
+        "vad_bandpass_enabled",
+        "receive",
+        "vad_bandpass_enabled",
+        Identity
+    ),
+    alias!(
+        "vad_bandpass_low_hz",
+        "receive",
+        "vad_bandpass_low_hz",
+        Identity
+    ),
+    alias!(
+        "vad_bandpass_high_hz",
+        "receive",
+        "vad_bandpass_high_hz",
+        Identity
+    ),
+    alias!(
+        "vad_rnnoise_enabled",
+        "receive",
+        "vad_rnnoise_enabled",
+        Identity
+    ),
+    alias!("vad_threshold", "receive", "vad_threshold", Identity),
+    alias!("vad_onset_frames", "receive", "vad_onset_frames", Identity),
+    alias!("vad_retention_ms", "receive", "vad_retention_ms", Identity),
+    alias!(
         "receive_on_delay_ms",
         "receive",
         "on_delay_frames",

@@ -407,7 +407,7 @@ impl fmt::Display for VadMode {
 }
 
 /// Effective receiver controls.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ReceiveConfig {
     /// Selected receive signaling method.
     pub signaling_method: SignalingMethod,
@@ -423,6 +423,23 @@ pub struct ReceiveConfig {
     pub vad_mode: VadMode,
     /// Speech release hold in milliseconds, independent of VOX hang.
     pub vad_hang_ms: u32,
+    /// Opt in to analysis-only preprocessing; does not enable speech admission.
+    pub vad_preprocessing_enabled: bool,
+    /// Select the causal bandpass before noise reduction in the analysis copy.
+    pub vad_bandpass_enabled: bool,
+    /// Lower analysis-band edge in Hz, strictly positive.
+    pub vad_bandpass_low_hz: f64,
+    /// Upper analysis-band edge in Hz, above the lower edge and below 24000.
+    pub vad_bandpass_high_hz: f64,
+    /// Select the released default RNNoise model; no strength control is exposed.
+    pub vad_rnnoise_enabled: bool,
+    /// Explicit classifier threshold; absent uses the selected plain/processed preset.
+    pub vad_threshold: Option<f64>,
+    /// Explicit positive count of complete 16-ms classifier frames for onset.
+    pub vad_onset_frames: Option<u32>,
+    /// Programme retention in milliseconds, zero through the local ring's 300-ms capacity.
+    /// This is independent of classifier history and speech hang.
+    pub vad_retention_ms: u32,
     /// Noise-squelch open-state margin.
     pub noise_squelch_hysteresis: u16,
     /// Native noise-detector filter, `0` or `1`.
@@ -447,6 +464,14 @@ impl Default for ReceiveConfig {
             vox_threshold: 0,
             vad_mode: VadMode::Off,
             vad_hang_ms: 1_000,
+            vad_preprocessing_enabled: false,
+            vad_bandpass_enabled: true,
+            vad_bandpass_low_hz: 300.0,
+            vad_bandpass_high_hz: 3000.0,
+            vad_rnnoise_enabled: true,
+            vad_threshold: None,
+            vad_onset_frames: None,
+            vad_retention_ms: 160,
             noise_squelch_hysteresis: 3_000,
             noise_filter_type: 0,
             squelch_delay_ms: 0,
@@ -454,6 +479,24 @@ impl Default for ReceiveConfig {
             squelch_level: 500,
             frequency_hz: 0,
         }
+    }
+}
+
+impl ReceiveConfig {
+    /// Preserve legacy classification unless preprocessing is explicitly selected.
+    pub fn effective_vad_threshold(&self) -> f64 {
+        self.vad_threshold
+            .unwrap_or(if self.vad_preprocessing_enabled {
+                0.75
+            } else {
+                0.5
+            })
+    }
+
+    /// Return the explicit onset count or the selected starting preset.
+    pub fn effective_vad_onset_frames(&self) -> u32 {
+        self.vad_onset_frames
+            .unwrap_or(if self.vad_preprocessing_enabled { 2 } else { 1 })
     }
 }
 
@@ -1154,7 +1197,20 @@ fn apply_overlay(
     warnings: &mut Vec<ResolutionWarning>,
 ) -> Result<(), StationConfigError> {
     let mut seen = BTreeMap::<String, String>::new();
-    for (raw_name, value) in &values {
+    let previous_band = (
+        config.receive.vad_bandpass_low_hz,
+        config.receive.vad_bandpass_high_hz,
+    );
+    // Resolve preset selection before reporting numeric fallbacks in this overlay.
+    let selection = |name: &&String| {
+        name.trim()
+            .eq_ignore_ascii_case("vad_preprocessing_enabled")
+    };
+    for (raw_name, value) in values
+        .iter()
+        .filter(|(name, _)| selection(name))
+        .chain(values.iter().filter(|(name, _)| !selection(name)))
+    {
         let name = raw_name.trim().to_ascii_lowercase();
         if SILENTLY_IGNORED_SETTINGS.contains(&name.as_str()) {
             continue;
@@ -1169,6 +1225,39 @@ fn apply_overlay(
             value,
         };
         apply(config, &name, setting, warnings);
+    }
+    // Validate the pair after the whole overlay so valid shifted bands are not order-dependent.
+    if (config.receive.vad_bandpass_low_hz as f32) >= (config.receive.vad_bandpass_high_hz as f32) {
+        for (raw_name, value) in &values {
+            let changed_edge = if raw_name.trim().eq_ignore_ascii_case("vad_bandpass_low_hz")
+                && config.receive.vad_bandpass_low_hz != previous_band.0
+            {
+                Some(previous_band.0)
+            } else if raw_name.trim().eq_ignore_ascii_case("vad_bandpass_high_hz")
+                && config.receive.vad_bandpass_high_hz != previous_band.1
+            {
+                Some(previous_band.1)
+            } else {
+                None
+            };
+            if let Some(fallback) = changed_edge {
+                invalid_warning(
+                    warnings,
+                    Setting {
+                        source,
+                        section,
+                        name: raw_name,
+                        value,
+                    },
+                    format_number(fallback),
+                    "requires the lower analysis edge to be below the upper edge".to_owned(),
+                );
+            }
+        }
+        (
+            config.receive.vad_bandpass_low_hz,
+            config.receive.vad_bandpass_high_hz,
+        ) = previous_band;
     }
     Ok(())
 }
@@ -1409,6 +1498,34 @@ fn apply_receive(
     match name {
         "vad_mode" => assign_display(&mut target.vad_mode, setting, warnings, parse_vad_mode),
         "vad_hang_ms" => assign_u32(&mut target.vad_hang_ms, 0, 32_767, setting, warnings),
+        "vad_preprocessing_enabled" => {
+            assign_bool(&mut target.vad_preprocessing_enabled, setting, warnings)
+        }
+        "vad_bandpass_enabled" => assign_bool(&mut target.vad_bandpass_enabled, setting, warnings),
+        "vad_rnnoise_enabled" => assign_bool(&mut target.vad_rnnoise_enabled, setting, warnings),
+        "vad_bandpass_low_hz" => {
+            assign_analysis_edge(&mut target.vad_bandpass_low_hz, setting, warnings)
+        }
+        "vad_bandpass_high_hz" => {
+            assign_analysis_edge(&mut target.vad_bandpass_high_hz, setting, warnings)
+        }
+        "vad_threshold" => {
+            let mut value = target.effective_vad_threshold();
+            let previous_warnings = warnings.len();
+            assign_f64(&mut value, 0.0, 1.0, setting, warnings);
+            if warnings.len() == previous_warnings {
+                target.vad_threshold = Some(value);
+            }
+        }
+        "vad_onset_frames" => {
+            let mut value = target.effective_vad_onset_frames();
+            let previous_warnings = warnings.len();
+            assign_u32(&mut value, 1, u32::MAX, setting, warnings);
+            if warnings.len() == previous_warnings {
+                target.vad_onset_frames = Some(value);
+            }
+        }
+        "vad_retention_ms" => assign_u32(&mut target.vad_retention_ms, 0, 300, setting, warnings),
         "signaling_method" => assign_display(
             &mut target.signaling_method,
             setting,
@@ -1470,6 +1587,24 @@ fn apply_receive(
             warnings,
         ),
         _ => unknown_warning(warnings, setting),
+    }
+}
+
+fn assign_analysis_edge(
+    target: &mut f64,
+    setting: Setting<'_>,
+    warnings: &mut Vec<ResolutionWarning>,
+) {
+    match setting.value.trim().parse::<f64>() {
+        Ok(value) if value.is_finite() && (value as f32) > 0.0 && (value as f32) < 24000.0 => {
+            *target = value
+        }
+        _ => invalid_warning(
+            warnings,
+            setting,
+            format_number(*target),
+            "requires a finite representable frequency above 0 and below 24000 Hz".to_owned(),
+        ),
     }
 }
 

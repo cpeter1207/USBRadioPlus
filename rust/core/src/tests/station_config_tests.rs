@@ -1091,6 +1091,71 @@ fn duplicate_equal_assignments_and_validation_short_circuits_are_safe() {
 }
 
 #[test]
+fn vad_analysis_settings_are_independent_and_opt_in() {
+    let plain = resolve("[usb]\n[receive]\nvad_mode=on\n").unwrap();
+    let plain = &plain.config().receive;
+    assert!(!plain.vad_preprocessing_enabled);
+    assert_eq!(plain.effective_vad_threshold(), 0.5);
+    assert_eq!(plain.effective_vad_onset_frames(), 1);
+    assert_eq!(plain.vad_retention_ms, 160);
+
+    let preset = resolve("[usb]\n[receive]\nvad_preprocessing_enabled=yes\n").unwrap();
+    assert_eq!(preset.config().receive.effective_vad_threshold(), 0.75);
+    assert_eq!(preset.config().receive.effective_vad_onset_frames(), 2);
+    assert_eq!(preset.config().receive.vad_mode, VadMode::Off);
+    assert!(preset.warnings().is_empty());
+
+    let selected = resolve("[usb]\nreceive_profile=voice\n[receive]\nvad_preprocessing_enabled=yes\nvad_threshold=0.6125\nvad_onset_frames=4\nvad_bandpass_enabled=yes\nvad_bandpass_low_hz=300\nvad_bandpass_high_hz=3000\nvad_rnnoise_enabled=yes\nvad_retention_ms=0\nvox_hang_ms=4321\n[receive voice]\nvad_threshold=NaN\n").unwrap();
+    let receive = &selected.config().receive;
+    assert!(receive.vad_preprocessing_enabled);
+    assert!(receive.vad_bandpass_enabled && receive.vad_rnnoise_enabled);
+    assert_eq!(
+        (receive.vad_bandpass_low_hz, receive.vad_bandpass_high_hz),
+        (300.0, 3000.0)
+    );
+    assert_eq!(receive.effective_vad_threshold(), 0.6125);
+    assert_eq!(receive.effective_vad_onset_frames(), 4);
+    assert_eq!(receive.vad_retention_ms, 0);
+    assert_eq!(receive.vox_hang_ms, 4321);
+    assert_eq!(selected.warnings().len(), 1);
+    assert_eq!(selected.warnings()[0].fallback, "0.6125");
+}
+
+#[test]
+fn vad_analysis_bands_and_limits_inherit_without_order_dependence() {
+    for (low, high) in [(100, 200), (5000, 6000)] {
+        let resolved = resolve(&format!("[usb]\n[receive]\nvad_bandpass_low_hz={low}\nvad_bandpass_high_hz={high}\nvad_onset_frames=11\nvad_retention_ms=300\n")).unwrap();
+        assert!(resolved.warnings().is_empty());
+        assert_eq!(
+            resolved.config().receive.vad_bandpass_low_hz,
+            f64::from(low)
+        );
+        assert_eq!(
+            resolved.config().receive.vad_bandpass_high_hz,
+            f64::from(high)
+        );
+        assert_eq!(resolved.config().receive.effective_vad_onset_frames(), 11);
+    }
+    let resolved = resolve("[usb]\nreceive_profile=voice\n[receive]\nvad_bandpass_low_hz=100\nvad_bandpass_high_hz=200\n[receive voice]\nvad_bandpass_low_hz=300\nvad_retention_ms=301\n").unwrap();
+    assert_eq!(resolved.config().receive.vad_bandpass_low_hz, 100.0);
+    assert_eq!(resolved.config().receive.vad_bandpass_high_hz, 200.0);
+    assert_eq!(resolved.config().receive.vad_retention_ms, 160);
+    assert_eq!(resolved.warnings().len(), 2);
+    let preset = resolve(
+        "[usb]\n[receive]\nVAD_THRESHOLD=NaN\nvad_preprocessing_enabled=yes\nVAD_ONSET_FRAMES=0\n",
+    )
+    .unwrap();
+    assert_eq!(preset.config().receive.effective_vad_threshold(), 0.75);
+    assert_eq!(preset.config().receive.effective_vad_onset_frames(), 2);
+    assert!(
+        preset
+            .warnings()
+            .iter()
+            .all(|w| w.fallback == "0.75" || w.fallback == "2")
+    );
+}
+
+#[test]
 fn vad_modes_resolve_after_profiles_without_changing_vox() {
     let defaults = resolve("[usb]\n").unwrap();
     assert_eq!(defaults.config().receive.vad_mode, VadMode::Off);
