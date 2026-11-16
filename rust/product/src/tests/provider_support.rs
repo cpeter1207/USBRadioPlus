@@ -3,8 +3,8 @@ use super::*;
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::mem::size_of;
 use std::ptr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 
 const OK: c_int = 0;
 const AUDIO_ABI: u32 = 2;
@@ -34,10 +34,13 @@ static AUDIO_STREAMS: AtomicU32 = AtomicU32::new(0);
 static AUDIO_CREATES: AtomicU32 = AtomicU32::new(0);
 static AUDIO_DESTROYS: AtomicU32 = AtomicU32::new(0);
 static PERIODIC_AUDIO: AtomicBool = AtomicBool::new(false);
+static MANUAL_AUDIO: AtomicBool = AtomicBool::new(false);
+static MANUAL_CALLBACKS: Mutex<Option<ManualAudioCallbacks>> = Mutex::new(None);
 static EXECUTE_TX_GRAPH: AtomicBool = AtomicBool::new(false);
 static TX_GRAPH_AUDIBLE: AtomicBool = AtomicBool::new(false);
 static ANALYSIS_REPLACEMENT: AtomicBool = AtomicBool::new(false);
 static ANALYSIS_PREPARE_FAIL: AtomicBool = AtomicBool::new(false);
+static ANALYSIS_REJECT_RECEIVE_UPDATE: AtomicU32 = AtomicU32::new(0);
 static ANALYSIS_PREPARATIONS: AtomicU32 = AtomicU32::new(0);
 static ANALYSIS_ADOPTIONS: AtomicU32 = AtomicU32::new(0);
 static ANALYSIS_RETIREMENTS: AtomicU32 = AtomicU32::new(0);
@@ -45,6 +48,7 @@ static ANALYSIS_RETIREMENTS: AtomicU32 = AtomicU32::new(0);
 pub(super) fn reset_analysis_fixture() {
     ANALYSIS_REPLACEMENT.store(false, Ordering::Release);
     ANALYSIS_PREPARE_FAIL.store(false, Ordering::Release);
+    ANALYSIS_REJECT_RECEIVE_UPDATE.store(0, Ordering::Release);
     ANALYSIS_PREPARATIONS.store(0, Ordering::Release);
     ANALYSIS_ADOPTIONS.store(0, Ordering::Release);
     ANALYSIS_RETIREMENTS.store(0, Ordering::Release);
@@ -53,6 +57,10 @@ pub(super) fn reset_analysis_fixture() {
 pub(super) fn analysis_fault(needed: bool, fail_preparation: bool) {
     ANALYSIS_REPLACEMENT.store(needed, Ordering::Release);
     ANALYSIS_PREPARE_FAIL.store(fail_preparation, Ordering::Release);
+}
+
+pub(super) fn reject_analysis_receive_update(ordinal: u32) {
+    ANALYSIS_REJECT_RECEIVE_UPDATE.store(ordinal, Ordering::Release);
 }
 
 pub(super) fn analysis_counters() -> (u32, u32, u32) {
@@ -110,6 +118,55 @@ pub(super) fn graph_preparing() -> bool {
 
 pub(super) fn periodic_audio(enabled: bool) {
     PERIODIC_AUDIO.store(enabled, Ordering::Release);
+}
+
+pub(super) fn manual_audio(enabled: bool) {
+    assert!(!PERIODIC_AUDIO.load(Ordering::Acquire));
+    assert!(MANUAL_CALLBACKS.lock().unwrap().is_none());
+    MANUAL_AUDIO.store(enabled, Ordering::Release);
+}
+
+/// Step the sole retained synthetic callback owner without a worker thread.
+///
+/// # Safety
+/// The test keeps its exclusive native station started and serializes this call
+/// against all control operations, stop, and destruction.
+pub(super) unsafe fn step_manual_audio(receive: bool, transmit: bool) {
+    assert!(MANUAL_AUDIO.load(Ordering::Acquire));
+    assert!(!PERIODIC_AUDIO.load(Ordering::Acquire));
+    assert_eq!(AUDIO_STREAMS.load(Ordering::Acquire), 1);
+    let callbacks = MANUAL_CALLBACKS
+        .lock()
+        .unwrap()
+        .expect("started manual stream");
+    let input = [0.25_f32; 1_920];
+    let mut output = [0.0_f32; 1_920];
+    if receive {
+        assert_eq!(
+            // SAFETY: the caller retains and serializes the registered callback contexts.
+            unsafe {
+                (callbacks.receive)(
+                    callbacks.receive_context as *mut c_void,
+                    input.as_ptr(),
+                    960,
+                )
+            },
+            OK
+        );
+    }
+    if transmit {
+        assert_eq!(
+            // SAFETY: the caller retains and serializes the registered callback contexts.
+            unsafe {
+                (callbacks.transmit)(
+                    callbacks.transmit_context as *mut c_void,
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            OK
+        );
+    }
 }
 
 pub(super) fn reset_ptt_drops() {
@@ -552,6 +609,7 @@ struct RadioPortsPrefix {
 
 struct RadioState {
     generation_id: u64,
+    update_ordinal: u32,
     transmit_processor: Option<RadioProcessor>,
 }
 
@@ -689,6 +747,7 @@ unsafe extern "C" fn radio_create(
     unsafe {
         *output = Box::into_raw(Box::new(RadioState {
             generation_id: (*config.cast::<RadioConfigPrefix>()).generation_id,
+            update_ordinal: 0,
             transmit_processor: EXECUTE_TX_GRAPH.load(Ordering::Acquire).then(|| {
                 // The SDK supplies this full port ABI; TX programme follows
                 // two RX ports, the notch bank, noise reduction and dynamics.
@@ -705,17 +764,27 @@ unsafe extern "C" fn radio_prepare_update(
     ports: *const c_void,
     output: *mut *mut c_void,
 ) -> c_int {
-    ANALYSIS_PREPARATIONS.fetch_add(1, Ordering::Relaxed);
+    let ordinal = ANALYSIS_PREPARATIONS.fetch_add(1, Ordering::Relaxed) + 1;
     if ANALYSIS_PREPARE_FAIL.load(Ordering::Acquire) {
         // SAFETY: the preparation wrapper lends this complete writable output.
         unsafe { *output = ptr::null_mut() };
         return -2;
     }
     // SAFETY: the same complete fixture arguments are forwarded synchronously.
-    unsafe { radio_create(config, ports, output) }
+    let result = unsafe { radio_create(config, ports, output) };
+    if result == OK {
+        // SAFETY: successful creation transferred one writable fixture owner.
+        unsafe { (**output.cast::<*mut RadioState>()).update_ordinal = ordinal };
+    }
+    result
 }
 
 unsafe extern "C" fn radio_apply_receive_update(handle: *mut c_void, update: *mut c_void) -> c_int {
+    // SAFETY: this prepared fixture owner remains live through its callback ACK.
+    let ordinal = unsafe { (*update.cast::<RadioState>()).update_ordinal };
+    if ordinal != 0 && ordinal == ANALYSIS_REJECT_RECEIVE_UPDATE.load(Ordering::Acquire) {
+        return -2;
+    }
     // SAFETY: both fixture owners are retained through the synchronous callback.
     let result = unsafe { radio_apply_update(handle, update) };
     if result == OK {
@@ -1102,6 +1171,14 @@ struct AudioDescriptor {
 // SAFETY: the immutable descriptor contains only function pointers.
 unsafe impl Sync for AudioDescriptor {}
 
+#[derive(Clone, Copy)]
+struct ManualAudioCallbacks {
+    receive: unsafe extern "C" fn(*mut c_void, *const f32, u32) -> i32,
+    receive_context: usize,
+    transmit: unsafe extern "C" fn(*mut c_void, *mut f32, u32) -> i32,
+    transmit_context: usize,
+}
+
 struct FakeStream {
     exclusive: bool,
     receive: unsafe extern "C" fn(*mut c_void, *const f32, u32) -> i32,
@@ -1170,6 +1247,18 @@ unsafe extern "C" fn audio_stream_start(stream: *mut c_void) -> c_int {
     let receive = unsafe { (stream.receive)(stream.receive_context, input.as_ptr(), 960) };
     // SAFETY: contexts and canonical 20 ms buffers are live for these calls.
     let transmit = unsafe { (stream.transmit)(stream.transmit_context, output.as_mut_ptr(), 960) };
+    if receive == 0 && transmit == 0 && MANUAL_AUDIO.load(Ordering::Acquire) {
+        assert!(stream.exclusive && stream.worker.is_none());
+        assert!(!PERIODIC_AUDIO.load(Ordering::Acquire));
+        let mut registration = MANUAL_CALLBACKS.lock().unwrap();
+        assert!(registration.is_none());
+        *registration = Some(ManualAudioCallbacks {
+            receive: stream.receive,
+            receive_context: stream.receive_context as usize,
+            transmit: stream.transmit,
+            transmit_context: stream.transmit_context as usize,
+        });
+    }
     if receive == 0 && transmit == 0 && PERIODIC_AUDIO.load(Ordering::Acquire) {
         let rx = stream.receive;
         let rx_context = stream.receive_context as usize;
@@ -1198,6 +1287,10 @@ unsafe extern "C" fn audio_stream_start(stream: *mut c_void) -> c_int {
 }
 
 unsafe extern "C" fn audio_stream_control(stream: *mut c_void) -> c_int {
+    if MANUAL_AUDIO.load(Ordering::Acquire) {
+        // No manual callback may outlive stop or joined destruction.
+        MANUAL_CALLBACKS.lock().unwrap().take();
+    }
     if failed(FAIL_STOP) {
         return -1;
     }

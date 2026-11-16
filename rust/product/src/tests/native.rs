@@ -520,6 +520,248 @@ fn native_analysis_recovery_latches_preparation_failure_until_healthy() {
     fixture::reset_analysis_fixture();
 }
 
+#[test]
+fn native_analysis_recovery_rearms_after_a_committed_adoption_refaults() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::reset_analysis_fixture();
+    fixture::exclusive_audio(true);
+    fixture::periodic_audio(true);
+    let mut raw = radio();
+    raw.receive.vad_mode = 2;
+    raw.speech.flags = 7;
+    raw.speech.threshold = 0.75;
+    raw.speech.onset_frames = 2;
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    // SAFETY: one test owns the station and retains static providers through joined destruction.
+    unsafe {
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        for round in 1..=2 {
+            let retired_before = fixture::analysis_counters().2;
+            fixture::analysis_fault(true, false);
+            assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+            assert_eq!(fixture::analysis_counters().0, 2 * round);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+            loop {
+                assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+                let (_, adopted, retired) = fixture::analysis_counters();
+                if adopted == round && retired > retired_before {
+                    break;
+                }
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "recovery did not commit"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        }
+        for _ in 0..20 {
+            assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        }
+        assert_eq!(fixture::analysis_counters().0, 4);
+        assert_eq!(fixture::analysis_counters().1, 2);
+        api.native_destroy.unwrap()(handle);
+    }
+    fixture::periodic_audio(false);
+    assert_eq!(fixture::audio_lifecycle(), (1, 1));
+    fixture::exclusive_audio(false);
+    fixture::reset_analysis_fixture();
+}
+
+#[test]
+fn native_analysis_failed_recovery_rearms_only_after_committed_explicit_update() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::reset_analysis_fixture();
+    fixture::exclusive_audio(true);
+    fixture::periodic_audio(true);
+    let mut raw = radio();
+    raw.receive.vad_mode = 2;
+    raw.speech.flags = 7;
+    raw.speech.threshold = 0.75;
+    raw.speech.onset_frames = 2;
+    let config = request(&raw);
+    let (status, handle) = create(&config);
+    assert_eq!(status, URP_AST_OK);
+    let providers = fixture::manifest();
+    let callbacks = direct_callbacks();
+    let args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: &config,
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 9,
+        maximum_frames: 960,
+    };
+    let api = product_descriptor();
+    // SAFETY: all borrowed requests and callback contexts outlive this one serialized station.
+    unsafe {
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        fixture::analysis_fault(true, true);
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_SETUP_FAILED);
+        assert_eq!(fixture::analysis_counters().0, 1);
+        fixture::analysis_fault(true, false);
+        for commit in [false, true] {
+            let mut update = ptr::null_mut();
+            assert_eq!(
+                api.native_prepare_update.unwrap()(handle, &args, &mut update),
+                URP_AST_OK
+            );
+            assert!(!update.is_null());
+            assert_eq!(api.native_begin_update.unwrap()(handle, update), URP_AST_OK);
+            api.native_destroy_update.unwrap()(update);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+            loop {
+                let result = api.native_accept_update.unwrap()(handle);
+                if result == URP_AST_OK {
+                    break;
+                }
+                assert_eq!(result, URP_AST_RELOAD_PENDING);
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "explicit forward ACKs stalled"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            loop {
+                let result = api.native_finish_update.unwrap()(handle, u32::from(commit));
+                if result == URP_AST_OK {
+                    break;
+                }
+                assert_eq!(result, URP_AST_RELOAD_PENDING);
+                assert!(
+                    std::time::Instant::now() < deadline,
+                    "explicit finish ACKs stalled"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            let prepared_before = fixture::analysis_counters().0;
+            // No service call observed a healthy level during the explicit transaction.
+            fixture::analysis_fault(true, false);
+            if commit {
+                assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+                assert_eq!(fixture::analysis_counters().0, prepared_before + 2);
+            } else {
+                for _ in 0..20 {
+                    assert_eq!(api.native_service.unwrap()(handle), URP_AST_SETUP_FAILED);
+                }
+                assert_eq!(fixture::analysis_counters().0, prepared_before);
+            }
+            assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        }
+        assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        api.native_destroy.unwrap()(handle);
+    }
+    fixture::periodic_audio(false);
+    assert_eq!(fixture::audio_lifecycle(), (1, 1));
+    fixture::exclusive_audio(false);
+    fixture::reset_analysis_fixture();
+}
+
+fn assert_analysis_reverse_custody(reject_reverse: bool) {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::reset_analysis_fixture();
+    fixture::periodic_audio(false);
+    fixture::exclusive_audio(true);
+    fixture::manual_audio(true);
+    let mut raw = radio();
+    raw.receive.vad_mode = 2;
+    raw.speech.flags = 7;
+    raw.speech.threshold = 0.75;
+    raw.speech.onset_frames = 2;
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    // SAFETY: this test is the sole control and manual callback owner until destruction.
+    unsafe {
+        assert_eq!(api.native_start.unwrap()(handle), URP_AST_OK);
+        fixture::analysis_fault(true, false);
+        fixture::reject_analysis_receive_update(1);
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        assert_eq!(fixture::analysis_counters(), (2, 0, 0));
+
+        fixture::step_manual_audio(true, false);
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        assert_eq!(fixture::analysis_counters(), (2, 0, 0));
+        assert_eq!(
+            api.native_finish_update.unwrap()(handle, 1),
+            URP_AST_CHANNEL_BUSY
+        );
+        fixture::step_manual_audio(false, true);
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_SETUP_FAILED);
+        assert_eq!(fixture::analysis_counters(), (2, 0, 0));
+
+        fixture::reject_analysis_receive_update(if reject_reverse { 2 } else { 0 });
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        assert_eq!(
+            api.native_accept_update.unwrap()(handle),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(
+            api.native_finish_update.unwrap()(handle, 0),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(
+            api.native_programme_retire.unwrap()(handle, 8, 99),
+            URP_AST_CHANNEL_BUSY
+        );
+        fixture::step_manual_audio(true, false);
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+        assert_eq!(fixture::analysis_counters().0, 2);
+        assert_eq!(
+            fixture::analysis_counters().2,
+            0,
+            "unacknowledged reverse still owns both candidates"
+        );
+        fixture::step_manual_audio(false, true);
+        assert_eq!(api.native_service.unwrap()(handle), URP_AST_SETUP_FAILED);
+
+        if reject_reverse {
+            for _ in 0..20 {
+                assert_eq!(api.native_service.unwrap()(handle), URP_AST_SETUP_FAILED);
+            }
+            assert_eq!(fixture::analysis_counters(), (2, 0, 0));
+            // A consumed negative ACK is not republished merely because a provider recovers.
+            fixture::reject_analysis_receive_update(0);
+            fixture::step_manual_audio(true, true);
+            assert_eq!(api.native_service.unwrap()(handle), URP_AST_SETUP_FAILED);
+            assert_eq!(
+                api.native_finish_update.unwrap()(handle, 0),
+                URP_AST_CHANNEL_BUSY
+            );
+            assert_eq!(fixture::analysis_counters(), (2, 0, 0));
+            assert_eq!(api.native_stop.unwrap()(handle), URP_AST_SETUP_FAILED);
+        } else {
+            assert_eq!(fixture::analysis_counters(), (2, 1, 1));
+            assert_eq!(api.native_service.unwrap()(handle), URP_AST_OK);
+            assert_eq!(api.native_finish_update.unwrap()(handle, 0), URP_AST_OK);
+            assert_eq!(api.native_stop.unwrap()(handle), URP_AST_OK);
+        }
+        assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        api.native_destroy.unwrap()(handle);
+    }
+    assert_eq!(fixture::analysis_counters().2, 2);
+    assert_eq!(fixture::audio_lifecycle(), (1, 1));
+    fixture::manual_audio(false);
+    fixture::exclusive_audio(false);
+    fixture::reset_analysis_fixture();
+}
+
+#[test]
+fn native_analysis_recovery_retains_pending_reverse_until_both_owners_acknowledge() {
+    assert_analysis_reverse_custody(false);
+}
+
+#[test]
+fn native_analysis_recovery_retains_a_failed_reverse_without_repreparing() {
+    assert_analysis_reverse_custody(true);
+}
+
 unsafe extern "C" fn remote_metadata(_: *mut c_void, _: u32, active: *mut u32) -> c_int {
     // SAFETY: the callback lends one writable activity result through return.
     unsafe { active.write(0) };
