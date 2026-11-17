@@ -164,6 +164,52 @@ identification. The controller RF arbiter must retain those deadlines and
 schedule/retry fresh permitted identification rather than treating suppression
 as successful transmission. Independent CTCSS/DCS/STE and PTT are not gated.
 
+## Opt-in same-render software observation (binding V2)
+
+The same descriptor methods and RPPF option accept the separately named
+`UrpProgrammeFenceBindingV2` (40 bytes on supported Debian amd64/arm64).
+Its unchanged V1 base declares version two and the complete size, with legacy
+`permit`, acknowledgment and reserved fields zero. `observed_permit` replaces
+the legacy callback; null explicitly unbinds while stopped. Require status zero
+and accepted ABI two, with every other request field unchanged. V1 remains
+version one and continues to ignore all unknown tails. Asterisk validates the
+header before reading the V2 tail, copies exactly 32 or 40 known bytes into its
+existing serialized task, and advertises only that copied extent.
+
+The callback borrows an immutable 96-byte `UrpProgrammeObservationV1` only for
+the synchronous call. It includes the actual nonzero physical generation and
+graph frame count, this successful operation's aggregate buffering, and one
+bounded coherent retirement-authority snapshot sampled after graph processing.
+The existing station TX context retains the mailbox; no per-block ownership
+clone, registration, allocation, new graph identity or DSP owner is introduced.
+Unknown remains Unknown even when PCM succeeds. Known zero requires its validity
+bit. Every audible transition contributor participates in the maximum; mixed
+graphs do not fabricate counters or padding. Failed or skipped graph calls do
+not invoke the observation callback. Exactly one permits programme; signaling,
+V1 and unbound ordinary behavior remain unchanged.
+
+Authority zero means absent, wrong-generation or incoherent. A nonzero R is not
+completed-render acknowledgment and does not promise the newest concurrent
+publication. `begin_update` invalidates authority before release-publishing its
+successor; the TX owner acquire-adopts before selecting and processing its graph
+and then reading the slot. This happens-before chain prevents an adopted
+successor from inheriting old R. An unadopted concurrent predecessor may still
+linearize before the update. No strict update-begin revocation is asserted.
+
+A consumer awaiting R needs both previously consumed completed-render feedback
+for the same physical generation and R, and this operation's matching authority
+snapshot, plus independently qualified buffering, contributor/history and
+presentation evidence. Commit alone, either record alone, mismatched R2, or
+previous feedback after successor adoption is insufficient. Existing completion
+feedback remains unchanged. No clock, source-age, physical-presentation bound
+or controller admission policy is supplied here.
+
+This is an unpublished capability addition, not an alpha35 capability claim.
+V1-only providers/forwarders must reject V2 without truncating it or staging a V1
+acknowledgment. New provider/header/package pins and cohort release qualification
+are required before any V2-dependent activation. Physical presentation remains
+Unknown; separately reviewed clock and controller work is outside this change.
+
 ## Packaging
 
 These additions keep product descriptor ABI 1/SONAME 1 and DirectCallbacks ABI 6.

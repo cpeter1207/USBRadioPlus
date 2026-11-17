@@ -61,8 +61,8 @@ fn main() {
     println!("cargo:rerun-if-changed={product}");
     bindgen::Builder::default()
         .header(product)
-        .allowlist_type("(UrpAst.*|DirectCallbacks)")
-        .allowlist_var("(URP_AST_.*|URP_PROGRAMME_FENCE_ABI_VERSION)")
+        .allowlist_type("(UrpAst.*|UrpProgramme.*|DirectCallbacks)")
+        .allowlist_var("(URP_AST_.*|URP_PROGRAMME_FENCE.*|URP_PROGRAMME_OBSERVATION_ABI_VERSION)")
         .parse_callbacks(Box::new(ProductMacros))
         .derive_default(true)
         .no_default("UrpAstDtmfResult")

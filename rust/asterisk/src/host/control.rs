@@ -28,6 +28,7 @@ pub(super) enum ControlOperation {
     Feedback(super::super::UrpRadioFeedbackPort),
     ProgrammeRetire { generation: u64, request: u64 },
     ProgrammeFence(super::super::UrpProgrammeFenceBinding),
+    ProgrammeFenceV2(super::super::UrpProgrammeFenceBindingV2),
     Site(super::super::UrpAstSiteControl),
     Remote(super::super::UrpAstRemoteControl),
     Jitter,
@@ -154,6 +155,29 @@ unsafe fn execute(
                     && binding.permit.map(|call| call as usize)
                         == expected.permit.map(|call| call as usize)
                     && binding.reserved == expected.reserved;
+                ControlResult::Status(if result != URP_AST_OK || retained {
+                    result
+                } else {
+                    URP_AST_ASTERISK_FAILURE
+                })
+            }
+            ControlOperation::ProgrammeFenceV2(mut binding) => {
+                let expected = binding;
+                let result = status(
+                    descriptor
+                        .channel_programme_fence_bind
+                        .map(|call| call(channel, &mut binding.base)),
+                );
+                // A V1-only provider must reject V2; never treat a staged or
+                // truncated V1 acknowledgment as retention of the observed port.
+                let retained = binding.base.accepted_abi_version == 2
+                    && binding.base.struct_size == expected.base.struct_size
+                    && binding.base.abi_version == expected.base.abi_version
+                    && binding.base.context == expected.base.context
+                    && binding.base.permit.is_none()
+                    && binding.base.reserved == expected.base.reserved
+                    && binding.observed_permit.map(|call| call as usize)
+                        == expected.observed_permit.map(|call| call as usize);
                 ControlResult::Status(if result != URP_AST_OK || retained {
                     result
                 } else {

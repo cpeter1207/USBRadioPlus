@@ -285,3 +285,244 @@ fn programme_fence_retains_binding_during_stopped_reload_transactions() {
     }
     provider_support::execute_tx_graph(false);
 }
+
+#[repr(C)]
+pub(super) struct Observation {
+    size: u32,
+    version: u32,
+    generation: u64,
+    frames: u32,
+    reserved: u32,
+    retirement: u64,
+    buffering: usbradioplus_core::ProgrammeBuffering,
+}
+
+#[repr(C)]
+pub(super) struct BindingV2 {
+    pub(super) base: Binding,
+    pub(super) observed: Option<unsafe extern "C" fn(*mut c_void, *const Observation) -> u32>,
+}
+
+pub(super) fn binding_v2() -> BindingV2 {
+    let mut base = binding();
+    base.size = size_of::<BindingV2>() as u32;
+    base.version = 2;
+    base.permit = None;
+    BindingV2 {
+        base,
+        observed: Some(observe),
+    }
+}
+
+unsafe extern "C" fn observe(_: *mut c_void, raw: *const Observation) -> u32 {
+    // SAFETY: the SDK lends the synchronous immutable observation prefix.
+    let observation = unsafe { &*raw };
+    assert_eq!((observation.size, observation.version), (96, 1));
+    assert_ne!(observation.generation, 0);
+    assert!((1..=960).contains(&observation.frames));
+    assert_eq!(observation.reserved, 0);
+    0
+}
+
+#[test]
+fn programme_fence_v2_channel_accepts_exact_observed_prefix() {
+    assert_eq!(size_of::<BindingV2>(), 40);
+    assert_eq!(size_of::<Observation>(), 96);
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    provider_support::execute_tx_graph(true);
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    let mut value = binding_v2();
+    // SAFETY: static observation code and channel remain live through stop/destruction.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        assert_eq!(
+            bindings()[1](channel, ptr::from_mut(&mut value).cast()),
+            URP_AST_OK
+        );
+        assert_eq!(value.base.accepted, 2);
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        assert!(!provider_support::tx_graph_audible());
+        assert_eq!(channel_stop(channel), URP_AST_OK);
+        value.base.accepted = 0;
+        value.observed = None;
+        assert_eq!(
+            bindings()[1](channel, ptr::from_mut(&mut value).cast()),
+            URP_AST_OK
+        );
+        assert_eq!(value.base.accepted, 2);
+        assert_eq!(channel_start(channel), URP_AST_OK);
+        assert!(provider_support::tx_graph_audible());
+        assert_eq!(channel_stop(channel), URP_AST_OK);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+    provider_support::execute_tx_graph(false);
+}
+
+#[test]
+fn programme_fence_v2_preserves_actual_callback_across_replacement_rollback_and_stopped_rebind() {
+    struct Probe {
+        marker: u32,
+        calls: u32,
+        generation: u64,
+    }
+    unsafe fn record(raw: *mut c_void, generation: u64, frames: u32, marker: u32) -> u32 {
+        // SAFETY: this serialized fixture retains the exact probe until quiescence.
+        let probe = unsafe { &mut *raw.cast::<Probe>() };
+        assert_eq!((probe.marker, frames), (marker, 960));
+        assert_ne!(generation, 0);
+        probe.calls += 1;
+        probe.generation = generation;
+        0
+    }
+    unsafe extern "C" fn first(raw: *mut c_void, observation: *const Observation) -> u32 {
+        // SAFETY: the SDK lends this immutable prefix only during the call.
+        let observation = unsafe { &*observation };
+        // SAFETY: the fixture retains the corresponding live probe.
+        unsafe { record(raw, observation.generation, observation.frames, 11) }
+    }
+    unsafe extern "C" fn second(raw: *mut c_void, observation: *const Observation) -> u32 {
+        // SAFETY: the SDK lends this immutable prefix only during the call.
+        let observation = unsafe { &*observation };
+        // SAFETY: the fixture retains the corresponding live probe.
+        unsafe { record(raw, observation.generation, observation.frames, 22) }
+    }
+    #[repr(C)]
+    struct Extended {
+        binding: BindingV2,
+        tail: [u64; 2],
+    }
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    provider_support::execute_tx_graph(true);
+    let bind = bindings()[1];
+    for commit in [0, 1] {
+        let context = RefCell::new(Calls::default());
+        let driver = create_driver(&context, b"[usb]\n");
+        let mut old = Probe {
+            marker: 11,
+            calls: 0,
+            generation: 0,
+        };
+        let mut new = Probe {
+            marker: 22,
+            calls: 0,
+            generation: 0,
+        };
+        let mut value = Extended {
+            binding: binding_v2(),
+            tail: [0xface, 0xdead_beef],
+        };
+        value.binding.base.size = size_of::<Extended>() as u32;
+        value.binding.base.context = ptr::from_mut(&mut old).cast();
+        value.binding.observed = Some(first);
+        // SAFETY: both contexts and callbacks outlive all synchronous stopped lifecycle calls.
+        unsafe {
+            let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+            assert_eq!(bind(channel, ptr::from_mut(&mut value).cast()), 0);
+            assert_eq!(value.binding.base.accepted, 2);
+            assert_eq!(value.tail, [0xface, 0xdead_beef]);
+            assert_eq!(channel_start(channel), 0);
+            assert_eq!(old.calls, 1);
+            assert!(!provider_support::tx_graph_audible());
+            let original = old.generation;
+            assert_eq!(
+                stage_reload(
+                    driver,
+                    b"[usb]\n[hardware]\nhardware_output_extra_buffer_ms=20\n"
+                ),
+                0
+            );
+            assert_eq!(prepare_reload(channel), 0);
+            value.binding.base.accepted = 0;
+            assert_eq!(
+                bind(channel, ptr::from_mut(&mut value).cast()),
+                URP_AST_CHANNEL_BUSY
+            );
+            assert_eq!(activate_reload(channel), 0);
+            let replacement = old.generation;
+            assert_ne!(replacement, original);
+            assert!(old.calls >= 2);
+            assert!(!provider_support::tx_graph_audible());
+            assert_eq!(finish_reload(channel, commit), 0);
+            assert_eq!(driver_reload_finish(driver, commit), 0);
+            assert_eq!(
+                old.generation,
+                if commit == 0 { original } else { replacement }
+            );
+            assert_eq!(channel_stop(channel), 0);
+            let old_calls = old.calls;
+            value.binding.base.context = ptr::from_mut(&mut new).cast();
+            value.binding.observed = Some(second);
+            assert_eq!(bind(channel, ptr::from_mut(&mut value).cast()), 0);
+            assert_eq!(value.binding.base.accepted, 2);
+            assert_eq!(value.tail, [0xface, 0xdead_beef]);
+            assert_eq!(channel_start(channel), 0);
+            assert_eq!(new.calls, 1);
+            assert_eq!(old.calls, old_calls);
+            assert_eq!(new.generation, old.generation);
+            assert!(!provider_support::tx_graph_audible());
+            assert_eq!(channel_stop(channel), 0);
+            value.binding.base.accepted = 0;
+            value.binding.observed = None;
+            assert_eq!(bind(channel, ptr::from_mut(&mut value).cast()), 0);
+            assert_eq!(channel_start(channel), 0);
+            assert_eq!((old.calls, new.calls), (old_calls, 1));
+            assert!(
+                provider_support::tx_graph_audible(),
+                "unbound witness must really produce PCM"
+            );
+            assert_eq!(channel_stop(channel), 0);
+            channel_destroy(channel);
+            driver_destroy(driver);
+        }
+    }
+    provider_support::execute_tx_graph(false);
+}
+
+pub(super) fn reject_invalid_v2(call: Bind, handle: *mut c_void) {
+    for defect in 0..5 {
+        let mut value = binding_v2();
+        match defect {
+            0 => value.base.size = 32,
+            1 => value.base.version = 3,
+            2 => value.base.reserved = 1,
+            3 => value.base.accepted = 1,
+            _ => value.base.permit = Some(deny),
+        }
+        // SAFETY: complete fixture allocation remains owned even when advertised short.
+        assert_ne!(unsafe { call(handle, ptr::from_mut(&mut value).cast()) }, 0);
+        assert_eq!(value.base.accepted, u32::from(defect == 3));
+    }
+}
+
+#[test]
+fn programme_fence_v2_rejects_invalid_and_accepts_unaligned_unknown_tail() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    provider_support::clear_failure();
+    let context = RefCell::new(Calls::default());
+    let driver = create_driver(&context, b"[usb]\n");
+    // SAFETY: the channel and static callback stay live until destruction.
+    unsafe {
+        let channel = reserve_channel(driver, URP_AST_TRANSPORT_RPT_ADVANCED);
+        let call = bindings()[1];
+        reject_invalid_v2(call, channel);
+        let mut value = binding_v2();
+        value.base.size = 56;
+        let mut bytes = [0xa5_u8; 57];
+        let raw = bytes.as_mut_ptr().add(1).cast::<BindingV2>();
+        raw.write_unaligned(value);
+        assert_eq!(call(channel, raw.cast()), 0);
+        let after = raw.read_unaligned();
+        assert_eq!(
+            (after.base.size, after.base.version, after.base.accepted),
+            (56, 2, 2)
+        );
+        assert_eq!(&bytes[41..], &[0xa5; 16]);
+        assert_eq!(bytes[0], 0xa5);
+        channel_destroy(channel);
+        driver_destroy(driver);
+    }
+}

@@ -751,6 +751,48 @@ typedef struct UrpProgrammeFenceBinding {
 	uint32_t reserved;	       /**< Must be zero. */
 } UrpProgrammeFenceBinding;
 
+/** Opt-in same-render observation binding. V1 remains version one. */
+#define URP_PROGRAMME_FENCE_V2_ABI_VERSION 2U
+/** Software observation prefix version, independent of the binding version. */
+#define URP_PROGRAMME_OBSERVATION_ABI_VERSION 1U
+/** Immutable SDK-owned record borrowed only during the synchronous callback.
+ * Buffering belongs to the actual successful graph call, including every
+ * audible predecessor. No physical-presentation or wall-clock bound is supplied.
+ * Retirement authority is one bounded coherent post-graph snapshot, not a
+ * completed-render acknowledgment or the newest concurrent publication.
+ * Invalidation precedes successor release-publication; TX acquire-adoption
+ * precedes this read, so an adopted successor cannot inherit old authority.
+ * A concurrent unadopted predecessor may linearize before that update.
+ * Consumers awaiting R also require prior same-generation completed feedback R. */
+typedef struct UrpProgrammeObservationV1 {
+	uint32_t struct_size;	   /**< Complete readable prefix, at least 96 bytes. */
+	uint32_t abi_version;	   /**< URP_PROGRAMME_OBSERVATION_ABI_VERSION. */
+	uint64_t radio_generation; /**< Actual nonzero physical lifecycle. */
+	uint32_t frame_count;	   /**< Actual nonzero frames in this graph invocation. */
+	uint32_t reserved;	   /**< Zero. */
+	uint64_t current_retirement_request_id; /**< Zero if absent/incoherent/wrong generation. */
+	UrpProgrammeBuffering programme_buffering; /**< Current all-audible aggregate. */
+} UrpProgrammeObservationV1;
+/** Same bounded/no-unwind contract as UrpProgrammePermit.
+ * Copy scalar fields if needed; never retain the borrowed observation pointer.
+ * No callback occurs for a failed or skipped graph operation.
+ * @param context Borrowed state retained through confirmed quiescence.
+ * @param observation Immutable software record borrowed for this call only.
+ * @return Exactly one permits programme; all other values deny. */
+typedef uint32_t (*UrpProgrammeObservedPermit)(void *context,
+					       const UrpProgrammeObservationV1 *observation);
+/** Opt-in V2 envelope on the existing descriptor methods and RPPF option.
+ * base.struct_size covers this prefix; base.abi_version is two; base.permit
+ * must be NULL; base.reserved and base.accepted_abi_version must be zero.
+ * Require actual zero status AND accepted ABI two with other fields unchanged.
+ * Larger tails remain untouched. Old providers reject V2 without changing V1
+ * retention. V1 lifecycle/quiescence rules apply unchanged; existing alpha35
+ * does not provide this capability. No physical qualification is implied. */
+typedef struct UrpProgrammeFenceBindingV2 {
+	UrpProgrammeFenceBinding base;		    /**< Unchanged 32-byte V1 layout. */
+	UrpProgrammeObservedPermit observed_permit; /**< NULL explicitly unbinds while stopped. */
+} UrpProgrammeFenceBindingV2;
+
 /** Exact native PCM/metadata callback contract shared by every host adapter. */
 #define URP_AST_DIRECT_CALLBACKS_ABI_VERSION 6U
 

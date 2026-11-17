@@ -2171,3 +2171,50 @@ fn programme_fence_native_requires_stopped_sized_ack_and_retains_failed_start_ow
         api.native_destroy.unwrap()(handle);
     }
 }
+
+#[test]
+fn programme_fence_v2_native_requires_stopped_sized_ack_and_retains_failed_start_owner() {
+    let call = super::programme_fence::bindings()[0];
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    let raw = radio();
+    let (status, handle) = create(&request(&raw));
+    assert_eq!(status, URP_AST_OK);
+    let api = product_descriptor();
+    super::programme_fence::reject_invalid_v2(call, handle);
+    let mut value = super::programme_fence::binding_v2();
+    // SAFETY: the native handle and static permit remain live through confirmed stop/destroy.
+    unsafe {
+        assert_eq!(call(handle, ptr::from_mut(&mut value).cast()), 0);
+        assert_eq!(value.base.accepted, 2);
+        assert_eq!(api.native_start.unwrap()(handle), 0);
+        value.base.accepted = 0;
+        value.observed = None;
+        assert_eq!(
+            call(handle, ptr::from_mut(&mut value).cast()),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(value.base.accepted, 0);
+        fixture::set_failure(fixture::FAIL_STOP);
+        assert_ne!(api.native_stop.unwrap()(handle), 0);
+        assert_eq!(
+            call(handle, ptr::from_mut(&mut value).cast()),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(value.base.accepted, 0);
+        fixture::clear_failure();
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        assert_eq!(api.native_start.unwrap()(handle), 0);
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        fixture::set_failure(fixture::FAIL_START_ONCE);
+        assert_ne!(api.native_start.unwrap()(handle), 0);
+        assert_eq!(
+            call(handle, ptr::from_mut(&mut value).cast()),
+            URP_AST_CHANNEL_BUSY
+        );
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        assert_eq!(call(handle, ptr::from_mut(&mut value).cast()), 0);
+        assert_eq!(value.base.accepted, 2);
+        api.native_destroy.unwrap()(handle);
+    }
+}

@@ -854,12 +854,59 @@ struct SharedGraph(Arc<GraphStage>);
 /// or hardware APIs. Its context and code
 /// remain live until quiescent unbind/rebind or destruction.
 #[derive(Clone, Copy)]
-pub struct ProgrammeFence {
-    /// Borrowed caller-owned state, never dereferenced by this library.
-    pub context: *mut c_void,
-    /// Actual physical generation and graph frame count, not source timestamps.
-    pub permit: unsafe extern "C" fn(*mut c_void, u64, u32) -> u32,
+pub enum ProgrammeFence {
+    /// Version-one callback with unchanged generation/frame semantics.
+    Legacy {
+        /// Borrowed caller-owned state, never dereferenced by this library.
+        context: *mut c_void,
+        /// Actual physical generation and graph frame count, not source timestamps.
+        permit: unsafe extern "C" fn(*mut c_void, u64, u32) -> u32,
+    },
+    /// Opt-in version-two binding, observing this successful graph operation.
+    Observed {
+        /// Borrowed caller-owned state retained through quiescence.
+        context: *mut c_void,
+        /// Record is immutable and borrowed only until this synchronous call returns.
+        permit: unsafe extern "C" fn(*mut c_void, *const ProgrammeObservationV1) -> u32,
+    },
 }
+
+/// Software-only observation of one successful final programme graph operation.
+/// No field asserts physical presentation time or the newest concurrent update.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ProgrammeObservationV1 {
+    /// Complete readable prefix, 96 bytes on supported Debian amd64/arm64.
+    pub struct_size: u32,
+    /// Observation ABI, one (independent of the binding version).
+    pub abi_version: u32,
+    /// Nonzero physical lifecycle generation, not a graph or controller identity.
+    pub radio_generation: u64,
+    /// Actual frames processed by this graph call, including split host blocks.
+    pub frame_count: u32,
+    /// Zero.
+    pub reserved: u32,
+    /// Coherent retirement authority sampled after processing; zero if unavailable.
+    /// This is not completed-render feedback or strict concurrent revocation.
+    pub current_retirement_request_id: u64,
+    /// Actual operation's aggregate across all audible graphs; Unknown stays Unknown.
+    pub programme_buffering: ProgrammeBuffering,
+}
+
+/// Internal borrowed access to the station's retained retirement mailbox.
+/// Binding requires the mailbox and reader code to outlive every graph invocation.
+#[derive(Clone, Copy)]
+pub struct ProgrammeRetirementReader {
+    /// Stable station-owned mailbox, never dereferenced by this runtime.
+    pub context: *const c_void,
+    /// One bounded coherent read for the actual physical generation; no retries.
+    pub read: unsafe fn(*const c_void, u64) -> u64,
+}
+
+// SAFETY: moving this borrowed port grants no concurrent access. Binding requires
+// the stable mailbox/code to remain live through the original serial TX owner's
+// quiescence; its reader is bounded and accesses coherent atomic state only.
+unsafe impl Send for ProgrammeRetirementReader {}
 
 // SAFETY: copying the borrowed address transfers no access. The unsafe binding
 // contract requires one serial TX owner and context lifetime through quiescence.
@@ -869,6 +916,7 @@ unsafe impl Send for ProgrammeFence {}
 struct BoundProgrammeFence {
     port: ProgrammeFence,
     generation: u64,
+    retirement: Option<ProgrammeRetirementReader>,
 }
 
 struct OutputLoudnessStage {
@@ -1048,16 +1096,24 @@ impl ProcessingGeneration {
     /// Only the original serial TX owner may call this, between graph operations.
     /// The callback/context must remain live through all ensuing renders, and
     /// obey the bounded no-allocation/no-unwind contract of ProgrammeFence.
+    /// A supplied retirement reader must retain its mailbox/code until this owner
+    /// quiesces; it is sampled only after successful processing, never cached here.
+    /// Its reader must be bounded, allocation-free and non-unwinding, and safe to
+    /// read coherent atomic mailbox state from this serial TX thread.
     pub unsafe fn set_transmit_programme_fence(
         &self,
         port: Option<ProgrammeFence>,
         generation: u64,
+        retirement: Option<ProgrammeRetirementReader>,
     ) {
         let stage = self.transmit_loudness.as_ref().expect("prepared TX meter");
         // SAFETY: the caller is the sole TX owner between graph operations.
         unsafe {
-            *stage.programme_fence.get() =
-                port.map(|port| BoundProgrammeFence { port, generation });
+            *stage.programme_fence.get() = port.map(|port| BoundProgrammeFence {
+                port,
+                generation,
+                retirement,
+            });
         }
     }
 
@@ -1227,8 +1283,33 @@ unsafe extern "C" fn metered_graph_process(
     if let Some(fence) = unsafe { *stage.programme_fence.get() } {
         // Zero is never a physical generation. Do not delegate its admission.
         let permitted = fence.generation != 0
-            // SAFETY: the binding contract retains this bounded callback/context.
-            && unsafe { (fence.port.permit)(fence.port.context, fence.generation, frame_count) } == 1;
+            && match fence.port {
+                ProgrammeFence::Legacy { context, permit } => {
+                    // SAFETY: binding retains this bounded callback/context.
+                    (unsafe { permit(context, fence.generation, frame_count) }) == 1
+                }
+                ProgrammeFence::Observed { context, permit } => {
+                    // SAFETY: this sole graph owner just completed the entire operation,
+                    // including every predecessor audible anywhere in this block.
+                    let programme_buffering = unsafe { *stage.graph.0.buffering.get() };
+                    let current_retirement_request_id = fence.retirement.map_or(0, |reader| {
+                        // SAFETY: station binding retains its stable mailbox and code.
+                        unsafe { (reader.read)(reader.context, fence.generation) }
+                    });
+                    let observation = ProgrammeObservationV1 {
+                        struct_size: std::mem::size_of::<ProgrammeObservationV1>() as u32,
+                        abi_version: 1,
+                        radio_generation: fence.generation,
+                        frame_count,
+                        reserved: 0,
+                        current_retirement_request_id,
+                        programme_buffering,
+                    };
+                    // SAFETY: binding retains callback/context; the record remains live
+                    // and immutable only for this synchronous, bounded invocation.
+                    (unsafe { permit(context, &observation) }) == 1
+                }
+            };
         if !permitted {
             // SAFETY: the successful graph call validated this writable span.
             unsafe { slice::from_raw_parts_mut(output, frame_count as usize) }.fill(0.0);

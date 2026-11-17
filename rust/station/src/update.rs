@@ -220,6 +220,16 @@ pub(super) struct UpdateMailbox {
     retirement_ack: crate::feedback::Slot<2>,
 }
 
+/// The TX context retains this mailbox through graph quiescence. The graph calls
+/// this once after processing, not at TX entry. Successor release-publication is
+/// preceded by authority invalidation; TX acquire-adoption therefore prevents an
+/// adopted successor from observing obsolete authority. An unadopted concurrent
+/// predecessor may linearize before that update; this is not newest-value proof.
+unsafe fn read_retirement_authority(context: *const std::ffi::c_void, generation: u64) -> u64 {
+    // SAFETY: the sole TX binding borrows its retained stable UpdateMailbox.
+    unsafe { &*context.cast::<UpdateMailbox>() }.retired_request(generation)
+}
+
 impl UpdateMailbox {
     pub(super) fn retired_request(&self, generation: u64) -> u64 {
         self.retirement_ack
@@ -260,7 +270,16 @@ impl UpdateMailbox {
         let processing = unsafe { self.transmit_processing.load(Ordering::Acquire).as_ref() }
             .unwrap_or_else(|| station.processing());
         // SAFETY: forwarded to the same sole TX owner between graph operations.
-        unsafe { processing.set_transmit_programme_fence(port, generation) };
+        unsafe {
+            processing.set_transmit_programme_fence(
+                port,
+                generation,
+                Some(usbradioplus_runtime::ProgrammeRetirementReader {
+                    context: ptr::from_ref(self).cast(),
+                    read: read_retirement_authority,
+                }),
+            );
+        }
     }
 
     fn publish(&self, owner: &UpdateOwner) {
@@ -714,5 +733,48 @@ impl StationRuntime {
             &mut receive.voter_reporting,
         );
         self.updates.transmit(&mut transmit.station);
+    }
+}
+
+#[cfg(test)]
+mod observation_tests {
+    use super::*;
+
+    #[test]
+    fn programme_observation_reader_is_generation_scoped_and_incoherence_is_zero() {
+        let mailbox = UpdateMailbox::default();
+        mailbox.retirement_ack.publish([25, 11]);
+        let raw = ptr::from_ref(&mailbox).cast();
+        // SAFETY: the mailbox outlives all synchronous reader calls.
+        unsafe {
+            assert_eq!(read_retirement_authority(raw, 25), 11);
+            assert_eq!(read_retirement_authority(raw, 26), 0);
+            assert_eq!(read_retirement_authority(raw, 0), 0);
+        }
+        crate::feedback::tests::interrupt_publication(&mailbox.retirement_ack);
+        // SAFETY: an in-progress atomic publication is legal input to the bounded reader.
+        assert_eq!(unsafe { read_retirement_authority(raw, 25) }, 0);
+    }
+
+    #[test]
+    fn programme_observation_unadopted_predecessor_may_read_before_concurrent_invalidation() {
+        let mailbox = UpdateMailbox::default();
+        mailbox.retirement_ack.publish([25, 11]);
+        let read_done = std::sync::Barrier::new(2);
+        let invalidated = std::sync::Barrier::new(2);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                read_done.wait();
+                mailbox.retirement_ack.publish([0, 0]);
+                invalidated.wait();
+            });
+            // No successor has been acquire-adopted. This predecessor snapshot
+            // may linearize before the concurrent control publication.
+            let before = mailbox.retired_request(25);
+            read_done.wait();
+            invalidated.wait();
+            assert_eq!(before, 11);
+            assert_eq!(mailbox.retired_request(25), 0);
+        });
     }
 }

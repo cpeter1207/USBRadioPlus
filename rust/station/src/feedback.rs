@@ -218,4 +218,4 @@ impl FeedbackState {
 
 #[cfg(test)]
 #[path = "tests/feedback_tests.rs"]
-mod tests;
+pub(crate) mod tests;

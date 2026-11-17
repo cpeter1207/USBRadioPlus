@@ -25,6 +25,20 @@ _Static_assert(sizeof(UrpProgrammeFenceBinding) == 32, "RPPF sized binding layou
 _Static_assert(offsetof(UrpProgrammeFenceBinding, accepted_abi_version) == 24,
 	       "RPPF retention acknowledgment offset");
 _Static_assert(URP_AST_OPTION_PROGRAMME_FENCE == 0x52505046, "RPPF option identity");
+_Static_assert(URP_PROGRAMME_FENCE_ABI_VERSION == 1, "V1 source contract is unchanged");
+_Static_assert(URP_PROGRAMME_FENCE_V2_ABI_VERSION == 2, "V2 is explicitly negotiated");
+_Static_assert(sizeof(UrpProgrammeFenceBindingV2) == 40, "V2 binding extent");
+_Static_assert(offsetof(UrpProgrammeFenceBindingV2, observed_permit) == 32,
+	       "V2 callback follows unchanged V1 prefix");
+_Static_assert(sizeof(UrpProgrammeObservationV1) == 96, "software observation extent");
+_Static_assert(offsetof(UrpProgrammeObservationV1, radio_generation) == 8,
+	       "actual physical generation offset");
+_Static_assert(offsetof(UrpProgrammeObservationV1, frame_count) == 16,
+	       "actual graph frame count offset");
+_Static_assert(offsetof(UrpProgrammeObservationV1, current_retirement_request_id) == 24,
+	       "coherent retirement authority offset");
+_Static_assert(offsetof(UrpProgrammeObservationV1, programme_buffering) == 32,
+	       "actual all-audible graph record offset");
 
 int main(void)
 {
@@ -53,6 +67,14 @@ int main(void)
 	assert(api->native_programme_fence_bind(NULL, &fence) == URP_AST_INVALID_ARGUMENT);
 	assert(api->channel_programme_fence_bind(NULL, &fence) == URP_AST_INVALID_ARGUMENT);
 	assert(fence.accepted_abi_version == 0);
+	UrpProgrammeFenceBindingV2 observed = {
+		.base = {.struct_size = sizeof(observed),
+			 .abi_version = URP_PROGRAMME_FENCE_V2_ABI_VERSION},
+	};
+	assert(api->native_programme_fence_bind(NULL, &observed.base) == URP_AST_INVALID_ARGUMENT);
+	assert(api->channel_programme_fence_bind(NULL, &observed.base) == URP_AST_INVALID_ARGUMENT);
+	assert(observed.base.accepted_abi_version == 0);
+
 	UrpProgrammeBuffering buffering = {.struct_size = sizeof(buffering), .abi_version = 1};
 	assert(api->link_programme_buffering(NULL, &buffering) == URP_AST_INVALID_ARGUMENT);
 	assert(buffering.flags == 0 && buffering.struct_size == sizeof(buffering));

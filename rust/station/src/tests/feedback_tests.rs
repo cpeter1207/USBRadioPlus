@@ -131,3 +131,8 @@ fn cached_service_has_unknown_age_and_long_lived_positions_do_not_wrap() {
         assert_eq!(record.flags & FEEDBACK_READBACK_VALID, 0);
     }
 }
+
+// Deliberately leave an atomic test publication in progress; no production hook.
+pub(crate) fn interrupt_publication<const N: usize>(slot: &Slot<N>) {
+    slot.sequence.fetch_or(1, Ordering::Release);
+}

@@ -3127,7 +3127,7 @@ fn programme_fence_survives_same_device_adoption_and_waits_for_rendered_retireme
         answer: 0,
         calls: 0,
     };
-    let port = usbradioplus_runtime::ProgrammeFence {
+    let port = usbradioplus_runtime::ProgrammeFence::Legacy {
         context: ptr::from_mut(&mut probe).cast(),
         permit,
     };
@@ -3221,7 +3221,275 @@ fn programme_fence_stays_closed_through_failed_forward_and_reverse_adoption() {
         let mut calls = 0_u32;
         // SAFETY: this counter/code remains live through stopped unbind; no hardware opens.
         unsafe {
-            runtime.bind_programme_fence(Some(usbradioplus_runtime::ProgrammeFence {
+            runtime.bind_programme_fence(Some(usbradioplus_runtime::ProgrammeFence::Legacy {
+                context: ptr::from_mut(&mut calls).cast(),
+                permit: deny,
+            }))
+        }
+        .unwrap();
+        runtime.start().unwrap();
+        render(&mut runtime);
+        let original_epoch = control.transmit_loudness().unwrap().epoch;
+        assert!(matches!(
+            runtime.retire_programme(&mut control, &factory(), radio_provider(), 25, 11),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        crate::media::tests::FAIL_NEXT_APPLY.set(true);
+        if fail_receive {
+            update_tick(&mut runtime, true);
+            render(&mut runtime);
+        } else {
+            render(&mut runtime);
+            update_tick(&mut runtime, true);
+        }
+        assert!(matches!(
+            runtime.retire_programme(&mut control, &factory(), radio_provider(), 25, 11),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        update_tick(&mut runtime, true);
+        render(&mut runtime);
+        assert!(
+            runtime
+                .retire_programme(&mut control, &factory(), radio_provider(), 25, 11)
+                .is_err()
+        );
+        render(&mut runtime);
+        assert_ne!(control.transmit_loudness().unwrap().epoch, original_epoch);
+        assert_eq!(
+            // SAFETY: the fixture is the only callback owner; this is completed-render feedback.
+            unsafe {
+                (*runtime._transmit_context.get())
+                    .feedback_record
+                    .programme_retirement_id
+            },
+            0
+        );
+        assert!(
+            calls >= 4,
+            "both forward and reverse renders must invoke the same gate"
+        );
+        runtime.stop().unwrap();
+        // SAFETY: successful stop quiesced all borrowers before releasing the counter.
+        unsafe { runtime.bind_programme_fence(None) }.unwrap();
+    }
+}
+
+#[test]
+fn programme_observation_authority_and_previous_completion_remain_distinct_after_adoption() {
+    use usbradioplus_runtime::{ProgrammeFence, ProgrammeObservationV1};
+    struct Probe {
+        observed: Option<ProgrammeObservationV1>,
+        previous: crate::RadioFeedback,
+        calls: u32,
+    }
+    unsafe extern "C" fn observed(raw: *mut c_void, value: *const ProgrammeObservationV1) -> u32 {
+        // SAFETY: fixture retains the probe; this immutable record is borrowed synchronously.
+        let probe = unsafe { &mut *raw.cast::<Probe>() };
+        // SAFETY: SDK supplies the complete known prefix for this callback.
+        probe.observed = Some(unsafe { *value });
+        probe.calls += 1;
+        0
+    }
+    unsafe extern "C" fn feedback(raw: *mut c_void, value: *const crate::RadioFeedback) {
+        // SAFETY: both synchronous callbacks use the same exclusive fixture owner.
+        unsafe { (*raw.cast::<Probe>()).previous = *value };
+    }
+    let (mut runtime, mut control) = runtime(25);
+    runtime
+        .hardware_state()
+        .publish_requests(ControllerRequests {
+            transmit: true,
+            render_admitted: true,
+            ..ControllerRequests::default()
+        });
+    let mut probe = Probe {
+        observed: None,
+        previous: Default::default(),
+        calls: 0,
+    };
+    let raw = ptr::from_mut(&mut probe).cast();
+    // SAFETY: fixture retains code/context through confirmed stop and destruction.
+    unsafe {
+        runtime
+            .bind_programme_fence(Some(ProgrammeFence::Observed {
+                context: raw,
+                permit: observed,
+            }))
+            .unwrap();
+        runtime
+            .bind_feedback(Some(crate::RadioFeedbackPort {
+                struct_size: size_of::<crate::RadioFeedbackPort>() as u32,
+                abi_version: 1,
+                context: raw,
+                publish: Some(feedback),
+            }))
+            .unwrap();
+    }
+    runtime.start().unwrap();
+    update_tick(&mut runtime, false);
+    assert_eq!(probe.observed.unwrap().current_retirement_request_id, 0);
+    for request in [11, 12] {
+        assert!(matches!(
+            runtime.retire_programme(&mut control, &factory(), radio_provider(), 25, request),
+            Err(crate::StationUpdateError::Pending)
+        ));
+        update_tick(&mut runtime, true);
+        update_tick(&mut runtime, false);
+        assert_eq!(probe.observed.unwrap().current_retirement_request_id, 0);
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 25, request)
+            .unwrap();
+        // Commit alone has not fabricated completed-render feedback.
+        assert_ne!(probe.previous.programme_retirement_id, request);
+        update_tick(&mut runtime, false);
+        let observation = probe.observed.unwrap();
+        assert_eq!(
+            (observation.radio_generation, observation.frame_count),
+            (25, 960)
+        );
+        assert_eq!(observation.current_retirement_request_id, request);
+        assert_ne!(probe.previous.programme_retirement_id, request);
+        update_tick(&mut runtime, false);
+        assert_eq!(probe.previous.programme_retirement_id, request);
+        // Repeating a committed request is idempotent, never new authority.
+        runtime
+            .retire_programme(&mut control, &factory(), radio_provider(), 25, request)
+            .unwrap();
+        assert!(
+            runtime
+                .retire_programme(&mut control, &factory(), radio_provider(), 26, request + 1)
+                .is_err()
+        );
+        update_tick(&mut runtime, false);
+        assert_eq!(
+            probe.observed.unwrap().current_retirement_request_id,
+            request
+        );
+        if request == 11 {
+            // Rejection before invalidation preserves authority on the unchanged owner.
+            let (foreign, foreign_control) = self::runtime(25);
+            let rejected = foreign
+                .prepare_update(
+                    &foreign_control,
+                    foreign_control.plan().clone(),
+                    &factory(),
+                    radio_provider(),
+                )
+                .unwrap();
+            assert!(runtime.begin_update(&control, rejected).is_err());
+            update_tick(&mut runtime, false);
+            assert_eq!(probe.observed.unwrap().current_retirement_request_id, 11);
+            let old_epoch = control.transmit_loudness().unwrap().epoch;
+            let mut config = control.plan().configuration().clone();
+            config.voice_telemetry.output_gain_db = -3.0;
+            let plan =
+                StationPlan::new("usb", config, control.plan().transport(), 25, 960).unwrap();
+            let update = runtime
+                .prepare_update(&control, plan, &factory(), radio_provider())
+                .unwrap();
+            runtime.begin_update(&control, update).unwrap();
+            assert_eq!(control.transmit_loudness().unwrap().epoch, old_epoch);
+            // TX acquire-adopts the release-published successor. Old completion R
+            // is still published at entry, but its post-graph authority must be zero.
+            update_tick(&mut runtime, false);
+            assert_ne!(control.transmit_loudness().unwrap().epoch, old_epoch);
+            assert_eq!(probe.previous.programme_retirement_id, 11);
+            assert_eq!(probe.observed.unwrap().current_retirement_request_id, 0);
+            update_tick(&mut runtime, true);
+            runtime.finish_update(&mut control, true).unwrap();
+            assert!(
+                runtime
+                    .retire_programme(&mut control, &factory(), radio_provider(), 25, 11)
+                    .is_err()
+            );
+        }
+    }
+    runtime.stop().unwrap();
+}
+
+#[test]
+fn programme_observation_absent_for_skipped_or_failed_render() {
+    unsafe extern "C" fn count(
+        raw: *mut c_void,
+        _: *const usbradioplus_runtime::ProgrammeObservationV1,
+    ) -> u32 {
+        // SAFETY: this sole owner retains its counter through stop.
+        unsafe { *raw.cast::<u32>() += 1 };
+        1
+    }
+    // Existing generation-26 fixture successfully renders without invoking its graph.
+    let (mut runtime, _control) = runtime(26);
+    let mut calls = 0_u32;
+    // SAFETY: counter/code remain live for every serial callback.
+    unsafe {
+        runtime
+            .bind_programme_fence(Some(usbradioplus_runtime::ProgrammeFence::Observed {
+                context: ptr::from_mut(&mut calls).cast(),
+                permit: count,
+            }))
+            .unwrap();
+    }
+    runtime.start().unwrap();
+    update_tick(&mut runtime, false);
+    assert_eq!(calls, 0);
+    let mut output = [0.0; 1920];
+    assert_ne!(
+        // SAFETY: zero frames is rejected; complete output allocation still belongs to fixture.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                0,
+            )
+        },
+        0
+    );
+    assert_eq!(calls, 0);
+    runtime.stop().unwrap();
+}
+
+#[test]
+fn programme_fence_v2_stays_closed_through_failed_forward_and_reverse_adoption() {
+    unsafe extern "C" fn deny(
+        raw: *mut c_void,
+        value: *const usbradioplus_runtime::ProgrammeObservationV1,
+    ) -> u32 {
+        // SAFETY: the synchronous callback borrows the complete observation.
+        let value = unsafe { &*value };
+        assert_eq!((value.radio_generation, value.frame_count), (25, 960));
+        assert_eq!(value.current_retirement_request_id, 0);
+        // SAFETY: this serial fixture retains the counter through stopped unbind.
+        unsafe { *raw.cast::<u32>() += 1 };
+        0
+    }
+    fn render(runtime: &mut StationRuntime) {
+        let mut output = [1.0; 1920];
+        assert_eq!(
+            // SAFETY: fake audio has no background owner; the fixture lends exact stereo output.
+            unsafe {
+                transmit_callback(
+                    runtime._transmit_context.get().cast(),
+                    output.as_mut_ptr(),
+                    960,
+                )
+            },
+            0
+        );
+        assert!(output.iter().all(|sample| *sample == 0.0));
+    }
+    for fail_receive in [true, false] {
+        let (mut runtime, mut control) = runtime(25);
+        runtime
+            .hardware_state()
+            .publish_requests(ControllerRequests {
+                transmit: true,
+                render_admitted: true,
+                ..ControllerRequests::default()
+            });
+        let mut calls = 0_u32;
+        // SAFETY: this counter/code remains live through stopped unbind; no hardware opens.
+        unsafe {
+            runtime.bind_programme_fence(Some(usbradioplus_runtime::ProgrammeFence::Observed {
                 context: ptr::from_mut(&mut calls).cast(),
                 permit: deny,
             }))

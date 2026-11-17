@@ -77,6 +77,25 @@ pub struct UrpProgrammeFenceBinding {
     pub reserved: u32,
 }
 
+/// Unchanged version-one programme fence envelope.
+pub const URP_PROGRAMME_FENCE_ABI_VERSION: u32 = 1;
+/// Opt-in same-render observation envelope; old providers must reject it.
+pub const URP_PROGRAMME_FENCE_V2_ABI_VERSION: u32 = 2;
+/// Immutable synchronous software observation, independently versioned as one.
+pub use usbradioplus_runtime::ProgrammeObservationV1 as UrpProgrammeObservationV1;
+
+/// Stopped-only opt-in observation binding; no descriptor or V1 layout change.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct UrpProgrammeFenceBindingV2 {
+    /// Size covers this complete record, version two, legacy permit null, ack zero.
+    pub base: UrpProgrammeFenceBinding,
+    /// Exactly one permits programme. None explicitly unbinds while quiescent.
+    /// Code/context lifetime and bounded-callback constraints are identical to V1.
+    pub observed_permit:
+        Option<unsafe extern "C" fn(*mut c_void, *const UrpProgrammeObservationV1) -> u32>,
+}
+
 const ABI_VERSION: u32 = 1;
 const MAXIMUM_FRAME_COUNT: u32 = 960;
 const HANDOFF_SLOTS: usize = 3;
@@ -2790,21 +2809,43 @@ unsafe fn programme_fence(
     }
     // SAFETY: the advertised size now covers this complete prefix.
     let binding = unsafe { raw.read_unaligned() };
-    if binding.abi_version != 1 || binding.reserved != 0 || binding.accepted_abi_version != 0 {
+    if binding.reserved != 0 || binding.accepted_abi_version != 0 {
         return Err(Status::IncompatibleAbi);
     }
-    Ok(binding
-        .permit
-        .map(|permit| usbradioplus_runtime::ProgrammeFence {
-            context: binding.context,
-            permit,
-        }))
+    match binding.abi_version {
+        URP_PROGRAMME_FENCE_ABI_VERSION => {
+            Ok(binding
+                .permit
+                .map(|permit| usbradioplus_runtime::ProgrammeFence::Legacy {
+                    context: binding.context,
+                    permit,
+                }))
+        }
+        URP_PROGRAMME_FENCE_V2_ABI_VERSION => {
+            if (size as usize) < size_of::<UrpProgrammeFenceBindingV2>() || binding.permit.is_some()
+            {
+                return Err(Status::IncompatibleAbi);
+            }
+            // SAFETY: validated size and version cover exactly the known V2 tail.
+            let binding = unsafe { raw.cast::<UrpProgrammeFenceBindingV2>().read_unaligned() };
+            Ok(binding.observed_permit.map(|permit| {
+                usbradioplus_runtime::ProgrammeFence::Observed {
+                    context: binding.base.context,
+                    permit,
+                }
+            }))
+        }
+        _ => Err(Status::IncompatibleAbi),
+    }
 }
 
 /// Acknowledge only after the existing stopped owner retained the validated port.
 unsafe fn acknowledge_programme_fence(raw: *mut UrpProgrammeFenceBinding) {
     // SAFETY: caller validated the complete writable prefix before retention.
-    unsafe { ptr::addr_of_mut!((*raw).accepted_abi_version).write_unaligned(1) };
+    unsafe {
+        let version = ptr::addr_of!((*raw).abi_version).read_unaligned();
+        ptr::addr_of_mut!((*raw).accepted_abi_version).write_unaligned(version);
+    };
 }
 
 unsafe extern "C" fn channel_programme_fence_bind(

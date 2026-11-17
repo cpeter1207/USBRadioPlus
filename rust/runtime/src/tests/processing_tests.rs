@@ -481,6 +481,7 @@ unsafe impl Sync for TestGraphDescriptor {}
 struct TestGraphState {
     maximum_frame_count: u32,
     processed_blocks: usize,
+    processed_frames: u64,
     delay: Vec<f32>,
     delay_cursor: usize,
     gain: f32,
@@ -533,6 +534,7 @@ unsafe extern "C" fn graph_create(
         *output = Box::into_raw(Box::new(TestGraphState {
             maximum_frame_count: config.maximum_frame_count,
             processed_blocks: 0,
+            processed_frames: 0,
             delay: vec![0.0; lookahead],
             delay_cursor: 0,
             gain,
@@ -576,6 +578,7 @@ unsafe extern "C" fn graph_process_adapter(
         }
     }
     state.processed_blocks += 1;
+    state.processed_frames += u64::from(frame_count);
     if GRAPH_REPORT_HISTORY.get() {
         output.fill(state.processed_blocks as f32);
     }
@@ -2263,12 +2266,12 @@ fn programme_fence_suppresses_real_delayed_composite_before_control_retirement()
         answer: 0,
         calls: 0,
     };
-    let port = ProgrammeFence {
+    let port = ProgrammeFence::Legacy {
         context: ptr::from_mut(&mut probe).cast(),
         permit,
     };
     // SAFETY: this graph is used only by the original serial TX owner; probe outlives it.
-    unsafe { fenced.set_transmit_programme_fence(Some(port), 7) };
+    unsafe { fenced.set_transmit_programme_fence(Some(port), 7, None) };
     let mut delayed_witness = false;
     for _ in 0..32 {
         delayed_witness |= process_transmit(&mut witness, &[0.0; 960])
@@ -2294,14 +2297,14 @@ fn programme_fence_suppresses_real_delayed_composite_before_control_retirement()
     ] {
         probe.answer = answer;
         // SAFETY: no concurrent render; this replaces only the same owner's scalar fence.
-        unsafe { fenced.set_transmit_programme_fence(Some(port), generation) };
+        unsafe { fenced.set_transmit_programme_fence(Some(port), generation, None) };
         let audible = process_transmit(&mut fenced, &[0.25; 960])
             .iter()
             .any(|v| *v != 0.0);
         assert_eq!(audible, allowed, "generation={generation}, answer={answer}");
     }
     // SAFETY: clearing the binding occurs on its same owner before releasing the probe.
-    unsafe { fenced.set_transmit_programme_fence(None, 7) };
+    unsafe { fenced.set_transmit_programme_fence(None, 7, None) };
     assert!(
         process_transmit(&mut fenced, &[0.25; 960])
             .iter()
@@ -2316,12 +2319,12 @@ fn programme_fence_callback_and_mute_do_not_touch_the_rust_heap() {
         assert_eq!((generation, frames), (7, 960));
         0
     }
-    let port = ProgrammeFence {
+    let port = ProgrammeFence::Legacy {
         context: ptr::null_mut(),
         permit,
     };
     // SAFETY: this is the sole TX owner and the callback/context are static.
-    unsafe { generation.set_transmit_programme_fence(Some(port), 7) };
+    unsafe { generation.set_transmit_programme_fence(Some(port), 7, None) };
     let context = NonNull::from(generation.transmit_loudness.as_ref().unwrap().as_ref())
         .cast()
         .as_ptr();
@@ -2401,11 +2404,12 @@ fn programme_fence_leaves_real_ctcss_dcs_and_ptt_signaling_unchanged() {
         // SAFETY: only this test's serial TX owner uses the graph, with a static gate.
         unsafe {
             closed.set_transmit_programme_fence(
-                Some(ProgrammeFence {
+                Some(ProgrammeFence::Legacy {
                     context: ptr::null_mut(),
                     permit: deny,
                 }),
                 7,
+                None,
             )
         };
         let (_, mut open_tx, _) = radio
@@ -2449,4 +2453,363 @@ fn programme_fence_leaves_real_ctcss_dcs_and_ptt_signaling_unchanged() {
         }
         assert!(observed_voice && observed_tone);
     }
+}
+
+#[test]
+fn programme_observation_is_post_graph_current_bounded_and_allocation_free() {
+    struct Probe {
+        seen: Option<ProgrammeObservationV1>,
+        calls: u32,
+        reads: u32,
+        authority: u64,
+        answer: u32,
+    }
+    unsafe fn read(raw: *const c_void, generation: u64) -> u64 {
+        // SAFETY: this sole serial fixture retains its probe through quiescence.
+        let probe = unsafe { &mut *raw.cast_mut().cast::<Probe>() };
+        assert_eq!(generation, 17);
+        assert!(
+            GRAPH_PROCESSES.get() > 0,
+            "authority must be sampled after processing"
+        );
+        probe.reads += 1;
+        probe.authority
+    }
+    unsafe extern "C" fn observed(raw: *mut c_void, value: *const ProgrammeObservationV1) -> u32 {
+        // SAFETY: probe is retained and the observation is borrowed for this call only.
+        let (probe, value) = unsafe { (&mut *raw.cast::<Probe>(), *value) };
+        assert_eq!(probe.reads, probe.calls + 1);
+        assert_eq!(
+            (value.struct_size, value.abi_version, value.reserved),
+            (96, 1, 0)
+        );
+        assert_eq!(value.radio_generation, 17);
+        probe.seen = Some(value);
+        probe.calls += 1;
+        probe.answer
+    }
+    let generation = factory().prepare(plan()).unwrap();
+    let mut probe = Probe {
+        seen: None,
+        calls: 0,
+        reads: 0,
+        authority: 41,
+        answer: 0,
+    };
+    let raw = ptr::from_mut(&mut probe);
+    // SAFETY: graph and probe have one owner, and reader/code outlive every render.
+    unsafe {
+        generation.set_transmit_programme_fence(
+            Some(ProgrammeFence::Observed {
+                context: raw.cast(),
+                permit: observed,
+            }),
+            17,
+            Some(ProgrammeRetirementReader {
+                context: raw.cast(),
+                read,
+            }),
+        );
+    }
+    let context = NonNull::from(generation.transmit_loudness.as_ref().unwrap().as_ref())
+        .cast()
+        .as_ptr();
+    let input = [0.25; 960];
+    let mut output = [0.0; 960];
+    for (frames, authority, answer) in [(1, 41, 0), (480, 42, 1), (960, 0, 2)] {
+        probe.authority = authority;
+        probe.answer = answer;
+        GRAPH_PROCESSES.set(0);
+        crate::allocation::without_heap(|| {
+            assert_eq!(
+                // SAFETY: complete disjoint spans and the same sole graph owner.
+                unsafe {
+                    metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), frames)
+                },
+                PORT_OK
+            );
+        });
+        let seen = probe.seen.unwrap();
+        assert_eq!(
+            (seen.frame_count, seen.current_retirement_request_id),
+            (frames, authority)
+        );
+        // This deliberately unsupported provider remains Unknown, not known zero.
+        assert_eq!(
+            seen.programme_buffering.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+            0
+        );
+        assert_eq!(
+            output[..frames as usize].iter().any(|v| *v != 0.0),
+            answer == 1
+        );
+    }
+    GRAPH_PROCESS_FAILS.set(true);
+    assert_eq!(
+        // SAFETY: same exclusive owner; failure must not invoke either reader/callback.
+        unsafe { metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 960) },
+        PORT_ERROR
+    );
+    GRAPH_PROCESS_FAILS.set(false);
+    assert_eq!((probe.calls, probe.reads), (3, 3));
+    // SAFETY: zero actual generation is denied without calling outward.
+    unsafe {
+        generation.set_transmit_programme_fence(
+            Some(ProgrammeFence::Observed {
+                context: raw.cast(),
+                permit: observed,
+            }),
+            0,
+            None,
+        );
+        assert_eq!(
+            metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 960),
+            PORT_OK
+        );
+    }
+    assert_eq!((probe.calls, probe.reads), (3, 3));
+    assert!(output.iter().all(|v| *v == 0.0));
+}
+
+#[test]
+fn programme_observation_copies_actual_mixed_graph_bounds_without_fabricated_counts() {
+    unsafe extern "C" fn capture(raw: *mut c_void, value: *const ProgrammeObservationV1) -> u32 {
+        // SAFETY: this serial test owns scalar storage through graph teardown.
+        unsafe { *raw.cast::<Option<ProgrammeObservationV1>>() = Some(*value) };
+        1
+    }
+    // SAFETY: released provider code remains loaded for all derived serial graphs.
+    let provider =
+        // SAFETY: the descriptor and code outlive all derived fixture graphs.
+        unsafe { GraphProvider::from_raw_descriptor(rptadv_ffmpeg_adapter_descriptor()) }.unwrap();
+    let factory =
+        NativeProcessingFactory::new_explicit(provider, None, "/unused/agc.so", 960).unwrap();
+    let mut settings = explicit_raw_plan();
+    settings.voice_telemetry = Some(ProcessingChain::shipped(ChainRole::VoiceTelemetry));
+    let mut previous = factory.prepare(&settings).unwrap();
+    process_transmit(&mut previous, &[0.25; 960]);
+    let mut changed = settings.clone();
+    changed
+        .voice_telemetry
+        .as_mut()
+        .unwrap()
+        .peak_limiter
+        .enabled = true;
+    for (old_known, new_known, reverse) in [
+        (true, true, false),
+        (true, true, true),
+        (false, true, false),
+        (true, false, false),
+    ] {
+        let mut old_settings = if reverse {
+            changed.clone()
+        } else {
+            settings.clone()
+        };
+        let mut new_settings = if reverse {
+            settings.clone()
+        } else {
+            changed.clone()
+        };
+        if !old_known {
+            old_settings.voice_telemetry = None;
+        }
+        if !new_known {
+            new_settings.voice_telemetry = None;
+        }
+        let old = factory.prepare(&old_settings).unwrap();
+        // SAFETY: predecessor and successor retain the same exclusive TX owner.
+        let mut mix =
+            // SAFETY: both retained graphs stay with this same serial TX owner.
+            unsafe { factory.prepare_replacement(&new_settings, &old_settings, &old) }.unwrap();
+        let mut seen = None;
+        // SAFETY: the scalar capture lives beyond every render; no authority reader means zero.
+        unsafe {
+            mix.set_transmit_programme_fence(
+                Some(ProgrammeFence::Observed {
+                    context: ptr::from_mut(&mut seen).cast(),
+                    permit: capture,
+                }),
+                19,
+                None,
+            );
+        }
+        process_transmit(&mut mix, &[0.25; 1]);
+        let observation: ProgrammeObservationV1 = seen.unwrap();
+        assert_eq!(
+            (
+                observation.frame_count,
+                observation.current_retirement_request_id
+            ),
+            (1, 0)
+        );
+        let buffering = observation.programme_buffering;
+        assert_eq!(
+            buffering.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID != 0,
+            old_known && new_known
+        );
+        assert_eq!(
+            buffering.flags
+                & (usbradioplus_core::PROGRAMME_COUNTS_VALID
+                    | usbradioplus_core::PROGRAMME_LAST_BLOCK_VALID),
+            0
+        );
+        assert_eq!(
+            (
+                buffering.accepted_frames,
+                buffering.delivered_frames,
+                buffering.output_fifo_frames
+            ),
+            (0, 0, 0)
+        );
+        assert_eq!(
+            (buffering.zero_prefix_frames, buffering.zero_suffix_frames),
+            (0, 0)
+        );
+        if old_known && new_known {
+            // SAFETY: both prepared contributors belong to this same serial owner,
+            // and their just-completed processing cannot overlap this read.
+            let (primary, predecessor) = unsafe {
+                (
+                    (*mix.transmit_program.0.primary.pointer().as_ptr()).buffering_state(),
+                    (*old.transmit_program.0.primary.pointer().as_ptr()).buffering_state(),
+                )
+            };
+            assert_eq!(
+                buffering.prepared_max_delay_frames,
+                primary
+                    .prepared_max_delay_frames
+                    .max(predecessor.prepared_max_delay_frames)
+            );
+            assert_eq!(
+                buffering.current_max_delay_frames,
+                primary
+                    .current_max_delay_frames
+                    .max(predecessor.current_max_delay_frames)
+            );
+            assert!(buffering.prepared_max_delay_frames > 0);
+            assert!(buffering.current_max_delay_frames <= buffering.prepared_max_delay_frames);
+        }
+    }
+}
+
+#[test]
+fn programme_observation_distinguishes_valid_zero_from_successful_unqualified_pcm() {
+    #[repr(C)]
+    struct State {
+        size: u32,
+        version: u32,
+        flags: u32,
+        reserved: u32,
+        accepted: u64,
+        delivered: u64,
+        fifo: u64,
+        prefix: u32,
+        suffix: u32,
+    }
+    #[repr(C)]
+    struct Descriptor {
+        base: TestGraphDescriptor,
+        buffering: Option<unsafe extern "C" fn(*const c_void, *mut State) -> c_int>,
+    }
+    thread_local! {
+        static INVALID: Cell<bool> = const { Cell::new(false) };
+    }
+    unsafe extern "C" fn buffering(raw: *const c_void, output: *mut State) -> c_int {
+        // SAFETY: graph wrapper lends the live fixture handle and complete state output.
+        let (graph, output) = unsafe { (&*raw.cast::<TestGraphState>(), &mut *output) };
+        *output = State {
+            size: size_of::<State>() as u32,
+            version: 1,
+            flags: 7,
+            reserved: 0,
+            accepted: graph.processed_frames,
+            delivered: graph.processed_frames,
+            // Impossible FIFO on the live query invalidates qualification without
+            // rejecting the independently successful PCM graph operation.
+            fifo: u64::from(INVALID.get()),
+            prefix: 0,
+            suffix: 0,
+        };
+        0
+    }
+    unsafe extern "C" fn capture(
+        raw: *mut c_void,
+        observation: *const ProgrammeObservationV1,
+    ) -> u32 {
+        // SAFETY: scalar capture outlives this synchronous borrowed observation.
+        unsafe { *raw.cast::<Option<ProgrammeObservationV1>>() = Some(*observation) };
+        1
+    }
+    let descriptor = Descriptor {
+        base: TestGraphDescriptor {
+            struct_size: size_of::<Descriptor>() as u32,
+            abi_version: 1,
+            capability_name: c"rptadv.ffmpeg".as_ptr(),
+            create: Some(graph_create),
+            process: None,
+            destroy: Some(graph_destroy),
+            process_block: Some(graph_process_adapter),
+        },
+        buffering: Some(buffering),
+    };
+    // SAFETY: descriptor and callback code outlive every fixture graph.
+    let provider =
+        // SAFETY: the descriptor and code outlive all derived fixture graphs.
+        unsafe { GraphProvider::from_raw_descriptor(ptr::from_ref(&descriptor).cast()) }.unwrap();
+    let mut settings = explicit_raw_plan();
+    settings.voice_telemetry = Some(ProcessingChain::shipped(ChainRole::VoiceTelemetry));
+    settings
+        .voice_telemetry
+        .as_mut()
+        .unwrap()
+        .peak_limiter
+        .enabled = false;
+    let factory =
+        NativeProcessingFactory::new_explicit(provider, None, "/unused/agc.so", 960).unwrap();
+    let mut generation = factory.prepare(&settings).unwrap();
+    let mut seen: Option<ProgrammeObservationV1> = None;
+    // SAFETY: one serial owner retains the scalar capture through graph destruction.
+    unsafe {
+        generation.set_transmit_programme_fence(
+            Some(ProgrammeFence::Observed {
+                context: ptr::from_mut(&mut seen).cast(),
+                permit: capture,
+            }),
+            25,
+            None,
+        );
+    }
+    let first = process_transmit(&mut generation, &[0.25; 1]);
+    assert_eq!(first, [0.25]);
+    let valid = seen.unwrap().programme_buffering;
+    assert_ne!(
+        valid.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+        0
+    );
+    assert_eq!(
+        (
+            valid.current_max_delay_frames,
+            valid.prepared_max_delay_frames
+        ),
+        (0, 0)
+    );
+    INVALID.set(true);
+    let next = process_transmit(&mut generation, &[0.25; 1]);
+    assert_eq!(
+        next,
+        [0.25],
+        "software qualification failure is not a PCM error"
+    );
+    let invalid = seen.unwrap().programme_buffering;
+    assert_eq!(
+        invalid.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+        0
+    );
+    INVALID.set(false);
+    process_transmit(&mut generation, &[0.25; 1]);
+    assert_eq!(
+        seen.unwrap().programme_buffering.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
+        0
+    );
 }
