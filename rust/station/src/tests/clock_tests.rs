@@ -419,7 +419,14 @@ thread_local! {
 }
 
 pub(crate) fn c5_cost(frames: u32, elapsed: std::time::Duration) {
-    C5_COSTS.with(|costs| costs.borrow_mut().push((frames, elapsed.as_nanos() as u64)));
+    C5_COSTS.with(|costs| {
+        let mut costs = costs.borrow_mut();
+        assert!(
+            costs.len() < costs.capacity(),
+            "C5 storage must be preallocated"
+        );
+        costs.push((frames, elapsed.as_nanos() as u64));
+    });
 }
 
 fn c5_render(runtime: &mut StationRuntime, frames: u32) {
@@ -651,3 +658,5 @@ fn stage_c5_historical_adapter_new_sdk_clock_is_unknown() {
     drop(runtime);
     drop(provider);
 }
+
+include!("c5_paired_tests.rs");

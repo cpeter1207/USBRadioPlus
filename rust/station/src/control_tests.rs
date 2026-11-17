@@ -11,9 +11,16 @@ use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_rnnoise::DenoiseProvider;
 
 thread_local! {
+    pub(crate) static C5_FAIL_GRAPH: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static DURING_NEXT_GRAPH: std::cell::RefCell<Option<Box<dyn FnOnce()>>> = const { std::cell::RefCell::new(None) };
     static FAIL_NEXT_GRAPH_CREATE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static SIMULATE_GRAPH_DELAY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Initialize the optional graph-hook TLS before the timing bracket.
+pub(crate) fn c5_prepare_graph_tls() {
+    DURING_NEXT_GRAPH.with(|slot| assert!(slot.borrow().is_none()));
+    C5_FAIL_GRAPH.set(false);
 }
 
 /// Arm only this test thread's next real graph-provider invocation.
@@ -84,6 +91,9 @@ unsafe extern "C" fn graph_process(
     frame_count: u32,
     output: *mut f32,
 ) -> c_int {
+    if C5_FAIL_GRAPH.get() {
+        return -1;
+    }
     let hook = DURING_NEXT_GRAPH.with(|slot| slot.borrow_mut().take());
     if let Some(hook) = hook {
         hook();

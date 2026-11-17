@@ -240,8 +240,10 @@ unsafe extern "C" fn apply_transmit_update(session: *mut c_void, update: *mut c_
 unsafe impl Sync for FakeDescriptor {}
 
 type GraphMeasurement = fn(u32, std::time::Duration);
+type GraphValidation = fn(u32, bool);
 
 thread_local! {
+    pub(crate) static C5_VALIDATE: std::cell::Cell<Option<GraphValidation>> = const { std::cell::Cell::new(None) };
     pub(crate) static C5_MEASURE: std::cell::Cell<Option<GraphMeasurement>> = const { std::cell::Cell::new(None) };
     pub(crate) static CLOCK_GRAPH_SPLIT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
@@ -435,6 +437,9 @@ unsafe extern "C" fn transmit(
                 };
                 if let (Some(record), Some(began)) = (measurement, began) {
                     record(source.len() as u32, began.elapsed());
+                }
+                if let Some(validate) = C5_VALIDATE.get() {
+                    validate(source.len() as u32, status == RADIO_OK);
                 }
                 if status != RADIO_OK {
                     return RADIO_FAILED;
