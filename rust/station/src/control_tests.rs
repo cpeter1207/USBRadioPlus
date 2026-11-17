@@ -11,8 +11,15 @@ use usbradioplus_ffmpeg::GraphProvider;
 use usbradioplus_rnnoise::DenoiseProvider;
 
 thread_local! {
+    static DURING_NEXT_GRAPH: std::cell::RefCell<Option<Box<dyn FnOnce()>>> = const { std::cell::RefCell::new(None) };
     static FAIL_NEXT_GRAPH_CREATE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static SIMULATE_GRAPH_DELAY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Arm only this test thread's next real graph-provider invocation.
+/// The hook runs inside processing, after TX selection, never in production.
+pub(crate) fn during_next_graph(hook: impl FnOnce() + 'static) {
+    DURING_NEXT_GRAPH.with(|slot| assert!(slot.replace(Some(Box::new(hook))).is_none()));
 }
 
 pub(crate) fn simulate_graph_delay(enabled: bool) {
@@ -77,6 +84,10 @@ unsafe extern "C" fn graph_process(
     frame_count: u32,
     output: *mut f32,
 ) -> c_int {
+    let hook = DURING_NEXT_GRAPH.with(|slot| slot.borrow_mut().take());
+    if let Some(hook) = hook {
+        hook();
+    }
     // SAFETY: this fixture exclusively owns its graph and exact sample spans.
     unsafe {
         let graph = &mut *state.cast::<TestGraph>();

@@ -3541,3 +3541,149 @@ fn programme_fence_v2_stays_closed_through_failed_forward_and_reverse_adoption()
         unsafe { runtime.bind_programme_fence(None) }.unwrap();
     }
 }
+
+/// Exercise the retained station mailbox, not a stand-in authority reader.
+/// Channel handshakes deliberately order publication against the in-flight TX;
+/// they do not assert newest-value visibility for an unsynchronized predecessor.
+fn programme_observation_in_flight_update(after_snapshot: bool) {
+    use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
+    use std::time::Duration;
+    use usbradioplus_runtime::{ProgrammeFence, ProgrammeObservationV1};
+
+    struct Probe {
+        observation: Option<ProgrammeObservationV1>,
+        pause: Option<(SyncSender<()>, Receiver<()>)>,
+    }
+    unsafe extern "C" fn observed(raw: *mut c_void, value: *const ProgrammeObservationV1) -> u32 {
+        // SAFETY: the stable boxed probe has one TX owner through stop/unbind.
+        let probe = unsafe { &mut *raw.cast::<Probe>() };
+        // SAFETY: the SDK lends this complete immutable record for this call.
+        let snapshot = unsafe { *value };
+        probe.observation = Some(snapshot);
+        if let Some((reached, resume)) = probe.pause.take() {
+            reached.send(()).unwrap();
+            resume.recv_timeout(Duration::from_secs(10)).unwrap();
+            assert_eq!(
+                // SAFETY: this callback borrow remains live across control publication.
+                unsafe { *value },
+                snapshot,
+                "publication cannot rewrite a captured record"
+            );
+        }
+        0
+    }
+
+    struct TxOwner(*mut c_void);
+    // SAFETY: fake audio has no worker. This fixture lends its stable callback
+    // context to exactly one scoped worker and joins before reuse, stop or drop.
+    unsafe impl Send for TxOwner {}
+    impl TxOwner {
+        fn render(self) {
+            let mut output = [1.0; 1920];
+            assert_eq!(
+                // SAFETY: this worker exclusively owns TX and its exact output span.
+                unsafe { transmit_callback(self.0, output.as_mut_ptr(), 960) },
+                0
+            );
+            assert!(output.iter().all(|sample| *sample == 0.0));
+        }
+    }
+
+    let (mut runtime, mut control) = runtime(25);
+    runtime
+        .hardware_state()
+        .publish_requests(ControllerRequests {
+            transmit: true,
+            render_admitted: true,
+            ..ControllerRequests::default()
+        });
+    let mut probe = Box::new(Probe {
+        observation: None,
+        pause: None,
+    });
+    // SAFETY: the box/code outlive every callback and confirmed stopped unbind.
+    unsafe {
+        runtime.bind_programme_fence(Some(ProgrammeFence::Observed {
+            context: ptr::from_mut(probe.as_mut()).cast(),
+            permit: observed,
+        }))
+    }
+    .unwrap();
+    runtime.start().unwrap();
+    assert!(matches!(
+        runtime.retire_programme(&mut control, &factory(), radio_provider(), 25, 11),
+        Err(crate::StationUpdateError::Pending)
+    ));
+    update_tick(&mut runtime, true);
+    update_tick(&mut runtime, false);
+    runtime
+        .retire_programme(&mut control, &factory(), radio_provider(), 25, 11)
+        .unwrap();
+    update_tick(&mut runtime, false);
+    assert_eq!(probe.observation.unwrap().current_retirement_request_id, 11);
+
+    let old_epoch = control.transmit_loudness().unwrap().epoch;
+    let mut config = control.plan().configuration().clone();
+    config.voice_telemetry.output_gain_db = -3.0;
+    let plan = StationPlan::new("usb", config, control.plan().transport(), 25, 960).unwrap();
+    let update = runtime
+        .prepare_update(&control, plan, &factory(), radio_provider())
+        .unwrap();
+    let (reached, wait) = sync_channel(1);
+    let (resume, released) = sync_channel(1);
+    let owner = TxOwner(runtime._transmit_context.get().cast());
+    probe = std::thread::scope(|scope| {
+        let worker = scope.spawn(move || {
+            if after_snapshot {
+                probe.pause = Some((reached, released));
+            } else {
+                crate::control::tests::during_next_graph(move || {
+                    reached.send(()).unwrap();
+                    released.recv_timeout(Duration::from_secs(10)).unwrap();
+                });
+            }
+            owner.render();
+            probe
+        });
+        wait.recv_timeout(Duration::from_secs(10)).unwrap();
+        // The predecessor is already selected and (for the early case) inside
+        // its graph provider. The real API invalidates the retained mailbox
+        // before release-publishing the successor while that TX remains parked.
+        assert_eq!(control.transmit_loudness().unwrap().epoch, old_epoch);
+        runtime.begin_update(&control, update).unwrap();
+        assert_eq!(control.transmit_loudness().unwrap().epoch, old_epoch);
+        resume.send(()).unwrap();
+        worker.join().unwrap()
+    });
+    let in_flight = probe.observation.unwrap();
+    assert_eq!(
+        (in_flight.radio_generation, in_flight.frame_count),
+        (25, 960)
+    );
+    assert_eq!(
+        in_flight.current_retirement_request_id,
+        if after_snapshot { 11 } else { 0 },
+        "post-graph read sees synchronized invalidation; an already captured record stays unchanged"
+    );
+    // This callback could not adopt mid-block. Only the next TX entry acquires
+    // the published successor, which must never inherit predecessor authority.
+    assert_eq!(control.transmit_loudness().unwrap().epoch, old_epoch);
+    update_tick(&mut runtime, false);
+    assert_ne!(control.transmit_loudness().unwrap().epoch, old_epoch);
+    assert_eq!(probe.observation.unwrap().current_retirement_request_id, 0);
+    update_tick(&mut runtime, true);
+    runtime.finish_update(&mut control, true).unwrap();
+    runtime.stop().unwrap();
+    // SAFETY: stop quiesced both owners before this box is released.
+    unsafe { runtime.bind_programme_fence(None) }.unwrap();
+}
+
+#[test]
+fn programme_observation_in_flight_graph_reads_synchronized_mailbox_invalidation() {
+    programme_observation_in_flight_update(false);
+}
+
+#[test]
+fn programme_observation_in_flight_snapshot_survives_later_publication() {
+    programme_observation_in_flight_update(true);
+}
