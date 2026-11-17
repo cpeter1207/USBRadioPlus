@@ -27,6 +27,13 @@ fn clock_runtime() -> (StationRuntime, StationControlHost) {
 }
 
 fn clock_runtime_generation(generation: u64) -> (StationRuntime, StationControlHost) {
+    clock_runtime_reader(generation, Some(clock_now))
+}
+
+fn clock_runtime_reader(
+    generation: u64,
+    reader: Option<unsafe extern "C" fn() -> u64>,
+) -> (StationRuntime, StationControlHost) {
     assert_eq!(size_of::<AudioDescriptor>(), 192);
     assert_eq!(size_of::<ClockAudioDescriptor>(), 216);
     // SAFETY: this immutable fixture table contains only Copy scalar/pointer fields.
@@ -36,7 +43,7 @@ fn clock_runtime_generation(generation: u64) -> (StationRuntime, StationControlH
         base,
         alsa: None,
         timed_create: None,
-        now: Some(clock_now),
+        now: reader,
     }));
     let provider =
         // SAFETY: the fixture table and functions remain live for this process.
@@ -404,4 +411,243 @@ fn stage_c_clock_old_audio_provider_observation_is_unknown() {
     runtime.stop().unwrap();
     // SAFETY: callback state is released only after confirmed stop.
     unsafe { runtime.bind_programme_fence(None) }.unwrap();
+}
+
+// C5 measures actual final-gate invocations, not callback-normalized estimates.
+thread_local! {
+    pub(crate) static C5_COSTS: std::cell::RefCell<Vec<(u32, u64)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+pub(crate) fn c5_cost(frames: u32, elapsed: std::time::Duration) {
+    C5_COSTS.with(|costs| costs.borrow_mut().push((frames, elapsed.as_nanos() as u64)));
+}
+
+fn c5_render(runtime: &mut StationRuntime, frames: u32) {
+    let mut output = [0.0; 3840];
+    assert_eq!(
+        // SAFETY: sole fake physical TX owner, with two writable samples per frame.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                frames,
+            )
+        },
+        0
+    );
+}
+
+#[test]
+fn stage_c5_final_graph_measurement_sensitivity() {
+    let (mut runtime, _control) = clock_runtime();
+    let mut probe = ClockProbe::default();
+    clock_bind(&mut runtime, &mut probe);
+    C5_COSTS.with(|costs| *costs.borrow_mut() = Vec::with_capacity(8));
+    crate::media::tests::C5_MEASURE.set(Some(c5_cost));
+    crate::media::tests::CLOCK_GRAPH_SPLIT.set(240);
+    crate::allocation::without_heap(|| c5_render(&mut runtime, 960));
+    crate::media::tests::C5_MEASURE.set(None);
+    crate::media::tests::CLOCK_GRAPH_SPLIT.set(0);
+    assert_eq!(probe.calls, 4, "one host chunk contains four final graphs");
+    C5_COSTS.with(|costs| {
+        let costs = costs.borrow();
+        assert_eq!(
+            costs.len(),
+            probe.calls as usize,
+            "every actual final graph must be measured"
+        );
+        assert!(costs.iter().all(|(frames, _)| *frames == 240));
+    });
+    runtime.stop().unwrap();
+    // SAFETY: confirmed stop releases the probe borrower.
+    unsafe { runtime.bind_programme_fence(None) }.unwrap();
+}
+
+#[link(name = "dl")]
+unsafe extern "C" {
+    fn dlopen(path: *const std::ffi::c_char, flags: i32) -> *mut c_void;
+    fn dlsym(handle: *mut c_void, symbol: *const std::ffi::c_char) -> *mut c_void;
+    fn dlclose(handle: *mut c_void) -> i32;
+}
+
+struct C5Provider(*mut c_void);
+impl C5Provider {
+    fn open(variable: &str) -> Self {
+        let path =
+            std::ffi::CString::new(std::env::var(variable).expect("exact C5 staged DSO path"))
+                .unwrap();
+        // SAFETY: test runner supplies the verified, task-retained provider file.
+        let handle = unsafe { dlopen(path.as_ptr(), 2) };
+        assert!(!handle.is_null());
+        Self(handle)
+    }
+    fn reader(&self) -> Option<unsafe extern "C" fn() -> u64> {
+        // SAFETY: immutable descriptor export is retained by this DSO owner.
+        let symbol = unsafe { dlsym(self.0, c"rptadv_portaudio_alsa_adapter_descriptor".as_ptr()) };
+        assert!(!symbol.is_null());
+        // SAFETY: the exact verified adapter symbol has this C getter signature.
+        let descriptor: unsafe extern "C" fn() -> *const c_void =
+            unsafe { std::mem::transmute(symbol) };
+        // SAFETY: this owner outlives all uses of the borrowed descriptor and reader.
+        let provider = unsafe { AudioProvider::from_raw_descriptor(descriptor()) }.unwrap();
+        provider.monotonic_now_ns()
+    }
+}
+impl Drop for C5Provider {
+    fn drop(&mut self) {
+        // SAFETY: tests drop all station borrowers before dropping the DSO owner.
+        assert_eq!(unsafe { dlclose(self.0) }, 0);
+    }
+}
+
+#[test]
+#[ignore = "C5 exact external cohort required; use workflows/tools/run_c5_cohort_tests.py"]
+fn stage_c5_actual_final_graph_costs() {
+    let provider = C5Provider::open("C5_NEW_ADAPTER");
+    let real_reader = provider.reader().expect("C1 complete reader");
+    const CALLBACKS: usize = 513;
+    for (frames, partition) in [(480, 0), (960, 0), (960, 240)] {
+        for mode in [
+            "legacy",
+            "absent",
+            "scripted",
+            "real",
+            "initial_fault",
+            "latched_fault",
+        ] {
+            CLOCK_CALLS.set(0);
+            CLOCK_NOW.set(if mode.ends_with("fault") { 0 } else { 100 });
+            let reader = match mode {
+                "legacy" | "absent" => None,
+                "real" => Some(real_reader),
+                _ => Some(clock_now as unsafe extern "C" fn() -> u64),
+            };
+            let (mut runtime, _control) = clock_runtime_reader(25, reader);
+            let mut probe = ClockProbe::default();
+            clock_bind(&mut runtime, &mut probe);
+            if mode == "legacy" {
+                unsafe extern "C" fn legacy(_: *mut c_void, _: u64, _: u32) -> u32 {
+                    1
+                }
+                // SAFETY: no callback is active; static callback uses no context.
+                unsafe {
+                    runtime.bind_programme_fence(Some(
+                        usbradioplus_runtime::ProgrammeFence::Legacy {
+                            context: ptr::null_mut(),
+                            permit: legacy,
+                        },
+                    ))
+                }
+                .unwrap();
+            }
+            if mode == "latched_fault" {
+                c5_render(&mut runtime, frames);
+            }
+            let before = probe.calls;
+            let invocations = if partition == 0 {
+                1
+            } else {
+                frames / partition
+            } as usize;
+            C5_COSTS
+                .with(|costs| *costs.borrow_mut() = Vec::with_capacity(CALLBACKS * invocations));
+            crate::media::tests::CLOCK_GRAPH_SPLIT.set(partition as usize);
+            crate::media::tests::C5_MEASURE.set(Some(c5_cost));
+            for _ in 0..CALLBACKS {
+                crate::allocation::without_heap(|| c5_render(&mut runtime, frames));
+            }
+            crate::media::tests::C5_MEASURE.set(None);
+            crate::media::tests::CLOCK_GRAPH_SPLIT.set(0);
+            if mode != "legacy" {
+                assert_eq!(probe.calls - before, (CALLBACKS * invocations) as u32);
+            }
+            if mode == "real" || mode == "scripted" {
+                assert_eq!(probe.clock.0, 1);
+            } else {
+                assert_eq!(probe.clock, (0, 0, 0));
+            }
+            C5_COSTS.with(|costs| {
+                let costs = costs.borrow();
+                assert_eq!(costs.len(), CALLBACKS * invocations);
+                assert!(costs.iter().all(|(n, _)| *n == frames / invocations as u32));
+                for (ordinal, (_, ns)) in costs.iter().enumerate() {
+                    println!("C5_COST mode={mode} frames={frames} partition={partition} ordinal={ordinal} ns={ns}");
+                }
+            });
+            println!(
+                "C5_HEAP mode={mode} frames={frames} partition={partition} callbacks={CALLBACKS} invocations={} rust_heap_operations=0 project_locks=unmeasured",
+                CALLBACKS * invocations
+            );
+            runtime.stop().unwrap();
+            // SAFETY: confirmed stop precedes release of observed context or DSO reader.
+            unsafe { runtime.bind_programme_fence(None) }.unwrap();
+            drop(runtime);
+        }
+    }
+    drop(provider);
+}
+
+#[test]
+fn stage_c5_post_read_stall_cannot_refresh_observation() {
+    unsafe extern "C" fn post_read(
+        raw: *mut c_void,
+        value: *const usbradioplus_runtime::ProgrammeObservationV1,
+    ) -> u32 {
+        // SAFETY: same retained record/probe contract as clock_observed.
+        let permitted = unsafe { clock_observed(raw, value) };
+        CLOCK_NOW.set(1_000_000_000);
+        permitted
+    }
+    CLOCK_NOW.set(100_000_000);
+    let (mut runtime, _control) = clock_runtime();
+    let mut probe = ClockProbe::default();
+    clock_bind(&mut runtime, &mut probe);
+    // SAFETY: quiescent bind, probe remains live until stopped unbind.
+    unsafe {
+        runtime.bind_programme_fence(Some(usbradioplus_runtime::ProgrammeFence::Observed {
+            context: ptr::from_mut(&mut probe).cast(),
+            permit: post_read,
+        }))
+    }
+    .unwrap();
+    c5_render(&mut runtime, 960);
+    assert_eq!(probe.clock, (1, 1, 100_000_000));
+    assert_eq!(CLOCK_NOW.get(), 1_000_000_000);
+    runtime.stop().unwrap();
+    // SAFETY: all callback borrowers are now quiescent.
+    unsafe { runtime.bind_programme_fence(None) }.unwrap();
+}
+
+#[test]
+#[ignore = "C5 exact external cohort required; use workflows/tools/run_c5_cohort_tests.py"]
+fn stage_c5_historical_adapter_new_sdk_clock_is_unknown() {
+    let provider = C5Provider::open("C5_OLD_ADAPTER");
+    let reader = provider.reader();
+    assert!(
+        reader.is_none(),
+        "actual historical adapter must not fabricate a new reader"
+    );
+    let (mut runtime, _control) = clock_runtime_reader(25, reader);
+    let mut probe = ClockProbe::default();
+    clock_bind(&mut runtime, &mut probe);
+    let mut output = [0.0; 1920];
+    assert_eq!(
+        // SAFETY: sole fake physical callback owner and exact stereo writable output.
+        unsafe {
+            transmit_callback(
+                runtime._transmit_context.get().cast(),
+                output.as_mut_ptr(),
+                960,
+            )
+        },
+        0
+    );
+    assert!(output.iter().any(|sample| *sample != 0.0));
+    assert_eq!(probe.calls, 1);
+    assert_eq!(probe.clock, (0, 0, 0));
+    runtime.stop().unwrap();
+    // SAFETY: confirmed stop before releasing borrower or historical provider.
+    unsafe { runtime.bind_programme_fence(None) }.unwrap();
+    drop(runtime);
+    drop(provider);
 }

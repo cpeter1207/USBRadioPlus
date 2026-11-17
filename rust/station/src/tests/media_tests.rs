@@ -239,7 +239,10 @@ unsafe extern "C" fn apply_transmit_update(session: *mut c_void, update: *mut c_
 // SAFETY: the immutable descriptor contains only process-lifetime functions.
 unsafe impl Sync for FakeDescriptor {}
 
+type GraphMeasurement = fn(u32, std::time::Duration);
+
 thread_local! {
+    pub(crate) static C5_MEASURE: std::cell::Cell<Option<GraphMeasurement>> = const { std::cell::Cell::new(None) };
     pub(crate) static CLOCK_GRAPH_SPLIT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
@@ -419,16 +422,21 @@ unsafe extern "C" fn transmit(
                 split
             };
             for (source, target) in input.chunks(split).zip(processed.chunks_mut(split)) {
+                let measurement = C5_MEASURE.get();
+                let began = measurement.map(|_| std::time::Instant::now());
                 // SAFETY: fixture retains the actual final-gate port and exact disjoint spans.
-                if unsafe {
+                let status = unsafe {
                     process(
                         session.transmit_processor.context,
                         source.as_ptr(),
                         target.as_mut_ptr(),
                         source.len() as u32,
                     )
-                } != RADIO_OK
-                {
+                };
+                if let (Some(record), Some(began)) = (measurement, began) {
+                    record(source.len() as u32, began.elapsed());
+                }
+                if status != RADIO_OK {
                     return RADIO_FAILED;
                 }
             }
