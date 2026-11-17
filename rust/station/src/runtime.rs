@@ -554,6 +554,30 @@ struct ReceiveContext {
     updates: Arc<UpdateMailbox>,
 }
 
+// Lives in the stable serial TX box, never in a replaceable processing graph.
+struct ProgrammeClock {
+    read: Option<unsafe extern "C" fn() -> u64>,
+    last: u64,
+    faulted: bool,
+}
+
+unsafe fn read_programme_clock(raw: *mut c_void) -> u64 {
+    // SAFETY: only the original serial TX owner borrows its disjoint clock field.
+    let clock = unsafe { &mut *raw.cast::<ProgrammeClock>() };
+    let Some(read) = clock.read else { return 0 };
+    if clock.faulted {
+        return 0;
+    }
+    // SAFETY: the same retained audio provider promises bounded live reader code.
+    let now = unsafe { read() };
+    if now == 0 || now < clock.last {
+        clock.faulted = true;
+        return 0;
+    }
+    clock.last = now; // Equal consecutive readings are valid.
+    now
+}
+
 struct TransmitContext {
     station: StationTransmit,
     maximum_frames: usize,
@@ -563,6 +587,7 @@ struct TransmitContext {
     remote_burst_admitted: bool,
     feedback: Option<crate::RadioFeedbackPort>,
     programme_fence: Option<usbradioplus_runtime::ProgrammeFence>,
+    programme_clock: ProgrammeClock,
     feedback_record: crate::RadioFeedback,
 }
 
@@ -802,6 +827,11 @@ impl StationRuntime {
             remote_burst_admitted: true,
             feedback: None,
             programme_fence: None,
+            programme_clock: ProgrammeClock {
+                read: provider.monotonic_now_ns(),
+                last: 0,
+                faulted: false,
+            },
             feedback_record: crate::RadioFeedback {
                 struct_size: std::mem::size_of::<crate::RadioFeedback>() as u32,
                 abi_version: 1,
@@ -887,7 +917,12 @@ impl StationRuntime {
         self.hardware.0.feedback.publish_request(Default::default());
         // SAFETY: successful stream stop quiesces the unique TX context.
         unsafe {
-            let record = &mut (*self._transmit_context.get()).feedback_record;
+            let context = &mut *self._transmit_context.get();
+            // Only a confirmed stop resets this owner; failed/no-op starts and
+            // graph adoption cannot resurrect a faulted reader.
+            context.programme_clock.last = 0;
+            context.programme_clock.faulted = false;
+            let record = &mut context.feedback_record;
             record.flags = crate::FEEDBACK_DUPLEX_VALID;
             record.programme_buffering = Default::default();
             record.programme_retirement_id = 0;
@@ -1220,6 +1255,10 @@ unsafe extern "C" fn transmit_callback(
             station,
             context.programme_fence,
             context.feedback_record.generation_id,
+            usbradioplus_runtime::ProgrammeClockReader {
+                context: std::ptr::from_mut(&mut context.programme_clock).cast(),
+                read: read_programme_clock,
+            },
         );
     }
     match station.radio().render(output, controls) {

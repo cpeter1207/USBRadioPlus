@@ -239,6 +239,10 @@ unsafe extern "C" fn apply_transmit_update(session: *mut c_void, update: *mut c_
 // SAFETY: the immutable descriptor contains only process-lifetime functions.
 unsafe impl Sync for FakeDescriptor {}
 
+thread_local! {
+    pub(crate) static CLOCK_GRAPH_SPLIT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 struct FakeSession {
     generation_id: u64,
     maximum_receive: u32,
@@ -400,24 +404,37 @@ unsafe extern "C" fn transmit(
         std::slice::from_raw_parts_mut(output, frame_count as usize * CHANNELS).fill(0.25);
     }
     if session.generation_id == 25 {
-        let input = vec![PROGRAM_SAMPLE.get(); frame_count as usize];
-        let mut processed = vec![0.0; frame_count as usize];
+        if frame_count as usize > ADVANCED_FRAME_SAMPLES {
+            return RADIO_FAILED;
+        }
+        let input_storage = [PROGRAM_SAMPLE.get(); ADVANCED_FRAME_SAMPLES];
+        let mut processed_storage = [0.0; ADVANCED_FRAME_SAMPLES];
+        let input = &input_storage[..frame_count as usize];
+        let processed = &mut processed_storage[..frame_count as usize];
         if let Some(process) = session.transmit_processor.process {
-            // SAFETY: the fixture retains this exact port and supplies disjoint bounded spans.
-            if unsafe {
-                process(
-                    session.transmit_processor.context,
-                    input.as_ptr(),
-                    processed.as_mut_ptr(),
-                    frame_count,
-                )
-            } != RADIO_OK
-            {
-                return RADIO_FAILED;
+            let split = CLOCK_GRAPH_SPLIT.get().max(1);
+            let split = if CLOCK_GRAPH_SPLIT.get() == 0 {
+                frame_count as usize
+            } else {
+                split
+            };
+            for (source, target) in input.chunks(split).zip(processed.chunks_mut(split)) {
+                // SAFETY: fixture retains the actual final-gate port and exact disjoint spans.
+                if unsafe {
+                    process(
+                        session.transmit_processor.context,
+                        source.as_ptr(),
+                        target.as_mut_ptr(),
+                        source.len() as u32,
+                    )
+                } != RADIO_OK
+                {
+                    return RADIO_FAILED;
+                }
             }
         }
         // SAFETY: output contains exactly two samples per frame.
-        for (index, sample) in processed.into_iter().enumerate() {
+        for (index, sample) in processed.iter().copied().enumerate() {
             // SAFETY: the wrapper provided exactly two writable samples per frame.
             unsafe {
                 output.add(index * 2).write(sample);

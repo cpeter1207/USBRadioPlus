@@ -1,4 +1,5 @@
 use super::*;
+use std::ptr;
 use std::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
 
 thread_local! {
@@ -875,6 +876,7 @@ fn abi_two_failure_results_and_callback_lifetimes_are_owned() {
         endpoints(&mut receive_context, &mut transmit_context);
     assert_eq!(
         AudioProvider {
+            monotonic_now_ns: None,
             descriptor: without_destroy,
         }
         .open_stream(stream_config(1, 1), receive_endpoint, transmit_endpoint,)
@@ -902,6 +904,7 @@ fn abi_two_failure_results_and_callback_lifetimes_are_owned() {
     no_lifecycle.stream_destroy = None;
     let stream = AudioStream {
         provider: AudioProvider {
+            monotonic_now_ns: None,
             descriptor: no_lifecycle,
         },
         // SAFETY: `handle` is non-null and remains live until reclaimed below.
@@ -1065,6 +1068,7 @@ fn mixer_failures_release_partial_handles_and_validate_values() {
     without_destroy.mixer_destroy = None;
     assert_eq!(
         AudioProvider {
+            monotonic_now_ns: None,
             descriptor: without_destroy,
         }
         .open_mixer("3-1:1.0", &paths.receive[0])
@@ -1094,6 +1098,7 @@ fn mixer_failures_release_partial_handles_and_validate_values() {
     no_destroy.mixer_destroy = None;
     let mixer = Mixer {
         provider: AudioProvider {
+            monotonic_now_ns: None,
             descriptor: no_destroy,
         },
         // SAFETY: `handle` is non-null and remains live until reclaimed below.
@@ -1161,4 +1166,68 @@ fn mixer_path_conversion_rejects_malformed_adapter_data() {
             .cm119_mixer_paths("no-transmit"),
         Err(AudioError::AdapterFailure)
     );
+}
+
+#[test]
+fn stage_c_clock_observation_order_prefixes_and_partial_reader() {
+    unsafe extern "C" fn now() -> u64 {
+        123
+    }
+    assert_eq!(size_of::<Descriptor>(), 200);
+    assert_eq!(REQUIRED_DESCRIPTOR_SIZE, 192);
+    // Exact allocated extents include the legacy prefixes and every partial tail.
+    for size in [
+        192_usize, 200, 201, 207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 224,
+    ] {
+        let mut bytes = vec![0_u64; size.div_ceil(8)];
+        let raw = bytes.as_mut_ptr().cast::<u8>();
+        // SAFETY: aligned destination covers only the original admitted complete prefix.
+        unsafe {
+            ptr::copy_nonoverlapping(ptr::from_ref(&VALID).cast::<u8>(), raw, size.min(200));
+            raw.cast::<u32>().write(size as u32);
+            // A partial pointer is deliberately all ones, never valid callable data.
+            if size > 208 {
+                ptr::write_bytes(raw.add(208), 0xff, size - 208);
+            }
+            if size >= 216 {
+                raw.add(208)
+                    .cast::<Option<unsafe extern "C" fn() -> u64>>()
+                    .write(Some(now));
+            }
+        }
+        let before = bytes.clone();
+        // SAFETY: fixture retains the immutable aligned descriptor and static code.
+        let provider = unsafe { AudioProvider::from_raw_descriptor(raw.cast()) }.unwrap();
+        assert_eq!(provider.monotonic_now_ns().is_some(), size >= 216);
+        if let Some(read) = provider.monotonic_now_ns() {
+            // SAFETY: complete optional slot retained this static fixture function.
+            assert_eq!(unsafe { read() }, 123);
+        }
+        assert_eq!(bytes, before, "unknown tail must stay untouched");
+    }
+    let mut bytes = [0_u64; 27];
+    // SAFETY: complete aligned zeroed reader tail; original prefix is valid.
+    unsafe {
+        ptr::copy_nonoverlapping(
+            ptr::from_ref(&VALID).cast::<u8>(),
+            bytes.as_mut_ptr().cast(),
+            200,
+        );
+        bytes.as_mut_ptr().cast::<u32>().write(216);
+    }
+    assert!(
+        // SAFETY: immutable complete fixture extent and process-lifetime code.
+        unsafe { AudioProvider::from_raw_descriptor(bytes.as_ptr().cast()) }
+            .unwrap()
+            .monotonic_now_ns()
+            .is_none()
+    );
+    for size in 193..200 {
+        let mut partial = VALID;
+        partial.struct_size = size;
+        assert!(
+            provider(Box::leak(Box::new(partial))).is_err(),
+            "existing malformed ALSA prefix admission must not change"
+        );
+    }
 }

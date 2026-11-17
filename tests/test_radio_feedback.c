@@ -30,7 +30,7 @@ _Static_assert(URP_PROGRAMME_FENCE_V2_ABI_VERSION == 2, "V2 is explicitly negoti
 _Static_assert(sizeof(UrpProgrammeFenceBindingV2) == 40, "V2 binding extent");
 _Static_assert(offsetof(UrpProgrammeFenceBindingV2, observed_permit) == 32,
 	       "V2 callback follows unchanged V1 prefix");
-_Static_assert(sizeof(UrpProgrammeObservationV1) == 96, "software observation extent");
+_Static_assert(sizeof(UrpProgrammeObservationV1) == 112, "software observation extent");
 _Static_assert(offsetof(UrpProgrammeObservationV1, radio_generation) == 8,
 	       "actual physical generation offset");
 _Static_assert(offsetof(UrpProgrammeObservationV1, frame_count) == 16,
@@ -39,6 +39,12 @@ _Static_assert(offsetof(UrpProgrammeObservationV1, current_retirement_request_id
 	       "coherent retirement authority offset");
 _Static_assert(offsetof(UrpProgrammeObservationV1, programme_buffering) == 32,
 	       "actual all-audible graph record offset");
+
+_Static_assert(offsetof(UrpProgrammeObservationV1, clock_flags) == 96, "clock tail offset");
+_Static_assert(offsetof(UrpProgrammeObservationV1, clock_domain) == 100, "clock kind offset");
+_Static_assert(offsetof(UrpProgrammeObservationV1, observed_monotonic_ns) == 104,
+	       "clock sample offset");
+_Static_assert(URP_PROGRAMME_OBSERVATION_ABI_VERSION == 1, "observation ABI unchanged");
 
 int main(void)
 {

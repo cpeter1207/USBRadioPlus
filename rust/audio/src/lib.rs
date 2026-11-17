@@ -542,6 +542,7 @@ pub struct Cm119MixerPaths {
 #[derive(Clone, Copy)]
 pub struct AudioProvider {
     descriptor: Descriptor,
+    monotonic_now_ns: Option<unsafe extern "C" fn() -> u64>,
 }
 
 impl AudioProvider {
@@ -579,7 +580,37 @@ impl AudioProvider {
         if unsafe { CStr::from_ptr(descriptor.capability_name) } != CAPABILITY {
             return Err(AudioError::IncompatibleAdapter);
         }
-        Ok(Self { descriptor })
+        // The existing timed constructor occupies the next pointer slot. Never
+        // copy a partial optional function pointer or form a new-layout reference.
+        let clock_offset = size_of::<Descriptor>() + size_of::<Option<StreamCreate>>();
+        let monotonic_now_ns =
+            if size >= clock_offset + size_of::<Option<unsafe extern "C" fn() -> u64>>() {
+                // SAFETY: the complete optional field is advertised in immutable storage.
+                unsafe {
+                    raw_descriptor
+                        .cast::<u8>()
+                        .add(clock_offset)
+                        .cast::<Option<unsafe extern "C" fn() -> u64>>()
+                        .read_unaligned()
+                }
+            } else {
+                None
+            };
+        Ok(Self {
+            descriptor,
+            monotonic_now_ns,
+        })
+    }
+
+    /// Optional current Linux CLOCK_MONOTONIC reader from this retained provider.
+    ///
+    /// Zero means unavailable, including checked numeric conversion failure.
+    /// Kind alone does not identify a namespace/epoch or physical presentation.
+    /// Like the descriptor, its code must remain live through every caller's
+    /// quiescence. Calling it must not allocate, lock, or acquire a device.
+    #[must_use]
+    pub const fn monotonic_now_ns(&self) -> Option<unsafe extern "C" fn() -> u64> {
+        self.monotonic_now_ns
     }
 
     /// Resolve one exact or automatic USB device selection.

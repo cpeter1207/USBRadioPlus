@@ -221,3 +221,29 @@ The Rust binding still accepts a physically complete ordinary descriptor without
 that tail. FFmpeg alpha3 owns its direct SWR dependency; the SDK adds no duplicated
 implementation or new external runtime library. Hosted package/install gates and
 physical/RF acceptance remain separate from focused native tests.
+
+### Optional same-render software clock tail
+
+Observation ABI 1 now advertises 112 bytes. Its original 96-byte prefix and binding
+ABI 2 are unchanged. The optional tail is clock_flags, clock_domain and
+observed_monotonic_ns; consumers require the complete tail, flags 1 and kind 1
+plus their independently retained provider/process epoch. Old 96-byte consumers
+ignore the tail. ACK 2 alone proves neither clock support nor physical timing.
+
+The SDK reads the same retained audio provider's optional CLOCK_MONOTONIC function
+after each successful final graph operation, immediately before the observed
+permit, including each actual split invocation. V1, unbound, failed and skipped
+operations perform no new clock read. The existing buffering and retirement
+snapshot order is unchanged. State is retained in the serial TX owner, not the
+replaceable graph: equal readings are valid; zero (including provider conversion
+overflow) or regression latches Unknown with all three fields zero until confirmed
+callback quiescence resets the owner. Failed stop, failed start, and graph updates
+cannot reset that latch. The independently retained product epoch must not be
+resurrected by an SDK-only restart.
+
+The existing 192/200/208-byte audio prefixes remain supported. An absent, null or
+partial optional reader is Unknown; the new pointer is read only when its entire
+field is advertised. There is no new stream acquisition or timed-constructor
+selection. CLOCK_MONOTONIC excludes suspend time; a post-read stall is unobserved.
+Physical presentation remains Unknown. Product origin/policy integration, provider
+release/pins, target overhead and full platform qualification are separate gates.

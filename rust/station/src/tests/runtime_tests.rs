@@ -3687,3 +3687,6 @@ fn programme_observation_in_flight_graph_reads_synchronized_mailbox_invalidation
 fn programme_observation_in_flight_snapshot_survives_later_publication() {
     programme_observation_in_flight_update(true);
 }
+
+#[path = "clock_tests.rs"]
+mod clock_tests;

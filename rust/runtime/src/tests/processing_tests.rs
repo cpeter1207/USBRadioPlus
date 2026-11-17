@@ -2481,7 +2481,7 @@ fn programme_observation_is_post_graph_current_bounded_and_allocation_free() {
         assert_eq!(probe.reads, probe.calls + 1);
         assert_eq!(
             (value.struct_size, value.abi_version, value.reserved),
-            (96, 1, 0)
+            (112, 1, 0)
         );
         assert_eq!(value.radio_generation, 17);
         probe.seen = Some(value);
@@ -2812,4 +2812,106 @@ fn programme_observation_distinguishes_valid_zero_from_successful_unqualified_pc
         seen.unwrap().programme_buffering.flags & usbradioplus_core::PROGRAMME_CURRENT_BOUND_VALID,
         0
     );
+}
+
+#[test]
+fn stage_c_clock_observation_order_success_only_and_no_heap() {
+    #[derive(Default)]
+    struct Probe {
+        reads: u32,
+        permits: u32,
+        seen: u64,
+    }
+    unsafe fn read(raw: *mut c_void) -> u64 {
+        // SAFETY: one serial owner retains this probe through all graph operations.
+        let probe = unsafe { &mut *raw.cast::<Probe>() };
+        assert!(GRAPH_PROCESSES.get() > 0);
+        probe.reads += 1;
+        u64::from(probe.reads)
+    }
+    unsafe extern "C" fn observe(raw: *mut c_void, value: *const ProgrammeObservationV1) -> u32 {
+        // SAFETY: both records are retained for this synchronous serial call.
+        let (probe, value) = unsafe { (&mut *raw.cast::<Probe>(), &*value) };
+        probe.permits += 1;
+        assert_eq!(probe.reads, probe.permits);
+        assert_eq!((value.clock_flags, value.clock_domain), (1, 1));
+        probe.seen = value.observed_monotonic_ns;
+        1
+    }
+    unsafe extern "C" fn legacy(_: *mut c_void, _: u64, _: u32) -> u32 {
+        1
+    }
+    let generation = factory().prepare(plan()).unwrap();
+    let mut probe = Probe::default();
+    let raw = ptr::from_mut(&mut probe).cast();
+    let context = NonNull::from(generation.transmit_loudness.as_ref().unwrap().as_ref())
+        .cast()
+        .as_ptr();
+    let input = [0.25; 960];
+    let mut output = [0.0; 960];
+    // SAFETY: clock state and both callbacks stay on the same sole retained owner.
+    unsafe {
+        generation.set_transmit_programme_clock(Some(ProgrammeClockReader { context: raw, read }));
+        generation.set_transmit_programme_fence(
+            Some(ProgrammeFence::Observed {
+                context: raw,
+                permit: observe,
+            }),
+            7,
+            None,
+        );
+    }
+    for frames in [1, 480, 960] {
+        GRAPH_PROCESSES.set(0);
+        crate::allocation::without_heap(|| {
+            assert_eq!(
+                // SAFETY: complete disjoint spans, retained context and sole graph owner.
+                unsafe {
+                    metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), frames)
+                },
+                PORT_OK
+            );
+        });
+        assert_eq!(probe.seen, u64::from(probe.reads));
+    }
+    assert_eq!((probe.reads, probe.permits), (3, 3));
+    GRAPH_PROCESS_FAILS.set(true);
+    assert_eq!(
+        // SAFETY: same serial owner; failed graph cannot read clock or call permit.
+        unsafe { metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 960) },
+        PORT_ERROR
+    );
+    GRAPH_PROCESS_FAILS.set(false);
+    for port in [
+        None,
+        Some(ProgrammeFence::Legacy {
+            context: ptr::null_mut(),
+            permit: legacy,
+        }),
+    ] {
+        // SAFETY: no owner/lifetime change, only the stopped-between-calls scalar port.
+        unsafe {
+            generation.set_transmit_programme_fence(port, 7, None);
+            assert_eq!(
+                metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 960),
+                PORT_OK
+            );
+        }
+    }
+    // SAFETY: zero generation means no observed call and therefore no clock access.
+    unsafe {
+        generation.set_transmit_programme_fence(
+            Some(ProgrammeFence::Observed {
+                context: raw,
+                permit: observe,
+            }),
+            0,
+            None,
+        );
+        assert_eq!(
+            metered_graph_process(context, input.as_ptr(), output.as_mut_ptr(), 960),
+            PORT_OK
+        );
+    }
+    assert_eq!((probe.reads, probe.permits), (3, 3));
 }

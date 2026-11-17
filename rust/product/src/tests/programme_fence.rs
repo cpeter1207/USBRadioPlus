@@ -317,7 +317,8 @@ pub(super) fn binding_v2() -> BindingV2 {
 unsafe extern "C" fn observe(_: *mut c_void, raw: *const Observation) -> u32 {
     // SAFETY: the SDK lends the synchronous immutable observation prefix.
     let observation = unsafe { &*raw };
-    assert_eq!((observation.size, observation.version), (96, 1));
+    assert!(observation.size >= 96);
+    assert_eq!(observation.version, 1);
     assert_ne!(observation.generation, 0);
     assert!((1..=960).contains(&observation.frames));
     assert_eq!(observation.reserved, 0);

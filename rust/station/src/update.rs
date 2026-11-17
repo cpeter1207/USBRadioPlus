@@ -264,6 +264,7 @@ impl UpdateMailbox {
         station: &StationTransmit,
         port: Option<usbradioplus_runtime::ProgrammeFence>,
         generation: u64,
+        clock: usbradioplus_runtime::ProgrammeClockReader,
     ) {
         // SAFETY: adopted storage is retained until this owner acknowledges;
         // neither reclamation nor a concurrent TX call can occur in this read.
@@ -271,6 +272,7 @@ impl UpdateMailbox {
             .unwrap_or_else(|| station.processing());
         // SAFETY: forwarded to the same sole TX owner between graph operations.
         unsafe {
+            processing.set_transmit_programme_clock(Some(clock));
             processing.set_transmit_programme_fence(
                 port,
                 generation,

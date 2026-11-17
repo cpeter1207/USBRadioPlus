@@ -8,8 +8,8 @@ mod processing;
 
 pub use processing::{
     ExplicitNativeProcessingPlan, NativeProcessingFactory, NativeProcessingPlan,
-    ProcessingGeneration, ProcessingRuntimeError, ProgrammeFence, ProgrammeObservationV1,
-    ProgrammeRetirementReader,
+    ProcessingGeneration, ProcessingRuntimeError, ProgrammeClockReader, ProgrammeFence,
+    ProgrammeObservationV1, ProgrammeRetirementReader,
 };
 
 // Reuse the SDK's thread-local test allocator guard; production has no allocator hook.

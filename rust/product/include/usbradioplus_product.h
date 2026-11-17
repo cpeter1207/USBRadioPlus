@@ -763,7 +763,12 @@ typedef struct UrpProgrammeFenceBinding {
  * Invalidation precedes successor release-publication; TX acquire-adoption
  * precedes this read, so an adopted successor cannot inherit old authority.
  * A concurrent unadopted predecessor may linearize before that update.
- * Consumers awaiting R also require prior same-generation completed feedback R. */
+ * Consumers awaiting R also require prior same-generation completed feedback R.
+ * Clock tail requires all 112 bytes, known flags/kind and retained epoch/scope.
+ * Old 96-byte consumers ignore it. Unknown zeroes all three clock fields.
+ * Equal samples are valid; failure/regression latches until quiescent reset.
+ * Binding ACK two alone does not qualify clock support. CLOCK_MONOTONIC excludes
+ * suspend time; post-read stalls and physical presentation remain unbounded. */
 typedef struct UrpProgrammeObservationV1 {
 	uint32_t struct_size;	   /**< Complete readable prefix, at least 96 bytes. */
 	uint32_t abi_version;	   /**< URP_PROGRAMME_OBSERVATION_ABI_VERSION. */
@@ -772,6 +777,9 @@ typedef struct UrpProgrammeObservationV1 {
 	uint32_t reserved;	   /**< Zero. */
 	uint64_t current_retirement_request_id; /**< Zero if absent/incoherent/wrong generation. */
 	UrpProgrammeBuffering programme_buffering; /**< Current all-audible aggregate. */
+	uint32_t clock_flags;		/**< Optional complete tail: 1 valid, 0 Unknown. */
+	uint32_t clock_domain;		/**< 1 CLOCK_MONOTONIC kind, not epoch/namespace. */
+	uint64_t observed_monotonic_ns; /**< Fresh post-graph sample, 0 if Unknown. */
 } UrpProgrammeObservationV1;
 /** Same bounded/no-unwind contract as UrpProgrammePermit.
  * Copy scalar fields if needed; never retain the borrowed observation pointer.

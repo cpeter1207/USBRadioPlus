@@ -876,7 +876,7 @@ pub enum ProgrammeFence {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ProgrammeObservationV1 {
-    /// Complete readable prefix, 96 bytes on supported Debian amd64/arm64.
+    /// Complete readable record, 112 bytes; the original 96-byte prefix is unchanged.
     pub struct_size: u32,
     /// Observation ABI, one (independent of the binding version).
     pub abi_version: u32,
@@ -891,7 +891,28 @@ pub struct ProgrammeObservationV1 {
     pub current_retirement_request_id: u64,
     /// Actual operation's aggregate across all audible graphs; Unknown stays Unknown.
     pub programme_buffering: ProgrammeBuffering,
+    /// One for a valid current sample; zero for Unknown.
+    pub clock_flags: u32,
+    /// One for Linux CLOCK_MONOTONIC kind, not an epoch/namespace identity.
+    pub clock_domain: u32,
+    /// Fresh post-graph raw nanoseconds; zero with both clock fields when Unknown.
+    /// This software observation excludes suspend time and all post-read stalls.
+    pub observed_monotonic_ns: u64,
 }
+
+/// Borrowed access to the original serial TX owner's retained clock state.
+/// This owner, not an individual replaceable graph, latches regressions/failures.
+#[derive(Clone, Copy)]
+pub struct ProgrammeClockReader {
+    /// Stable exclusively owned clock state, retained through callback quiescence.
+    pub context: *mut c_void,
+    /// Fresh bounded, allocation-free/non-unwinding read; zero means Unknown.
+    pub read: unsafe fn(*mut c_void) -> u64,
+}
+
+// SAFETY: this port grants access only to the original serial TX owner. Binding
+// requires stable state/provider code until that owner has actually quiesced.
+unsafe impl Send for ProgrammeClockReader {}
 
 /// Internal borrowed access to the station's retained retirement mailbox.
 /// Binding requires the mailbox and reader code to outlive every graph invocation.
@@ -924,6 +945,7 @@ struct OutputLoudnessStage {
     meter: UnsafeCell<OutputLoudnessMeter>,
     observer: OutputLoudnessObserver,
     programme_fence: UnsafeCell<Option<BoundProgrammeFence>>,
+    programme_clock: UnsafeCell<Option<ProgrammeClockReader>>,
 }
 
 // SAFETY: only the original serial TX owner mutates the meter and graph.
@@ -1037,6 +1059,7 @@ impl ProcessingGeneration {
             meter: UnsafeCell::new(meter),
             observer,
             programme_fence: UnsafeCell::new(None),
+            programme_clock: UnsafeCell::new(None),
         }))
     }
 
@@ -1115,6 +1138,18 @@ impl ProcessingGeneration {
                 retirement,
             });
         }
+    }
+
+    /// Retain the original serial TX clock port across this graph's renders.
+    ///
+    /// # Safety
+    /// Call only between graph operations on the sole TX owner. State and provider
+    /// code must remain live through quiescence, with no concurrent clock mutation.
+    /// The reader obeys ProgrammeClockReader's bounded/no-allocation contract.
+    pub unsafe fn set_transmit_programme_clock(&self, reader: Option<ProgrammeClockReader>) {
+        let stage = self.transmit_loudness.as_ref().expect("prepared TX meter");
+        // SAFETY: caller exclusively owns this scalar port between renders.
+        unsafe { *stage.programme_clock.get() = reader };
     }
 
     /// Last completed programme render's conservative buffering bound. Access
@@ -1296,6 +1331,15 @@ unsafe extern "C" fn metered_graph_process(
                         // SAFETY: station binding retains its stable mailbox and code.
                         unsafe { (reader.read)(reader.context, fence.generation) }
                     });
+                    // Preserve buffering and retirement order. Read current time only
+                    // for this successful observed operation, immediately before permit.
+                    // SAFETY: this serial owner retains the port and its exclusive state.
+                    let clock_reader = unsafe { *stage.programme_clock.get() };
+                    let observed_monotonic_ns = clock_reader.map_or(0, |reader| {
+                        // SAFETY: binding retains state/code through owner quiescence.
+                        unsafe { (reader.read)(reader.context) }
+                    });
+                    let clock_valid = u32::from(observed_monotonic_ns != 0);
                     let observation = ProgrammeObservationV1 {
                         struct_size: std::mem::size_of::<ProgrammeObservationV1>() as u32,
                         abi_version: 1,
@@ -1304,6 +1348,9 @@ unsafe extern "C" fn metered_graph_process(
                         reserved: 0,
                         current_retirement_request_id,
                         programme_buffering,
+                        clock_flags: clock_valid,
+                        clock_domain: clock_valid,
+                        observed_monotonic_ns,
                     };
                     // SAFETY: binding retains callback/context; the record remains live
                     // and immutable only for this synchronous, bounded invocation.
