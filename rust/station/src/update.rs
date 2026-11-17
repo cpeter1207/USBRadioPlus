@@ -1,5 +1,24 @@
 //! Control-owned replacement storage; callbacks only take a pointer and acknowledge it.
 
+// Only the test expansion observes results; production expands to the original
+// lock expression. Both Ok and PoisonError contain an acquired guard. Keep the
+// caller's original expect/recovery and guard scope outside this expression.
+#[cfg(test)]
+macro_rules! c5_lock {
+    ($site:expr, $operation:expr) => {{
+        crate::c5_locks::attempt($site);
+        let result = $operation;
+        crate::c5_locks::acquired($site, result.is_err());
+        result
+    }};
+}
+#[cfg(not(test))]
+macro_rules! c5_lock {
+    ($site:expr, $operation:expr) => {
+        $operation
+    };
+}
+
 use super::*;
 use std::fmt;
 use std::ptr;
@@ -371,11 +390,7 @@ impl StationControlHost {
         owner: &AtomicPtr<ProcessingGeneration>,
         read: fn(&ProcessingGeneration) -> Option<usbradioplus_core::OutputLoudnessSnapshot>,
     ) -> Option<usbradioplus_core::OutputLoudnessSnapshot> {
-        let _storage = self
-            ._updates
-            .storage
-            .lock()
-            .expect("update storage poisoned");
+        let _storage = c5_lock!(0, self._updates.storage.lock()).expect("update storage poisoned");
         let pointer = owner.load(Ordering::Acquire);
         // SAFETY: storage retains each adopted owner until its successor is
         // acknowledged; this control-plane lock prevents reclamation during read.
@@ -388,9 +403,7 @@ impl StationRuntime {
     /// Whether explicit programme retirement currently owns the existing update
     /// transaction. Later queued remote work must not block this owner's polls.
     pub fn programme_retirement_pending(&self) -> bool {
-        self.updates
-            .storage
-            .lock()
+        c5_lock!(1, self.updates.storage.lock())
             .expect("update storage poisoned")
             .transaction
             .as_ref()
@@ -420,11 +433,8 @@ impl StationRuntime {
         }
         let generation = self.generation_id;
         let prepare = {
-            let mut storage = self
-                .updates
-                .storage
-                .lock()
-                .expect("update storage poisoned");
+            let mut storage =
+                c5_lock!(2, self.updates.storage.lock()).expect("update storage poisoned");
             if storage
                 .transaction
                 .as_ref()
@@ -475,9 +485,7 @@ impl StationRuntime {
                 .and_then(StationUpdatePreparation::prepare_programme_retirement)
                 .and_then(|update| self.begin_update(control, update));
             if let Err(error) = result {
-                self.updates
-                    .storage
-                    .lock()
+                c5_lock!(3, self.updates.storage.lock())
                     .expect("update storage poisoned")
                     .retirement
                     .as_mut()
@@ -486,10 +494,7 @@ impl StationRuntime {
                 return Err(error);
             }
         }
-        let failed = self
-            .updates
-            .storage
-            .lock()
+        let failed = c5_lock!(4, self.updates.storage.lock())
             .expect("update storage poisoned")
             .retirement
             .expect("retirement request")
@@ -499,9 +504,7 @@ impl StationRuntime {
             match self.update_result() {
                 Err(StationUpdateError::Pending) => return Err(StationUpdateError::Pending),
                 Err(_) => {
-                    self.updates
-                        .storage
-                        .lock()
+                    c5_lock!(5, self.updates.storage.lock())
                         .expect("update storage poisoned")
                         .retirement
                         .as_mut()
@@ -510,11 +513,8 @@ impl StationRuntime {
                 }
                 Ok(()) => {
                     self.finish_update_inner(control, true, true)?;
-                    let mut storage = self
-                        .updates
-                        .storage
-                        .lock()
-                        .expect("update storage poisoned");
+                    let mut storage =
+                        c5_lock!(6, self.updates.storage.lock()).expect("update storage poisoned");
                     let revision = storage.revision;
                     let retirement = storage.retirement.as_mut().expect("retirement request");
                     retirement.outcome = RetirementOutcome::Complete;
@@ -538,11 +538,7 @@ impl StationRuntime {
         if !Arc::ptr_eq(&self.updates, &control._updates) {
             return Err(StationUpdateError::Incompatible);
         }
-        let storage = self
-            .updates
-            .storage
-            .lock()
-            .expect("update storage poisoned");
+        let storage = c5_lock!(7, self.updates.storage.lock()).expect("update storage poisoned");
         if storage.transaction.is_some() {
             return Err(StationUpdateError::Busy);
         }
@@ -589,11 +585,8 @@ impl StationRuntime {
             .control
             .validate_update(&update.reverse.radio)
             .map_err(StationUpdateError::Radio)?;
-        let mut storage = self
-            .updates
-            .storage
-            .lock()
-            .expect("update storage poisoned");
+        let mut storage =
+            c5_lock!(8, self.updates.storage.lock()).expect("update storage poisoned");
         if storage.transaction.is_some() || storage.revision != update.revision {
             return Err(StationUpdateError::Busy);
         }
@@ -628,11 +621,7 @@ impl StationRuntime {
             return Err(StationUpdateError::Incompatible);
         }
         self.update_result()?;
-        let storage = self
-            .updates
-            .storage
-            .lock()
-            .expect("update storage poisoned");
+        let storage = c5_lock!(9, self.updates.storage.lock()).expect("update storage poisoned");
         let transaction = storage
             .transaction
             .as_ref()
@@ -666,11 +655,8 @@ impl StationRuntime {
         // Successful stop quiesces both owners. Drain any forward half before
         // deciding whether its retained reverse generation can be retired.
         self.apply_stopped_update();
-        let mut storage = self
-            .updates
-            .storage
-            .lock()
-            .expect("update storage poisoned");
+        let mut storage =
+            c5_lock!(10, self.updates.storage.lock()).expect("update storage poisoned");
         let Some(transaction) = storage.transaction.as_mut() else {
             return Ok(());
         };
@@ -736,6 +722,20 @@ impl StationRuntime {
         );
         self.updates.transmit(&mut transmit.station);
     }
+}
+
+/// Poison only a private test mailbox; never called from production.
+#[cfg(test)]
+pub(super) fn poison_storage_for_c5(mailbox: &UpdateMailbox) {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _guard = mailbox
+            .storage
+            .lock()
+            .expect("initially healthy test mailbox");
+        panic!("C5 deliberate mailbox poison");
+    }));
+    assert!(result.is_err());
+    assert!(mailbox.storage.is_poisoned());
 }
 
 #[cfg(test)]

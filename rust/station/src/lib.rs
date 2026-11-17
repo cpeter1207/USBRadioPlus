@@ -327,3 +327,6 @@ mod tests;
 #[cfg(test)]
 #[path = "tests/allocation.rs"]
 pub(crate) mod allocation;
+
+#[cfg(test)]
+mod c5_locks;

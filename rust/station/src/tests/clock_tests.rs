@@ -660,3 +660,53 @@ fn stage_c5_historical_adapter_new_sdk_clock_is_unknown() {
 }
 
 include!("c5_paired_tests.rs");
+
+/// Counts only this unit target's enumerated UpdateStorage sites on this thread.
+#[test]
+fn stage_c5_lock_callback_phases_are_zero() {
+    use crate::c5_locks as locks;
+    locks::reset(None);
+    locks::phase(locks::CONTROL, c5_lock_control_operations);
+    locks::covered(); // same TLS counter instance as the callback observations
+    for (split, fault) in [(0, 0), (240, 99)] {
+        CLOCK_NOW.set(100);
+        CLOCK_STEP.set(0);
+        CLOCK_CALLS.set(0);
+        let (mut runtime, _control) = clock_runtime();
+        let mut probe = ClockProbe::default();
+        clock_bind(&mut runtime, &mut probe);
+        crate::media::tests::CLOCK_GRAPH_SPLIT.set(split);
+        // Conservative first boundary includes synchronous fake start and RX,
+        // in addition to the first live TX render. Never a cold-process claim.
+        locks::phase(locks::FIRST, || runtime.start().unwrap());
+        locks::zero(locks::FIRST);
+        let per_render = if split == 0 { 1 } else { 4 };
+        assert_eq!(probe.calls, per_render);
+        assert_eq!(CLOCK_CALLS.get(), per_render);
+        locks::phase(locks::WARM, || clock_render(&mut runtime));
+        locks::zero(locks::WARM);
+        assert_eq!(probe.calls, 2 * per_render);
+        assert_eq!(CLOCK_CALLS.get(), 2 * per_render);
+        CLOCK_NOW.set(fault);
+        locks::phase(locks::FAULT, || clock_render(&mut runtime));
+        assert_eq!(CLOCK_CALLS.get(), 2 * per_render + 1);
+        assert_eq!(probe.clock, (0, 0, 0));
+        locks::phase(locks::FAULT, || clock_render(&mut runtime));
+        locks::zero(locks::FAULT);
+        assert_eq!(probe.calls, 4 * per_render);
+        assert_eq!(CLOCK_CALLS.get(), 2 * per_render + 1);
+        println!(
+            "C5_LOCK_CALLBACK component=sdk split={split} fault={fault} observations={} reads={}",
+            probe.calls,
+            CLOCK_CALLS.get()
+        );
+        crate::media::tests::CLOCK_GRAPH_SPLIT.set(0);
+        runtime.stop().unwrap();
+        // SAFETY: confirmed quiescence before releasing the borrowed probe.
+        unsafe { runtime.bind_programme_fence(None) }.unwrap();
+    }
+    locks::identity();
+    for phase in [locks::CONTROL, locks::FIRST, locks::WARM, locks::FAULT] {
+        locks::report(phase);
+    }
+}

@@ -3690,3 +3690,55 @@ fn programme_observation_in_flight_snapshot_survives_later_publication() {
 
 #[path = "clock_tests.rs"]
 mod clock_tests;
+
+// Every declared storage site must be reached by real existing control operations.
+fn c5_lock_control_operations() {
+    let (runtime, _control) = runtime(20);
+    assert!(!runtime.programme_retirement_pending());
+    drop(runtime);
+    programme_retirement_is_idempotent_serialized_and_generation_scoped();
+    programme_retirement_failed_half_keeps_fresh_reverse_until_ack_and_never_acks_failure();
+    programme_retirement_checks_foreign_failed_start_stopped_and_preparation_ownership();
+    stopped_updates_rollback_without_starting_and_reject_stale_or_foreign_candidates();
+}
+#[test]
+fn stage_c5_lock_sites_have_real_positive_controls() {
+    crate::c5_locks::reset(None);
+    crate::c5_locks::phase(crate::c5_locks::CONTROL, c5_lock_control_operations);
+    crate::c5_locks::report(crate::c5_locks::CONTROL);
+    crate::c5_locks::covered();
+}
+
+#[test]
+fn stage_c5_lock_each_omitted_site_fails_control() {
+    crate::c5_locks::missing_site_controls(c5_lock_control_operations);
+}
+
+#[test]
+fn stage_c5_lock_poisoned_guard_is_acquired_before_original_panic() {
+    use crate::c5_locks as locks;
+    let (runtime, control) = runtime(20);
+    super::update::poison_storage_for_c5(&runtime.updates);
+    locks::reset(None);
+    for operation in 0..2 {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            locks::phase(locks::CONTROL, || {
+                if operation == 0 {
+                    control.transmit_loudness();
+                } else {
+                    runtime.programme_retirement_pending();
+                }
+            });
+        }));
+        let message = result.expect_err("original expect must still panic");
+        assert!(
+            message
+                .downcast_ref::<String>()
+                .unwrap()
+                .contains("update storage poisoned")
+        );
+    }
+    assert_eq!(locks::snapshot(locks::CONTROL)[0], [1, 1, 1]);
+    assert_eq!(locks::snapshot(locks::CONTROL)[1], [1, 1, 1]);
+    locks::report(locks::CONTROL);
+}
