@@ -147,6 +147,7 @@ def staged_install_fixture(tmp_path):
         "README.md",
         "CHANGELOG.md",
         "doc/native-radio.md",
+        "doc/typed-preparation.md",
         "doc/programme-buffering.md",
         "doc/adr-programme-buffering.md",
         "doc/agc.md",
@@ -220,6 +221,12 @@ def test_staged_install_exposes_product_development_files_and_preserves_configur
             ROOT / "doc" / name
         ).read_bytes()
         assert f"doc/{name}" in read("debian/libusbradioplus-product1.docs")
+
+    sdk_guide = "typed-preparation.md"
+    assert (stage / "usr/share/doc/usbradioplus" / sdk_guide).read_bytes() == (
+        ROOT / "doc" / sdk_guide
+    ).read_bytes()
+    assert f"doc/{sdk_guide}" in read("debian/libusbradioplus-product-dev.docs")
 
     library = stage / "usr/lib/x86_64-linux-gnu"
     assert (library / "libusbradioplus_product.so").readlink() == Path(
