@@ -1,6 +1,7 @@
 usbradioplus (0.1.0~alpha36-1) UNRELEASED; urgency=medium
 
   * Add the preparation1 capability to the product SONAME 1 SDK.
+  * Add an independent typed link role capability to the same SDK.
   * Prepare typed station, processing and remote settings without hardware.
   * Include the typed settings and lifecycle contract in the development package.
 

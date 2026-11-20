@@ -1705,6 +1705,32 @@ typedef struct UrpPreparationDescriptor {
 			    uint32_t maximum_frames, void **);
 } UrpPreparationDescriptor;
 
+/** Opaque hardware-independent link role. Release through its own descriptor. */
+typedef struct UrpPreparedLinkRole UrpPreparedLinkRole;
+
+/** Immutable ABI 1 capability. Check the complete size, identity, version and all operations. */
+typedef struct UrpLinkPreparationDescriptor {
+	/** At least sizeof(UrpLinkPreparationDescriptor). */
+	uint32_t struct_size;
+	/** One. */
+	uint32_t abi_version;
+	/** NUL-terminated usbradioplus.link-preparation1. */
+	const char *capability_name;
+	/** Copy the bounded UTF-8 link DTO and report a rejected static field synchronously.
+	 * On failure the output is null. No station, device or graph provider is required. */
+	int (*prepare)(const uint8_t *settings, uint32_t settings_length,
+		       UrpNativeProcessingDiagnostic diagnostic, void *context,
+		       UrpPreparedLinkRole **output);
+	/** Compare role presence and effective settings. Write a boolean on success. */
+	int (*equal)(const UrpPreparedLinkRole *, const UrpPreparedLinkRole *, uint32_t *);
+	/** Prepare a product1 peer. Retain the FFmpeg provider until product1 link_destroy.
+	 * On failure the output is null. Each successful peer is independent of its role. */
+	int (*link_prepare)(const UrpPreparedLinkRole *, const void *ffmpeg,
+			    uint32_t sample_rate_hz, uint32_t maximum_frames, void **output);
+	/** Release one live role or accept null. */
+	void (*destroy)(UrpPreparedLinkRole *);
+} UrpLinkPreparationDescriptor;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -1718,6 +1744,9 @@ const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void);
 /** Return the complete typed preparation descriptor. Destroy candidates through product1
  * native_configuration_destroy, and inspect via native_configuration_visit/remote_options. */
 const UrpPreparationDescriptor *usbradioplus_preparation_descriptor(void);
+
+/** Return the process-lifetime independent peer-role preparation descriptor. */
+const UrpLinkPreparationDescriptor *usbradioplus_link_preparation_descriptor(void);
 
 #ifdef __cplusplus
 } // extern "C"

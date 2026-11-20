@@ -10,8 +10,12 @@ mod remote;
 pub use remote::UrpRemoteOperation;
 mod native;
 pub use maintenance::UrpNativePhysicalStatus;
+mod link_preparation;
 mod native_configuration;
 mod native_processing;
+pub use link_preparation::{
+    UrpLinkPreparationDescriptor, UrpPreparedLinkRole, usbradioplus_link_preparation_descriptor,
+};
 mod preparation;
 mod preparation_settings;
 pub use native::{

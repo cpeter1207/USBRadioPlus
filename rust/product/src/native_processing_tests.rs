@@ -366,3 +366,169 @@ fn processing_entry_points_reject_bad_requests_and_leave_no_graph_handle() {
         );
     }
 }
+
+#[test]
+fn independent_link_role_retains_presence_effective_gains_and_negotiated_metering() {
+    #[link(name = "rptadv_ffmpeg_adapter")]
+    unsafe extern "C" {
+        fn rptadv_ffmpeg_adapter_descriptor() -> *const c_void;
+    }
+
+    // SAFETY: the product and FFmpeg descriptors stay loaded through all destroys.
+    // Empty, admitted and rejected spans live through their synchronous calls.
+    unsafe {
+        let api = &*crate::usbradioplus_link_preparation_descriptor();
+        let product = crate::product_descriptor();
+        let resolve = |text: &str| {
+            let mut owner = std::ptr::null_mut();
+            assert_eq!(
+                (api.prepare)(
+                    text.as_ptr(),
+                    text.len() as u32,
+                    None,
+                    std::ptr::null_mut(),
+                    &mut owner
+                ),
+                0
+            );
+            assert!(!owner.is_null());
+            owner
+        };
+        let absent = resolve("{}");
+        let shipped = resolve(r#"{"link":{}}"#);
+        let disabled = resolve(r#"{"link":{"enabled":false}}"#);
+        let attenuated = resolve(&format!(
+            r#"{{"link":{{"enabled":false,"output_gain_db":{}}}}}"#,
+            -6
+        ));
+        let same = resolve(r#"{"link":{"output_gain_db":-6.0,"enabled":false}}"#);
+        for (left, right, expected) in [
+            (absent, shipped, 0),
+            (shipped, disabled, 0),
+            (disabled, attenuated, 0),
+            (attenuated, same, 1),
+        ] {
+            let mut equal = 2;
+            assert_eq!((api.equal)(left, right, &mut equal), 0);
+            assert_eq!(equal, expected);
+        }
+
+        let ffmpeg = rptadv_ffmpeg_adapter_descriptor();
+        let mut peer = std::ptr::dangling_mut();
+        for (rate, frames) in [(0, 160), (8_000, 0), (8_000, 4097)] {
+            assert_ne!(
+                (api.link_prepare)(absent, ffmpeg, rate, frames, &mut peer),
+                0
+            );
+            assert!(peer.is_null());
+        }
+        for (owner, rate, reference) in [
+            (absent, 8_000, 0.25_f32),
+            (attenuated, 16_000, 0.25 * 10.0_f32.powf(-6.0 / 20.0)),
+        ] {
+            assert_eq!((api.link_prepare)(owner, ffmpeg, rate, 160, &mut peer), 0);
+            (api.destroy)(owner);
+            let mut pcm = [0.25_f32; 160];
+            let process = product.link_process_f32.unwrap();
+            assert_eq!(
+                process(
+                    peer,
+                    URP_AST_LINK_DIRECTION_READ,
+                    rate,
+                    pcm.as_mut_ptr(),
+                    160
+                ),
+                0
+            );
+            assert!((pcm[159] - reference).abs() < 0.0001, "{pcm:?}");
+            let mut observation = crate::UrpAstLinkObservation {
+                struct_size: size_of::<crate::UrpAstLinkObservation>() as u32,
+                abi_version: 1,
+                ..Default::default()
+            };
+            assert_eq!(product.link_observe.unwrap()(peer, &mut observation), 0);
+            assert_eq!(observation.processed_blocks, 1);
+            assert_eq!(observation.loudness_sample_count, 160);
+            product.link_destroy.unwrap()(peer);
+        }
+        for owner in [shipped, disabled, same, std::ptr::null_mut()] {
+            (api.destroy)(owner);
+        }
+    }
+}
+
+#[test]
+fn independent_link_role_rejects_station_data_and_invalid_profiles_before_graph_creation() {
+    unsafe extern "C" fn diagnostic(context: *mut c_void, text: *const u8, length: u32) {
+        // SAFETY: the callback borrows its field bytes and exclusively owns its output for this call.
+        unsafe {
+            *context.cast::<Vec<u8>>() = std::slice::from_raw_parts(text, length as usize).into();
+        }
+    }
+    // SAFETY: all provided spans are readable for their admitted length. Oversize
+    // lengths must be rejected before reading. Results are writable and aligned.
+    unsafe {
+        let api = &*crate::usbradioplus_link_preparation_descriptor();
+        let mut owner = std::ptr::dangling_mut();
+        let mut field = Vec::<u8>::new();
+        for text in [
+            r#"{"station":{}}"#,
+            r#"{"remote":null}"#,
+            r#"{"local":{}}"#,
+            r#"{"voice_telemetry":{}}"#,
+            r#"{"link":null}"#,
+            r#"{"link":{"enabled":null}}"#,
+            r#"{"link":{"stage_order":["agc","agc"]}}"#,
+            r#"{"link":{"output_gain_db":999}}"#,
+            r#"{"link":{},"link":{}}"#,
+            "[]",
+        ] {
+            field.clear();
+            assert_ne!(
+                (api.prepare)(
+                    text.as_ptr(),
+                    text.len() as u32,
+                    Some(diagnostic),
+                    std::ptr::from_mut(&mut field).cast(),
+                    &mut owner
+                ),
+                0,
+                "{text}"
+            );
+            assert!(owner.is_null());
+            assert!(!field.is_empty());
+        }
+        for (pointer, length) in [
+            (std::ptr::null(), 4),
+            (b"{}".as_ptr(), 0),
+            (b"{}".as_ptr(), 1_048_577),
+            (b"\xff".as_ptr(), 1),
+        ] {
+            assert_ne!(
+                (api.prepare)(pointer, length, None, std::ptr::null_mut(), &mut owner),
+                0
+            );
+            assert!(owner.is_null());
+        }
+        assert_ne!(
+            (api.prepare)(
+                b"{}".as_ptr(),
+                2,
+                None,
+                std::ptr::null_mut(),
+                std::ptr::null_mut()
+            ),
+            0
+        );
+        let mut equal = 7;
+        assert_ne!((api.equal)(owner, owner, &mut equal), 0);
+        assert_eq!(equal, 7);
+        assert_ne!((api.equal)(owner, owner, std::ptr::null_mut()), 0);
+        let mut peer = std::ptr::dangling_mut();
+        assert_ne!(
+            (api.link_prepare)(owner, std::ptr::null(), 8_000, 160, &mut peer),
+            0
+        );
+        assert!(peer.is_null());
+    }
+}

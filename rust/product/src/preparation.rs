@@ -107,7 +107,7 @@ unsafe extern "C" fn prepare(
         let args = unsafe { copy_abi(args)? };
         // SAFETY: the borrowed station advertises its complete ABI-4 prefix.
         let mut template = unsafe { native::copy_native_config(args.station)? };
-        if !(1..=1_048_576).contains(&args.settings_length) {
+        if !(1..=crate::preparation_settings::MAX_SETTINGS_BYTES).contains(&args.settings_length) {
             return Err(report("settings"));
         }
         if template.device_identifier_length > 1_048_576 || template.usb_serial_length > 1_048_576 {
@@ -122,10 +122,11 @@ unsafe extern "C" fn prepare(
         // SAFETY: caller supplies a complete readable span within the enforced size limit.
         let dto = unsafe { required_utf8(args.settings, args.settings_length) }
             .map_err(|_| report("settings"))?;
-        let semantic = crate::preparation_settings::Settings::parse(dto)
-            .map_err(report)?
-            .resolve(template.receive_output_gain_db)
-            .map_err(report)?;
+        let semantic =
+            crate::preparation_settings::parse::<crate::preparation_settings::Settings>(dto)
+                .map_err(report)?
+                .resolve(template.receive_output_gain_db)
+                .map_err(report)?;
         let mut channel = semantic.channel;
         let mut radio =
             // SAFETY: the bridge copies the sized released radio template before return.

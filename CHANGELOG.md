@@ -2,6 +2,7 @@
 
 ## 0.1.0~alpha36 - Unreleased
 
+- Add independent link-role preparation for metered peers on ports without a physical station.
 - Add the independently sized ABI 1 typed station preparation descriptor to product SONAME 1.
 - Resolve station, per-role processing, remote policy and peer graphs on the control owner before activation.
 - Compare owned semantic settings and reuse native creation, update and rollback with prepared candidates.

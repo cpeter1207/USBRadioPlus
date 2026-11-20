@@ -227,17 +227,35 @@ pub(super) struct Semantic {
     pub(super) remote: Option<ResolvedRemoteConfiguration>,
 }
 
-impl Settings {
-    pub(super) fn parse(text: &str) -> Result<Self, &'static str> {
-        // Struct Serde implementations also permit positional sequences. A DTO
-        // record always has named members, including records inside memory lists.
-        let shape: serde_json::Value = serde_json::from_str(text).map_err(|_| "settings")?;
-        if !shape.is_object() || !valid_shape(&shape, "") {
-            return Err("settings");
-        }
-        serde_json::from_str(text).map_err(|_| "settings")
-    }
+/// Maximum size of either provider settings record in bytes.
+pub(super) const MAX_SETTINGS_BYTES: u32 = 1_048_576;
 
+pub(super) fn parse<T: serde::de::DeserializeOwned>(text: &str) -> Result<T, &'static str> {
+    // Struct Serde implementations also permit positional sequences. A DTO
+    // record always has named members, including records inside memory lists.
+    let shape: serde_json::Value = serde_json::from_str(text).map_err(|_| "settings")?;
+    if !shape.is_object() || !valid_shape(&shape, "") {
+        return Err("settings");
+    }
+    serde_json::from_str(text).map_err(|_| "settings")
+}
+
+/// Only the link role is meaningful without a station.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct LinkSettings {
+    link: Option<Role>,
+}
+
+impl LinkSettings {
+    pub(super) fn resolve(self) -> Result<Option<ProcessingChain>, &'static str> {
+        self.link
+            .map(|role| role.chain(ChainRole::Link))
+            .transpose()
+    }
+}
+
+impl Settings {
     pub(super) fn resolve(self, raw_output_gain: i32) -> Result<Semantic, &'static str> {
         let profiles = Profiles {
             local: self

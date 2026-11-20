@@ -78,6 +78,18 @@ api = typed().contents
 assert api.struct_size >= ctypes.sizeof(Preparation) and api.abi_version == 1
 assert api.capability_name == b"usbradioplus.preparation1"
 assert all(getattr(api, name) for name, _ in Preparation._fields_)
+
+class LinkPreparation(DescriptorPrefix):
+    _fields_ = [(name, ctypes.c_void_p) for name in ("prepare", "equal", "link_prepare", "destroy")]
+
+getter = library.usbradioplus_link_preparation_descriptor
+getter.argtypes = []
+getter.restype = ctypes.POINTER(LinkPreparation)
+link_api = getter().contents
+assert link_api.struct_size >= ctypes.sizeof(LinkPreparation) and link_api.abi_version == 1
+assert link_api.capability_name == b"usbradioplus.link-preparation1"
+assert all(getattr(link_api, name) for name, _ in LinkPreparation._fields_)
+
 """
         environment = os.environ.copy()
         environment.pop("LD_PRELOAD", None)
