@@ -3,7 +3,8 @@
 use std::fmt;
 
 /// Reorderable stage in one source processing chain.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ProcessingStage {
     /// Downward expander.
     Expander,
@@ -95,6 +96,19 @@ impl StageOrder {
                 ProcessingStage::Limiter,
             ],
         }
+    }
+
+    /// Construct an ordered set from the typed provider input.
+    pub fn from_stages(stages: Vec<ProcessingStage>) -> Result<Self, StageOrderError> {
+        if stages.is_empty() || stages.len() > 6 {
+            return Err(StageOrderError::TooLong);
+        }
+        for (index, stage) in stages.iter().enumerate() {
+            if stages[..index].contains(stage) {
+                return Err(StageOrderError::DuplicateStage(*stage));
+            }
+        }
+        Ok(Self { stages })
     }
 
     /// Parse one comma-separated order and require every enabled stage.

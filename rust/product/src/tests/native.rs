@@ -2,6 +2,9 @@
 use super::*;
 use provider_support as fixture;
 
+#[path = "preparation/admission.rs"]
+mod typed_preparation_admission;
+
 #[path = "native_maintenance.rs"]
 mod maintenance_contract;
 
@@ -1803,4 +1806,260 @@ fn programme_fence_native_requires_stopped_sized_ack_and_retains_failed_start_ow
         assert_eq!(value.accepted, 1);
         api.native_destroy.unwrap()(handle);
     }
+}
+
+#[test]
+fn prepared_settings_own_spans_distinguish_roles_and_drive_native_lifecycle() {
+    let _guard = PROVIDER_TEST_LOCK.lock().unwrap();
+    fixture::clear_failure();
+    fixture::periodic_audio(true);
+    fixture::exclusive_audio(true);
+    fixture::restored_mixer_levels([750, 795, 245]);
+    let mut raw = radio();
+    raw.receive.vad_external_delay = 1;
+    let mut station = request(&raw);
+    station.receive_graph_length = 0;
+    station.transmit_graph_length = 0;
+    let descriptor = crate::preparation::descriptor();
+    let prepare_with_serial = |dto: &[u8], gain: Option<f64>, serial: &str| {
+        let mut station = station;
+        station.usb_serial = serial.as_ptr();
+        station.usb_serial_length = serial.len() as u32;
+        if let Some(gain) = gain {
+            station.hardware_gain_mask = URP_NATIVE_HARDWARE_GAIN_INPUT;
+            station.hardware_input_gain_db = gain;
+        }
+        let args = crate::preparation::UrpTypedPreparation {
+            struct_size: size_of::<crate::preparation::UrpTypedPreparation>() as u32,
+            abi_version: 1,
+            station: &station,
+            settings: dto.as_ptr(),
+            settings_length: dto.len() as u32,
+        };
+        let mut owner = ptr::null_mut();
+        // SAFETY: the complete request and all nested spans are live through return.
+        let status = unsafe { (descriptor.prepare)(&args, None, ptr::null_mut(), &mut owner) };
+        (status, owner)
+    };
+    let prepare = |dto: &[u8], gain| prepare_with_serial(dto, gain, "");
+    let (ok, inspect) = {
+        let serial = String::from("  station #A;B  ");
+        prepare_with_serial(b"{}", None, &serial)
+    };
+    assert_eq!(ok, 0);
+    let (ok, absent) = prepare(b"{}", None);
+    assert_eq!(ok, 0);
+    let (ok, duplicate) = prepare(b"{  }", None);
+    assert_eq!(ok, 0);
+    let (ok, present) = prepare(br#"{"link":{}}"#, None);
+    assert_eq!(ok, 0);
+    for invalid in [
+        br#"{"link":{"unknown":true}}"#.as_slice(),
+        br#"{"station":[]}"#,
+        br#"{"link":null}"#,
+        br#"{"link":{"receive":{"pl_filter":{"high_pass":null}}}}"#,
+        br#"{"station":{"receive":{"frequency_hz":true}}}"#,
+        br#"{"local":{},"local":{}}"#,
+        br#"{"station":{"ctcss":{"receive_source":"usb"}}}"#,
+        br#"{"station":{"dcs":{"transmit_code":{"value":512,"polarity":"inverted"}}}}"#,
+        br#"{"link":{"stage_order":["agc","agc"]}}"#,
+        br#"{"local":{"input_gain_db":300}}"#,
+        br#"{"station":{"receive":{"cos_assignment":"vox"}}}"#,
+    ] {
+        let (error, owner) = prepare(invalid, None);
+        assert_ne!(error, 0);
+        assert!(owner.is_null());
+    }
+    let manifest = fixture::manifest();
+    let callbacks = direct_callbacks();
+    let args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: ptr::null(),
+        providers: &manifest,
+        callbacks: &callbacks,
+        generation_id: 8,
+        maximum_frames: 960,
+    };
+    let api = product_descriptor();
+    let mut same = 99;
+    let mut handle = ptr::null_mut();
+    let mut update = ptr::null_mut();
+    let mut peer = ptr::null_mut();
+    // SAFETY: these complete serialized owners and descriptors remain live until their destructors.
+    unsafe {
+        assert_eq!(
+            crate::native_configuration::prepared(inspect)
+                .unwrap()
+                .configuration
+                .station
+                .hardware
+                .serial,
+            "  station #A;B  "
+        );
+        api.native_configuration_destroy.unwrap()(inspect);
+        for dto in [
+            br#"{"local":{}}"#.as_slice(),
+            br#"{"voice_telemetry":{}}"#,
+            br#"{"link":{"enabled":false}}"#,
+        ] {
+            let (ok, role) = prepare(dto, None);
+            assert_eq!(ok, 0);
+            assert_eq!((descriptor.equal)(absent, role, &mut same), 0);
+            assert_eq!(same, 0);
+            api.native_configuration_destroy.unwrap()(role);
+        }
+        assert_eq!((descriptor.equal)(absent, duplicate, &mut same), 0);
+        assert_eq!(same, 1);
+        let (ok, partial) = prepare(br#"{"link":{"receive":{}}}"#, None);
+        assert_eq!(ok, 0);
+        assert_eq!((descriptor.equal)(partial, present, &mut same), 0);
+        assert_eq!(same, 1);
+        api.native_configuration_destroy.unwrap()(partial);
+        assert_eq!((descriptor.equal)(absent, present, &mut same), 0);
+        assert_eq!(same, 0);
+        assert_eq!(
+            (descriptor.link_prepare)(absent, manifest.ffmpeg, 16_000, 960, &mut peer),
+            0
+        );
+        assert!(!peer.is_null());
+        let mut samples = [0.125_f32, -0.25];
+        assert_eq!(
+            api.link_process_f32.unwrap()(
+                peer,
+                URP_AST_LINK_DIRECTION_READ,
+                16_000,
+                samples.as_mut_ptr(),
+                2
+            ),
+            0
+        );
+        assert_eq!(samples, [0.125, -0.25]);
+        let mut observation = UrpAstLinkObservation {
+            struct_size: size_of::<UrpAstLinkObservation>() as u32,
+            abi_version: ABI_VERSION,
+            ..Default::default()
+        };
+        assert_eq!(api.link_observe.unwrap()(peer, &mut observation), 0);
+        assert_eq!(observation.loudness_sample_count, 2);
+        api.link_destroy.unwrap()(peer);
+        assert_eq!((descriptor.create)(absent, &args, &mut handle), 0);
+        api.native_configuration_destroy.unwrap()(absent);
+        assert_eq!(api.native_start.unwrap()(handle), 0);
+        let args = UrpNativeCreateArgs {
+            generation_id: 9,
+            ..args
+        };
+        assert_eq!(
+            (descriptor.prepare_update)(handle, present, &args, &mut update),
+            0
+        );
+        api.native_configuration_destroy.unwrap()(present);
+        assert_eq!(api.native_begin_update.unwrap()(handle, update), 0);
+        api.native_destroy_update.unwrap()(update);
+        wait_for_native_update(|| api.native_accept_update.unwrap()(handle));
+        wait_for_native_update(|| api.native_finish_update.unwrap()(handle, 1));
+        let (status, changed) = prepare(br#"{"local":{"output_gain_db":-4}}"#, Some(3.0));
+        assert_eq!(status, 0);
+        let args = UrpNativeCreateArgs {
+            generation_id: 10,
+            ..args
+        };
+        assert_eq!(
+            (descriptor.prepare_update)(handle, changed, &args, &mut update),
+            0
+        );
+        api.native_configuration_destroy.unwrap()(changed);
+        assert_eq!(api.native_begin_update.unwrap()(handle, update), 0);
+        api.native_destroy_update.unwrap()(update);
+        wait_for_native_update(|| api.native_accept_update.unwrap()(handle));
+        wait_for_native_update(|| api.native_finish_update.unwrap()(handle, 0));
+        assert_eq!(fixture::mixer_levels(), [750, 795, 245]);
+        assert_eq!(fixture::audio_lifecycle(), (1, 0));
+        assert_eq!(api.native_stop.unwrap()(handle), 0);
+        api.native_destroy.unwrap()(handle);
+        api.native_configuration_destroy.unwrap()(duplicate);
+    }
+    fixture::periodic_audio(false);
+    fixture::exclusive_audio(false);
+}
+
+#[test]
+fn typed_preparation_admits_complete_prefixes_and_reports_only_static_fields() {
+    unsafe extern "C" fn diagnostic(context: *mut c_void, data: *const u8, len: u32) {
+        // SAFETY: the caller owns this buffer and the provider lends a complete diagnostic span.
+        let (out, text) = unsafe {
+            (
+                &mut *context.cast::<Vec<String>>(),
+                crate::native::text(data, len).unwrap(),
+            )
+        };
+        out.push(text);
+    }
+    let mut raw = radio();
+    raw.receive.vad_external_delay = 1;
+    let mut config = request(&raw);
+    config.receive_graph_length = 0;
+    config.transmit_graph_length = 0;
+    let dto = br#"{"local":{"input_gain_db":49},"secret-author-string":"sensitive"}"#;
+    let base = crate::preparation::UrpTypedPreparation {
+        struct_size: size_of::<crate::preparation::UrpTypedPreparation>() as u32,
+        abi_version: 1,
+        station: &config,
+        settings: dto.as_ptr(),
+        settings_length: dto.len() as u32,
+    };
+    let descriptor = crate::preparation::descriptor();
+    let mut messages = Vec::<String>::new();
+    for variant in 0..12 {
+        let mut args = base;
+        let mut station = config;
+        let mut radio = raw;
+        let invalid_utf8 = [0xff];
+        if variant < 11 {
+            args.settings = b"{}".as_ptr();
+            args.settings_length = 2;
+        }
+        match variant {
+            0 => args.struct_size -= 1,
+            1 => args.abi_version = 0,
+            2 => args.settings_length = u32::MAX,
+            3 => station.struct_size -= 1,
+            4 => station.processing_configuration_length = 1,
+            5 => radio.abi_version = 4,
+            6 => radio.struct_size -= 1,
+            7 => radio.qualification.carrier_source = 2,
+            8 => {
+                args.settings = invalid_utf8.as_ptr();
+                args.settings_length = 1;
+            }
+            9 => {
+                args.settings = ptr::null();
+                args.settings_length = 2;
+            }
+            10 => {
+                radio.receive.vad_mode = 1;
+                radio.qualification.carrier_source = 8;
+            }
+            _ => (),
+        }
+        station.radio = ptr::from_ref(&radio).cast();
+        args.station = &station;
+        let mut owner = ptr::dangling_mut();
+        // SAFETY: the common headers and declared valid bytes stay live; oversized input must fail before reading.
+        let status = unsafe {
+            (descriptor.prepare)(
+                &args,
+                Some(diagnostic),
+                ptr::from_mut(&mut messages).cast(),
+                &mut owner,
+            )
+        };
+        assert_ne!(status, 0, "{variant}");
+        assert!(owner.is_null(), "{variant}");
+    }
+    assert!(!messages.is_empty());
+    assert!(messages.iter().all(|message| !message.contains("secret")
+        && !message.contains("sensitive")
+        && !message.contains("49")));
 }

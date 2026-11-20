@@ -12,6 +12,8 @@ mod native;
 pub use maintenance::UrpNativePhysicalStatus;
 mod native_configuration;
 mod native_processing;
+mod preparation;
+mod preparation_settings;
 pub use native::{
     URP_NATIVE_CONFIG_ABI_VERSION, URP_NATIVE_HARDWARE_GAIN_INPUT,
     URP_NATIVE_HARDWARE_GAIN_OUTPUT_A, URP_NATIVE_HARDWARE_GAIN_OUTPUT_B, UrpNativeCreateArgs,
@@ -19,6 +21,9 @@ pub use native::{
 };
 pub use native_configuration::{UrpNativeConfigurationSink, UrpRemoteCommandOptions};
 pub use native_processing::{UrpNativeProcessingArgs, UrpNativeProcessingDiagnostic};
+pub use preparation::{
+    UrpPreparationDescriptor, UrpTypedPreparation, usbradioplus_preparation_descriptor,
+};
 mod site;
 pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};
 

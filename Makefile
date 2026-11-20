@@ -533,7 +533,7 @@ install: all
 	$(INSTALL_PROGRAM) $(TUNER) $(DESTDIR)$(sbindir)/usbradioplus-tune
 	$(INSTALL_DATA) README.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) CHANGELOG.md $(DESTDIR)$(docdir)/
-	$(INSTALL_DATA) doc/native-radio.md $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) doc/native-radio.md doc/typed-preparation.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/programme-buffering.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/adr-programme-buffering.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
@@ -571,6 +571,7 @@ uninstall:
 		$(DESTDIR)$(mandir)/man8/usbradioplus-tune.8 \
 		$(DESTDIR)$(docdir)/README.md \
 		$(DESTDIR)$(docdir)/CHANGELOG.md \
+		$(DESTDIR)$(docdir)/typed-preparation.md \
 		$(DESTDIR)$(docdir)/native-radio.md \
 		$(DESTDIR)$(docdir)/programme-buffering.md \
 		$(DESTDIR)$(docdir)/adr-programme-buffering.md \

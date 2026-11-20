@@ -1,3 +1,11 @@
+usbradioplus (0.1.0~alpha36-1) UNRELEASED; urgency=medium
+
+  * Add the preparation1 capability to the product SONAME 1 SDK.
+  * Prepare typed station, processing and remote settings without hardware.
+  * Include the typed settings and lifecycle contract in the development package.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 20 Nov 2026 17:00:00 +0000
+
 usbradioplus (0.1.0~alpha35-1) unstable; urgency=medium
 
   * Add stopped-bound post-DSP programme fences on existing native/channel

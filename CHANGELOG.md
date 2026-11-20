@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0~alpha36 - Unreleased
+
+- Add the independently sized ABI 1 typed station preparation descriptor to product SONAME 1.
+- Resolve station, per-role processing, remote policy and peer graphs on the control owner before activation.
+- Compare owned semantic settings and reuse native creation, update and rollback with prepared candidates.
+
 ## 0.1.0~alpha35 - 2026-11-12
 
 - Add acknowledged native and Asterisk bindings for a final-programme permission fence.

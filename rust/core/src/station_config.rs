@@ -169,7 +169,8 @@ impl fmt::Display for GpioMode {
 }
 
 /// Assignment of one parallel-port output pin.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ParallelOutputAssignment {
     /// Start and hold the output low.
     Low,
@@ -190,7 +191,8 @@ impl fmt::Display for ParallelOutputAssignment {
 }
 
 /// Assignment of one parallel-port input pin.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ParallelInputAssignment {
     /// Expose a general-purpose input.
     Input,
@@ -211,7 +213,8 @@ impl fmt::Display for ParallelInputAssignment {
 }
 
 /// Effective optional parallel-port settings.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct ParallelPortConfig {
     /// Device node used if a pin assignment enables the adapter.
     pub device: String,
@@ -488,8 +491,16 @@ impl Default for TransmitConfig {
 }
 
 /// One exact tone supported by the native CTCSS engine.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, serde::Deserialize)]
+#[serde(try_from = "u16")]
 pub struct CtcssTone(u16);
+
+impl TryFrom<u16> for CtcssTone {
+    type Error = CtcssToneParseError;
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        Self::from_tenths_hz(value).ok_or(CtcssToneParseError)
+    }
+}
 
 impl CtcssTone {
     /// Construct a supported tone from tenths of a hertz.
@@ -615,17 +626,21 @@ impl fmt::Display for CtcssTurnoffMode {
 }
 
 /// Effective CTCSS settings retained independently for each signaling direction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct CtcssConfig {
     /// Supported receive-tone list.
     pub receive_frequencies: Vec<CtcssTone>,
     /// Optional receive-to-transmit tone map.
     pub transmit_frequencies: Vec<CtcssTone>,
     /// Receive CTCSS indication source.
+    #[serde(skip)]
     pub receive_source: CtcssSource,
     /// Decoder-only gain in dB.
+    #[serde(skip)]
     pub receive_decoder_gain_db: f64,
     /// Whether received-tone qualification is bypassed in CTCSS mode.
+    #[serde(skip)]
     pub receive_override_enabled: bool,
     /// Decoder talk-off tolerance, `0` for strict or `1` for relaxed.
     pub receive_relax: u8,
@@ -634,6 +649,7 @@ pub struct CtcssConfig {
     /// Direct generated CTCSS peak in dBFS.
     pub transmit_peak_dbfs: f64,
     /// Pre-unkey CTCSS action.
+    #[serde(skip)]
     pub turnoff_mode: CtcssTurnoffMode,
     /// Phase shift applied by the phase-tail mode.
     pub phase_shift_degrees: f64,
@@ -664,7 +680,8 @@ impl Default for CtcssConfig {
 }
 
 /// DCS code polarity.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DcsPolarity {
     /// Normal DCS polarity (`N`).
     Normal,
@@ -682,13 +699,19 @@ impl fmt::Display for DcsPolarity {
 }
 
 /// Exact three-octal-digit DCS code and polarity selection.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DcsCode {
     value: u16,
     polarity: DcsPolarity,
 }
 
 impl DcsCode {
+    /// Construct an actual nine-bit code with its independently selected polarity.
+    pub fn from_value(value: u16, polarity: DcsPolarity) -> Option<Self> {
+        (value <= 0o777).then_some(Self { value, polarity })
+    }
+
     /// Return the numeric value represented by the three octal digits.
     pub const fn value(self) -> u16 {
         self.value
@@ -739,7 +762,8 @@ impl fmt::Display for DcsCodeParseError {
 impl std::error::Error for DcsCodeParseError {}
 
 /// Effective DCS settings retained independently for each signaling direction.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct DcsConfig {
     /// Receive code and polarity.
     pub receive_code: DcsCode,
@@ -806,7 +830,8 @@ impl Default for DuplexConfig {
 }
 
 /// Effective low-level radio diagnostics.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct DiagnosticsConfig {
     /// Periodic meter and FIFO status publication interval in milliseconds.
     pub status_publication_interval_ms: u32,
@@ -1081,6 +1106,21 @@ impl ResolvedStationConfig {
 }
 
 impl StationConfig {
+    /// Whether carrier or tone qualification can end a kerchunk-filtered RF burst.
+    pub fn has_receive_release_gate(&self) -> bool {
+        let carrier_gate = !matches!(
+            self.receive.cos_assignment,
+            CarrierSource::Disabled | CarrierSource::Open
+        );
+        let tone_gate = !self.ctcss.receive_override_enabled
+            && match self.receive.signaling_method {
+                SignalingMethod::Carrier => false,
+                SignalingMethod::Ctcss => self.ctcss.receive_source != CtcssSource::Disabled,
+                SignalingMethod::Dcs => true,
+            };
+        carrier_gate || tone_gate
+    }
+
     /// Validate cross-field requirements which cannot be resolved per setting.
     pub fn validate(&self) -> Result<(), StationValidationError> {
         if self.receive.signaling_method == SignalingMethod::Ctcss
@@ -1495,20 +1535,11 @@ fn normalize_vad(
     if config.receive.vad_mode == VadMode::Off {
         return;
     }
-    let carrier_gate = !matches!(
-        config.receive.cos_assignment,
-        CarrierSource::Disabled | CarrierSource::Open
-    );
-    let tone_gate = !config.ctcss.receive_override_enabled
-        && match config.receive.signaling_method {
-            SignalingMethod::Carrier => false,
-            SignalingMethod::Ctcss => config.ctcss.receive_source != CtcssSource::Disabled,
-            SignalingMethod::Dcs => true,
-        };
+    let release_gate = config.has_receive_release_gate();
     if config.receive.cos_assignment == CarrierSource::Disabled {
         config.receive.cos_assignment = CarrierSource::Open;
     }
-    if config.receive.vad_mode != VadMode::Kerchunk || carrier_gate || tone_gate {
+    if config.receive.vad_mode != VadMode::Kerchunk || release_gate {
         return;
     }
     let mut origin = (

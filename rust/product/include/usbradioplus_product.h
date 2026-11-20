@@ -1512,7 +1512,7 @@ typedef struct UrpAstDescriptor {
 	/** Validate shared source profiles without opening devices or graphs. */
 	int (*native_processing_validate)(const struct UrpNativeProcessingArgs *args,
 					  UrpNativeProcessingDiagnostic diagnostic, void *context);
-	/** Prepare a native 48 kHz link graph; absent profiles return a null handle.
+	/** Prepare a native 48 kHz link graph; absent profiles return a metered neutral handle.
 	 * The caller retains the FFmpeg provider until link_destroy has returned.
 	 */
 	int (*native_link_prepare)(const struct UrpNativeProcessingArgs *args, const void *ffmpeg,
@@ -1667,6 +1667,44 @@ typedef struct UrpAstDescriptor {
 	(offsetof(UrpAstDescriptor, channel_programme_fence_bind) +                                \
 	 sizeof(((UrpAstDescriptor *)0)->channel_programme_fence_bind))
 
+/** Provider-owned typed settings DTO, copied synchronously during preparation. */
+typedef struct UrpTypedPreparation {
+	/** Complete version-one prefix. */
+	uint32_t struct_size;
+	/** One. */
+	uint32_t abi_version;
+	/** ABI-4 station and ABI-5 standalone radio template. Source, node and graph lengths
+	 * must be zero. Use controller-owned RX delay, advanced transport and disabled CPU savers.
+	 */
+	const UrpNativeStationConfig *station;
+	/** UTF-8 settings DTO defined in doc/typed-preparation.md. */
+	const uint8_t *settings;
+	/** Positive byte count, at most 1048576. */
+	uint32_t settings_length;
+} UrpTypedPreparation;
+
+/** Immutable ABI 1 capability. Check size, version, identity and all operations before use. */
+typedef struct UrpPreparationDescriptor {
+	/** At least sizeof(UrpPreparationDescriptor). */
+	uint32_t struct_size;
+	/** One. */
+	uint32_t abi_version;
+	/** NUL-terminated usbradioplus.preparation1. */
+	const char *capability_name;
+	/** Return an owned candidate and synchronous static-field diagnostics, without device
+	 * access. */
+	int (*prepare)(const UrpTypedPreparation *, UrpNativeProcessingDiagnostic, void *, void **);
+	/** Compare semantic station, roles and remote policy. Return zero status and a boolean. */
+	int (*equal)(const void *, const void *, uint32_t *);
+	/** Use the prepared candidate. The lifecycle request's config must be null. */
+	int (*create)(const void *, const UrpNativeCreateArgs *, void **);
+	/** Prepare a token for product1 native_begin/accept/finish/destroy_update. */
+	int (*prepare_update)(void *, const void *, const UrpNativeCreateArgs *, void **);
+	/** Create an independent metered peer. An absent peer role yields a neutral handle. */
+	int (*link_prepare)(const void *, const void *, uint32_t sample_rate_hz,
+			    uint32_t maximum_frames, void **);
+} UrpPreparationDescriptor;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -1676,6 +1714,10 @@ extern "C" {
  * @return Pointer to the process-lifetime descriptor.
  */
 const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void);
+
+/** Return the complete typed preparation descriptor. Destroy candidates through product1
+ * native_configuration_destroy, and inspect via native_configuration_visit/remote_options. */
+const UrpPreparationDescriptor *usbradioplus_preparation_descriptor(void);
 
 #ifdef __cplusplus
 } // extern "C"

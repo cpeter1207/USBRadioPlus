@@ -21,8 +21,16 @@ impl CtcssTone {
 }
 
 /// Valid one-based CM119 GPIO pin.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(try_from = "u8")]
 pub struct GpioPin(u8);
+
+impl TryFrom<u8> for GpioPin {
+    type Error = &'static str;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Self::new(value).ok_or("pin")
+    }
+}
 
 impl GpioPin {
     /// Construct a pin in the supported one-through-eight range.
@@ -41,8 +49,16 @@ impl GpioPin {
 }
 
 /// Valid parallel-port output pin.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(try_from = "u8")]
 pub struct ParallelPin(u8);
+
+impl TryFrom<u8> for ParallelPin {
+    type Error = &'static str;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Self::new(value).ok_or("pin")
+    }
+}
 
 impl ParallelPin {
     /// Construct a pin in the supported two-through-nine range.

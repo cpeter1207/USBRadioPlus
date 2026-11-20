@@ -67,6 +67,17 @@ descriptor = pointer.contents
 assert descriptor.struct_size >= ctypes.sizeof(DescriptorPrefix), "Short descriptor"
 assert descriptor.abi_version == 1, "Incompatible product ABI"
 assert descriptor.capability_name == b"usbradioplus.product1", "Wrong product capability"
+
+class Preparation(DescriptorPrefix):
+    _fields_ = [(name, ctypes.c_void_p) for name in ("prepare", "equal", "create", "prepare_update", "link_prepare")]
+
+typed = library.usbradioplus_preparation_descriptor
+typed.argtypes = []
+typed.restype = ctypes.POINTER(Preparation)
+api = typed().contents
+assert api.struct_size >= ctypes.sizeof(Preparation) and api.abi_version == 1
+assert api.capability_name == b"usbradioplus.preparation1"
+assert all(getattr(api, name) for name, _ in Preparation._fields_)
 """
         environment = os.environ.copy()
         environment.pop("LD_PRELOAD", None)
