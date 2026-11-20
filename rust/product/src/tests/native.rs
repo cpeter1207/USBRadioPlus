@@ -1909,6 +1909,11 @@ fn prepared_settings_own_spans_distinguish_roles_and_drive_native_lifecycle() {
             assert_eq!(same, 0);
             api.native_configuration_destroy.unwrap()(role);
         }
+        assert_ne!((descriptor.equal)(absent, duplicate, ptr::null_mut()), 0);
+        let mut unaligned = [0_u64; 2];
+        let result = unaligned.as_mut_ptr().cast::<u8>().add(1).cast();
+        assert_ne!((descriptor.equal)(absent, duplicate, result), 0);
+        assert_eq!(unaligned, [0; 2]);
         assert_eq!((descriptor.equal)(absent, duplicate, &mut same), 0);
         assert_eq!(same, 1);
         let (ok, partial) = prepare(br#"{"link":{"receive":{}}}"#, None);
@@ -1943,6 +1948,12 @@ fn prepared_settings_own_spans_distinguish_roles_and_drive_native_lifecycle() {
         assert_eq!(api.link_observe.unwrap()(peer, &mut observation), 0);
         assert_eq!(observation.loudness_sample_count, 2);
         api.link_destroy.unwrap()(peer);
+        let mixed = UrpNativeCreateArgs {
+            config: &station,
+            ..args
+        };
+        assert_ne!((descriptor.create)(absent, &mixed, &mut handle), 0);
+        assert!(handle.is_null());
         assert_eq!((descriptor.create)(absent, &args, &mut handle), 0);
         api.native_configuration_destroy.unwrap()(absent);
         assert_eq!(api.native_start.unwrap()(handle), 0);

@@ -6086,6 +6086,45 @@ impl Drop for ReleaseWorkerFaults {
 }
 
 #[test]
+fn remote_worker_confirms_unkey_after_a_single_channel_selection_failure() {
+    let _guard = test_guard();
+    reset_test_state();
+    let mut station = open_hardware_station();
+    let factory = StationFactory::new(
+        station_providers(graph_provider(), sample_rate_adapter()),
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    let (setup, control) = worker_remote_setup(station.control().plan().hardware());
+    station.bind_remote(setup, control).unwrap();
+    station.start().unwrap();
+    remote_station_command(
+        &mut station,
+        &factory,
+        RemoteOperation::new(usbradioplus_core::remote_operation::RemoteOperationKind::Status),
+    )
+    .unwrap();
+    let service = &station.maintenance.service;
+    assert_eq!(service.remote_error(), 0);
+    let before = GPIO_CLOSES.load(Ordering::Acquire);
+    FAILURE.store(FAIL_SELECT_CHANNEL, Ordering::Release);
+    service
+        .queue_service(ServiceCommand::SelectChannel(2))
+        .unwrap();
+    assert!(await_hardware_condition(|| GPIO_CLOSES
+        .load(Ordering::Acquire)
+        > before));
+    assert_eq!(
+        service.statistics().last_failure,
+        Some(HardwareOperation::SelectChannel)
+    );
+    assert_eq!(service.remote_error(), 0);
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
+    station.stop().unwrap();
+}
+
+#[test]
 fn remote_worker_retries_initial_and_final_physical_off_confirmation() {
     let _guard = test_guard();
     reset_test_state();

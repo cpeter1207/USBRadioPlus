@@ -279,6 +279,41 @@ fn resolution_rejects_bad_abi_utf8_missing_node_and_invalid_visitors() {
 }
 
 #[test]
+fn public_ini_equality_compares_vox_controls_only_for_the_vox_carrier() {
+    let compare = |carrier: &str| {
+        let default = format!(
+            "[a]\n[radio]\ndevice_selection=automatic_lowest_alsa_card\ncarrier_source={carrier}\n"
+        );
+        let adjusted = format!("{default}vox_threshold=123\nvox_hang_ms=4321\n");
+        // SAFETY: both getters return process-lifetime tables. Resolver input and result
+        // slots remain live; the two handles are destroyed after the synchronous comparison.
+        unsafe {
+            let product = &*crate::usbradioplus_product_descriptor_v1();
+            let resolve = product.native_configuration_resolve.unwrap();
+            let release = product.native_configuration_destroy.unwrap();
+            let prepared = &*crate::usbradioplus_preparation_descriptor();
+            let owner = |source: &str| {
+                let mut out = ptr::null_mut();
+                assert_eq!(
+                    resolve(&args(source, "a"), None, ptr::null_mut(), &mut out),
+                    0
+                );
+                out
+            };
+            let left = owner(&default);
+            let right = owner(&adjusted);
+            let mut same = 2;
+            let status = (prepared.equal)(left, right, &mut same);
+            release(left);
+            release(right);
+            assert_eq!(status, 0);
+            same
+        }
+    };
+    assert_eq!([compare("dsp"), compare("vox")], [1, 0]);
+}
+
+#[test]
 fn typed_preparation_matches_ini_station_roles_and_owned_remote_policy() {
     struct Comparison<'a> {
         dto: &'a [u8],
@@ -327,25 +362,16 @@ fn typed_preparation_matches_ini_station_roles_and_owned_remote_policy() {
         "power_w=5\nreceive_vfo=A\ntransmit_vfo=B\nsplit=yes\nrit_hz=100\nrit_enabled=no\n",
         "[remote_scan a channel list]\nselector=2\nmembers=local A\npriority=local A\ndwell_ms=900\n"
     );
-    let remote_dto = r#"{"remote":{
-        "backend":"hamlib","audio_source":"cm119","hamlib_model":"RIG_MODEL_DUMMY",
-        "hamlib_options":{"rig_pathname":"/dev/ttyUSB0","ptt_type":"RIG"},
-        "timeout_ms":900,"retries":3,"timeout_retries":4,"poll_interval_ms":500,
-        "ptt_source":"hamlib","cor_source":"dsp","external_encode_inverted":false,
-        "receive_ranges":[[144000000,148000000]],"transmit_ranges":[[144000000,148000000]],"receive_only_ranges":[],
-        "modes":[1],"maximum_power_mw":10000,"startup_memory":5,"dtmf_access":"open","dtmf_prefix":"65",
-        "power_presets_mw":[1000,null,null],"scan_presets_ms":[3000,null,null],"tune_duration_ms":1000,
-        "memories":[{"selector":5,"name":"local A","state":{"receive_hz":146520000,"transmit_hz":146520000,
-        "mode":1,"bandwidth_hz":0,"receive_vfo":1,"transmit_vfo":2,"split":true,"offset_hz":0,
-        "rit_hz":100,"rit_enabled":false,"xit_hz":0,"xit_enabled":false,"power_mw":5000,
-        "encode":{"source":"disabled","enabled":false,"tone_tenths_hz":1000,"dcs_code":0,"inverted":false},
-        "decode":{"source":"external","control_source":"rig","enabled":true,"tone_tenths_hz":1148,"dcs_code":0,"inverted":false}}}],
-        "scan_lists":[{"selector":2,"name":"channel list","members":[5],"priority":5,"dwell_ms":900,"resume_delay_ms":2000,"settle_ms":0}]
-    }}"#;
+    let remote_dto = include_str!("tests/preparation/remote.json");
     let ordinary_dto=br#"{"station":{"voter_reporting":1},"local":{"output_gain_db":-3},"link":{"input_gain_db":2},"voice_telemetry":{"output_gain_db":-2}}"#;
     let dcs_source = "[a]\n[radio]\ndevice_selection=automatic_lowest_alsa_card\nreceive_signaling=dcs\ndcs_receive_code=125I\ntransmit_signaling=dcs\ntransmit_dcs_code=134N\ntransmit_dcs_level_dbfs=-16\ntransmit_dcs_turnoff_enabled=no\ntransmit_dcs_turnoff_duration_ms=155\n";
+    let ordinary_with_inactive_vox = source.replace(
+        "[radio]",
+        "[radio]\ncarrier_source=dsp\nvox_threshold=123\nvox_hang_ms=4321",
+    );
     for (source, dto) in [
         (source, ordinary_dto.as_slice()),
+        (ordinary_with_inactive_vox.as_str(), ordinary_dto.as_slice()),
         (
             "[a]\n[hardware]\nhardware_gpio_usb_port_path=1-5\n",
             br#"{"station":{"gpio_usb_port_path":"1-5"}}"#.as_slice()
@@ -383,6 +409,10 @@ fn typed_preparation_matches_ini_station_roles_and_owned_remote_policy() {
                 (crate::preparation::descriptor().equal)(ini, comparison.owner, &mut same),
                 0
             );
+            let mut observed = Observation::default();
+            assert_eq!(visit(comparison.owner, Some(observe), ptr::from_mut(&mut observed).cast()), 0);
+            assert_eq!(observed.radio.as_ref(),Some(&prepared(comparison.owner).unwrap().radio));
+            assert!(observed.source.is_empty() && observed.node.is_empty());
             if same == 0 {
                 let left = prepared(ini).unwrap();
                 let right = prepared(comparison.owner).unwrap();

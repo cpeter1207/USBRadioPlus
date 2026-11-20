@@ -24,7 +24,12 @@ fn prepare(
     raw: &RawSessionConfig,
     dto: &[u8],
     configure: impl FnOnce(&mut UrpNativeStationConfig),
-) -> Result<Owner, c_int> {
+) -> Result<Owner, (c_int, String)> {
+    unsafe extern "C" fn diagnostic(context: *mut c_void, field: *const u8, length: u32) {
+        // SAFETY: prepare lends the field and this caller retains its exclusive string.
+        unsafe { *context.cast::<String>() = crate::native::text(field, length).unwrap() };
+    }
+    let mut field = String::new();
     let mut station = request(raw);
     station.receive_graph_length = 0;
     station.transmit_graph_length = 0;
@@ -39,14 +44,19 @@ fn prepare(
     let mut owner = ptr::null_mut();
     // SAFETY: the readable template and all borrowed spans stay live until return.
     let status = unsafe {
-        (crate::preparation::descriptor().prepare)(&args, None, ptr::null_mut(), &mut owner)
+        ((*crate::usbradioplus_preparation_descriptor()).prepare)(
+            &args,
+            Some(diagnostic),
+            ptr::from_mut(&mut field).cast(),
+            &mut owner,
+        )
     };
     if status == 0 {
         assert!(!owner.is_null());
         Ok(Owner(owner))
     } else {
         assert!(owner.is_null());
-        Err(status)
+        Err((status, field))
     }
 }
 
@@ -156,3 +166,8 @@ fn present_role_scalars_and_groups_reject_null() {
     )
     .unwrap();
 }
+
+#[path = "radio_bounds.rs"]
+mod radio_bounds;
+#[path = "settings_bounds.rs"]
+mod settings_bounds;

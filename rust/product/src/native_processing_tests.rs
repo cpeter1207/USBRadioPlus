@@ -520,6 +520,29 @@ fn independent_link_role_rejects_station_data_and_invalid_profiles_before_graph_
             ),
             0
         );
+        let mut storage = [0_u64; 2];
+        let misaligned = storage.as_mut_ptr().cast::<u8>().add(1);
+        assert_ne!(
+            (api.prepare)(
+                b"{}".as_ptr(),
+                2,
+                None,
+                std::ptr::null_mut(),
+                misaligned.cast()
+            ),
+            0
+        );
+        let mut peer = std::ptr::null_mut();
+        assert_ne!(
+            (api.link_prepare)(misaligned.cast(), std::ptr::null(), 8000, 160, &mut peer),
+            0
+        );
+        assert_ne!(
+            (api.link_prepare)(owner, std::ptr::null(), 8000, 160, misaligned.cast()),
+            0
+        );
+        assert_ne!((api.equal)(owner, owner, misaligned.cast()), 0);
+        assert_eq!(storage, [0; 2]);
         let mut equal = 7;
         assert_ne!((api.equal)(owner, owner, &mut equal), 0);
         assert_eq!(equal, 7);

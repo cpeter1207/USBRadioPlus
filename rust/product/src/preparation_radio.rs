@@ -9,8 +9,9 @@ use usbradioplus_radio::{
     self as radio, ReceiveSignaling, SessionConfig, SubaudibleSource, TransmitSignaling,
 };
 
-fn db(value: f32) -> Option<f64> {
-    (value.is_finite() && value > 0.0).then(|| 20.0 * f64::from(value).log10())
+/// Convert an admitted positive linear gain to dB.
+fn db(value: f32) -> f64 {
+    20.0 * f64::from(value).log10()
 }
 
 fn tone(value: i32) -> Result<CtcssTone, &'static str> {
@@ -64,7 +65,7 @@ pub(crate) fn apply(
         }
     }
     if !local_present && r.receive_input_gain > 0.0 {
-        channel.local.input_gain_db = db(r.receive_input_gain).ok_or("receive_input_gain")?;
+        channel.local.input_gain_db = db(r.receive_input_gain);
     }
     s.receive.vad_mode = match r.receive.vad_mode {
         radio::VadMode::Off => core::VadMode::Off,
@@ -83,11 +84,10 @@ pub(crate) fn apply(
     } else {
         core::RadioDuplexMode::Half
     };
-    s.ctcss.receive_decoder_gain_db =
-        db(r.receive.ctcss_decoder_gain).ok_or("receive_decoder_gain_db")?;
     if !(0.001..=1000.0).contains(&r.receive.ctcss_decoder_gain) {
         return Err("receive_decoder_gain_db");
     }
+    s.ctcss.receive_decoder_gain_db = db(r.receive.ctcss_decoder_gain);
     s.ctcss.receive_override_enabled = r.qualification.subaudible_override;
     s.ctcss.turnoff_mode = match r.transmit.tone_off_mode {
         radio::ToneOffMode::None => core::CtcssTurnoffMode::None,
@@ -162,9 +162,8 @@ pub(crate) fn apply(
                     .iter()
                     .map(|t| tone(c.mapped_frequencies_tenths_hz[t.table_index()]))
                     .collect::<Result<_, _>>()?;
-                s.ctcss.transmit_peak_dbfs = db(c.peak).ok_or("transmit_peak_dbfs")?;
-                s.ctcss.tail_duration_ms = u16::try_from(c.turnoff_duration_milliseconds)
-                    .map_err(|_| "tail_duration_ms")?;
+                s.ctcss.transmit_peak_dbfs = db(c.peak);
+                s.ctcss.tail_duration_ms = c.turnoff_duration_milliseconds as u16;
                 s.ctcss.phase_shift_degrees = c.turnoff_phase_shift_degrees;
                 s.ctcss.tail_frequency_hz = c.turnoff_tail_tone_hz;
             }
@@ -178,16 +177,15 @@ pub(crate) fn apply(
             s.transmit.signaling_method = SignalingMethod::Dcs;
             if !has_dcs {
                 s.dcs.transmit_code = code(d.code, d.inverted)?;
-                s.dcs.peak_dbfs = db(d.peak).ok_or("peak_dbfs")?;
-                s.dcs.turnoff_duration_ms = u16::try_from(d.turnoff_duration_milliseconds)
-                    .map_err(|_| "turnoff_duration_ms")?;
+                s.dcs.peak_dbfs = db(d.peak);
+                s.dcs.turnoff_duration_ms = d.turnoff_duration_milliseconds as u16;
                 s.dcs.turnoff_code_enabled = d.turnoff_enabled;
             }
         }
     }
     if r.qualification.carrier_source != radio::CarrierSource::Vox {
-        // The radio DSO validates these integers even when the detector is inactive.
-        // Retain one semantic representation of otherwise unused legacy values.
+        // INI owners may retain legacy detector settings. Only an active VOX carrier
+        // uses them; all other owners compare and project the same inactive defaults.
         let defaults = core::ReceiveConfig::default();
         s.receive.vox_threshold = defaults.vox_threshold;
         s.receive.vox_hang_ms = defaults.vox_hang_ms;
@@ -236,7 +234,7 @@ pub(crate) fn apply(
     if let TransmitSignaling::Dcs(dcs) = tx {
         // A supplied dB setting and an ABI-only template describe the same
         // effective calibration when they project to the same linear peak.
-        channel.station.dcs.peak_dbfs = db(dcs.peak).ok_or("peak_dbfs")?.clamp(-90.0, 0.0);
+        channel.station.dcs.peak_dbfs = db(dcs.peak).clamp(-90.0, 0.0);
     }
     Ok(())
 }
