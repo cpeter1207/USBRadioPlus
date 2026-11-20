@@ -1742,10 +1742,12 @@ extern "C" {
 const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void);
 
 /** Return the complete typed preparation descriptor. Destroy candidates through product1
- * native_configuration_destroy, and inspect via native_configuration_visit/remote_options. */
+ * native_configuration_destroy, and inspect via native_configuration_visit/remote_options.
+ * @return Pointer to the immutable, process-lifetime station preparation descriptor. */
 const UrpPreparationDescriptor *usbradioplus_preparation_descriptor(void);
 
-/** Return the process-lifetime independent peer-role preparation descriptor. */
+/** Return the independent peer-role preparation descriptor.
+ * @return Pointer to the immutable, process-lifetime peer-role preparation descriptor. */
 const UrpLinkPreparationDescriptor *usbradioplus_link_preparation_descriptor(void);
 
 #ifdef __cplusplus
