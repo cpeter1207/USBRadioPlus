@@ -61,7 +61,9 @@ fn main() {
     println!("cargo:rerun-if-changed={product}");
     bindgen::Builder::default()
         .header(product)
-        .allowlist_type("(UrpAst.*|DirectCallbacks)")
+        .allowlist_type(
+            "(UrpAst.*|UrpBoundStationRequest|UrpStationOwnershipDescriptor|DirectCallbacks)",
+        )
         .allowlist_var("(URP_AST_.*|URP_PROGRAMME_FENCE_ABI_VERSION)")
         .parse_callbacks(Box::new(ProductMacros))
         .derive_default(true)

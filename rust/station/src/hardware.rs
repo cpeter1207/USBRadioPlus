@@ -22,9 +22,82 @@ const SPH_USB_PTT_MASK: u8 = 1 << 3;
 const SPH_USB_ORDINARY_GPIO_MASK: u8 = 1;
 const PARALLEL_STATUS_BITS: [u8; 4] = [1 << 6, 1 << 5, 1 << 4, 1 << 3];
 
+/// Owner selected for rendered PTT on an ordinary station.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum OrdinaryPtt {
+    /// Existing public INI and v1 typed behavior for configured physical operators.
+    #[default]
+    Legacy,
+    /// Only the sound chip may receive rendered PTT.
+    Usb,
+    /// Only the selected parallel outputs may receive rendered PTT.
+    Parallel,
+    /// Dedicated serial modem-line PTT.
+    Serial,
+    /// Explicit CAT PTT on the ordinary station's owned rig.
+    Hamlib,
+}
+
+/// Dedicated UART and physical input roles used by the station worker.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SerialPlan {
+    /// Dedicated modem-line owner configuration.
+    pub port: usbradioplus_gpio::SerialConfig,
+    /// Selected dedicated PTT outputs, disjoint from encoder outputs.
+    pub ptt: u32,
+    /// Independently driven external encoder outputs.
+    pub encoder: u32,
+    /// CTS, DSR, DCD, RI input mask for carrier.
+    pub carrier: u32,
+    /// Independent selected external tone input mask.
+    pub tone: u32,
+    /// Selected carrier input levels are active low.
+    pub carrier_inverted: bool,
+    /// Selected tone input levels are active low.
+    pub tone_inverted: bool,
+}
+
+/// Explicit held-key observations on a single Linux evdev device.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct KeyboardPlan {
+    /// Selected input-event device path.
+    pub device: String,
+    /// Backend EV_KEY code to observe as carrier, when selected.
+    pub carrier: Option<u32>,
+    /// Raw carrier polarity after successful acquisition.
+    pub carrier_inverted: bool,
+    /// Independent manually held transmit request.
+    pub manual: Option<u32>,
+}
+/// Ordinary CAT PTT transport, independent of operating memories and RF limits.
+#[derive(Clone, Eq, PartialEq)]
+pub struct HamlibPttPlan {
+    /// Explicit Hamlib symbolic model.
+    pub model: String,
+    /// Private transport options copied into the Hamlib configuration.
+    pub options: std::collections::BTreeMap<String, String>,
+    /// Per-transaction timeout in milliseconds.
+    pub timeout_ms: u32,
+    /// Finite transaction retries.
+    pub retries: u32,
+    /// Finite timeout retries.
+    pub timeout_retries: u32,
+    /// Interval between actual PTT readbacks when demand is steady.
+    pub poll_interval_ms: u64,
+}
+impl fmt::Debug for HamlibPttPlan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HamlibPttPlan")
+            .field("model", &self.model)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Immutable requests needed before one channel opens physical hardware.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HardwarePlan {
+    /// Ordinary typed carrier and tone normalized only after a healthy CM119 sample.
+    pub inverted_cm119: [bool; 2],
     /// Exact or automatic request for the channel's single USB audio device.
     pub audio_selector: DeviceSelector,
     /// Extra capture latency requested from PortAudio, in milliseconds.
@@ -33,6 +106,16 @@ pub struct HardwarePlan {
     pub output_extra_buffer_ms: u32,
     /// CM119 settings which do not depend on the resolved USB topology.
     pub cm119: Option<Cm119Plan>,
+    /// Ordinary physical owner; remote generations retain their own routing.
+    pub ordinary_ptt: OrdinaryPtt,
+    /// Selected dedicated modem input/output owner.
+    pub serial: Option<SerialPlan>,
+    /// Optional held-key input owner.
+    pub keyboard: Option<KeyboardPlan>,
+    /// Selected ordinary Hamlib PTT settings.
+    pub hamlib_ptt: Option<HamlibPttPlan>,
+    /// Explicit ordinary external encoder output and electrical inversion.
+    pub ordinary_encoder: Option<(usbradioplus_core::RemoteEncoderOutput, bool)>,
     /// Polarity of the explicitly selected physical PTT output.
     pub ptt_inverted: bool,
     /// Optional parallel-port settings and signal assignments.
@@ -65,6 +148,8 @@ pub struct ParallelPlan {
     pub config: ParallelConfig,
     /// Data-register bits dedicated to PTT.
     pub ptt_mask: u8,
+    /// Input status bits to normalize before the per-role OR.
+    pub inverted_input_mask: u8,
     /// Status-register bits exposed as ordinary inputs.
     pub input_mask: u8,
     /// Status-register bits carrying carrier indication.
@@ -76,6 +161,14 @@ pub struct ParallelPlan {
 /// Audio and CM119 requests bound to one canonical selected USB device.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SelectedHardwarePlan {
+    /// Ordinary typed carrier and tone normalized only after a healthy CM119 sample.
+    pub inverted_cm119: [bool; 2],
+    /// Ordinary encoder wired to this stopped station.
+    pub ordinary_encoder: Option<(usbradioplus_core::RemoteEncoderOutput, bool)>,
+    /// Selected dedicated modem owner and input roles.
+    pub serial: Option<SerialPlan>,
+    /// Optional held-key input owner.
+    pub keyboard: Option<KeyboardPlan>,
     /// Fixed-48-kHz `PortAudio` stream inputs.
     pub stream: StreamConfig,
     /// CM119 adapter setup using the same canonical USB topology.
@@ -166,6 +259,10 @@ impl HardwarePlan {
                     return Err(HardwarePlanError::SerialMismatch);
                 }
                 Ok(Cm119Config {
+                    disable_ptt: matches!(
+                        self.ordinary_ptt,
+                        OrdinaryPtt::Parallel | OrdinaryPtt::Serial | OrdinaryPtt::Hamlib
+                    ),
                     usb_port_path: path.clone(),
                     vendor_id: 0,
                     product_id: 0,
@@ -177,6 +274,10 @@ impl HardwarePlan {
             })
             .transpose()?;
         Ok(SelectedHardwarePlan {
+            inverted_cm119: self.inverted_cm119,
+            ordinary_encoder: self.ordinary_encoder,
+            serial: self.serial.clone(),
+            keyboard: self.keyboard.clone(),
             stream: StreamConfig {
                 maximum_receive_frame_count: maximum_frame_count,
                 maximum_transmit_frame_count: maximum_frame_count,
@@ -216,6 +317,7 @@ pub fn hardware_plan(channel: &ChannelConfiguration) -> HardwarePlan {
     let clip_led_mask = hardware.clip_led_gpio.map_or(0, |pin| 1 << (pin - 1)) & output_enable_mask;
 
     HardwarePlan {
+        inverted_cm119: [false; 2],
         audio_selector: DeviceSelector {
             policy: if exact {
                 SelectionPolicy::Exact
@@ -239,6 +341,11 @@ pub fn hardware_plan(channel: &ChannelConfiguration) -> HardwarePlan {
             clip_led_mask,
         }),
         ptt_inverted: hardware.ptt_inverted,
+        ordinary_ptt: OrdinaryPtt::Legacy,
+        serial: None,
+        keyboard: None,
+        hamlib_ptt: None,
+        ordinary_encoder: None,
         parallel: parallel_plan(hardware),
     }
 }
@@ -346,6 +453,7 @@ fn parallel_plan(hardware: &usbradioplus_core::HardwareConfig) -> Option<Paralle
                 output_initial_mask,
             },
             ptt_mask,
+            inverted_input_mask: 0,
             input_mask,
             carrier_mask,
             ctcss_mask,

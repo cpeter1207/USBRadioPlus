@@ -50,6 +50,10 @@ static GRAPH_DELAY_MS: AtomicU32 = AtomicU32::new(0);
 static GRAPH_PREPARING: AtomicBool = AtomicBool::new(false);
 static MIXER_LEVELS: [AtomicU32; 3] = [const { AtomicU32::new(500) }; 3];
 static AUDIO_START_MIXER_LEVELS: [AtomicU32; 3] = [const { AtomicU32::new(0) }; 3];
+static MIXER_DISCOVERIES: AtomicU32 = AtomicU32::new(0);
+pub(super) fn mixer_discoveries() -> u32 {
+    MIXER_DISCOVERIES.load(Ordering::Acquire)
+}
 static MIXER_OTHER_WRITES: AtomicU32 = AtomicU32::new(0);
 
 pub(super) fn restored_mixer_levels(levels: [u32; 3]) {
@@ -1030,6 +1034,8 @@ struct AudioDescriptor {
         Option<unsafe extern "C" fn(*const AudioDeviceSelector, *mut AudioDeviceMatch) -> c_int>,
     stream_timing: Option<unsafe extern "C" fn(*const c_void, *mut AudioTiming) -> c_int>,
     mixer_paths: Option<unsafe extern "C" fn(*const c_char, *mut AudioMixerPaths) -> c_int>,
+    alsa_device_resolve:
+        Option<unsafe extern "C" fn(*const c_char, u32, u32, *mut AudioDeviceSelection) -> c_int>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -1321,6 +1327,28 @@ unsafe extern "C" fn audio_device_resolve(
     -1
 }
 
+unsafe extern "C" fn audio_alsa_device_resolve(
+    name: *const c_char,
+    _: u32,
+    _: u32,
+    selected: *mut AudioDeviceSelection,
+) -> c_int {
+    // SAFETY: the audio wrapper lends the terminated raw name and complete writable selection.
+    unsafe {
+        if CStr::from_ptr(name) != c"hw:3,0" || failed(FAIL_PREFLIGHT) {
+            return -1;
+        }
+        selected.write(AudioDeviceSelection {
+            struct_size: size_of::<AudioDeviceSelection>() as u32,
+            abi_version: AUDIO_ABI,
+            alsa_card_index: 3,
+            input_device_index: 2,
+            output_device_index: 3,
+        });
+    }
+    OK
+}
+
 unsafe extern "C" fn audio_device_select(
     _selector: *const AudioDeviceSelector,
     output: *mut AudioDeviceMatch,
@@ -1347,6 +1375,7 @@ unsafe extern "C" fn audio_mixer_paths(
     interface: *const c_char,
     output: *mut AudioMixerPaths,
 ) -> c_int {
+    MIXER_DISCOVERIES.fetch_add(1, Ordering::AcqRel);
     if failed(FAIL_MIXER_PATHS) {
         return -1;
     }
@@ -1411,6 +1440,7 @@ static AUDIO: AudioDescriptor = AudioDescriptor {
     device_select: Some(audio_device_select),
     stream_timing: Some(audio_stream_timing),
     mixer_paths: Some(audio_mixer_paths),
+    alsa_device_resolve: Some(audio_alsa_device_resolve),
 };
 
 static GPIO_INPUTS: AtomicU32 = AtomicU32::new(0);
@@ -1560,6 +1590,7 @@ struct GpioDescriptor {
         Option<unsafe extern "C" fn(*const c_void, *mut GpioCapabilities) -> c_int>,
     interlock_operations: [Option<unsafe extern "C" fn()>; 8],
     parallel_close_outputs: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
+    open_without_ptt: Option<GpioOpen>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -1815,6 +1846,7 @@ static GPIO: GpioDescriptor = GpioDescriptor {
     parallel_capabilities: Some(gpio_capabilities),
     interlock_operations: [None; 8],
     parallel_close_outputs: Some(gpio_parallel_close_outputs),
+    open_without_ptt: Some(gpio_open),
 };
 
 pub(crate) fn manifest() -> UrpAstProviderManifest {

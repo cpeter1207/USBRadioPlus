@@ -1,4 +1,5 @@
 //! Asterisk channel technologies and their pinned per-call state.
+pub(super) mod station;
 
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::mem::{size_of, zeroed};
@@ -57,6 +58,7 @@ struct HostSnapshot {
 /// A pinned channel wrapper referenced by Asterisk and injected Rust callbacks.
 pub(super) struct Channel {
     _name: Box<str>,
+    pub(super) typed: Option<station::Mounted>,
     descriptor: *const UrpAstDescriptor,
     rust_channel: AtomicPtr<c_void>,
     control: *mut ffi::ast_taskprocessor,
@@ -794,6 +796,10 @@ unsafe extern "C" fn request(
     }
     // SAFETY: Asterisk supplies a valid NUL-terminated channel name.
     let channel_name = unsafe { CStr::from_ptr(data) }.to_bytes();
+    let typed = match station::claim(channel_name, &host, contract) {
+        Ok(plan) => plan,
+        Err(()) => return ptr::null_mut(),
+    };
     let Some(channel_name_length) = channel_name_length(channel_name) else {
         return ptr::null_mut();
     };
@@ -829,6 +835,7 @@ unsafe extern "C" fn request(
         ptr::null_mut()
     };
     let channel = Box::new(Channel {
+        typed: typed.as_ref().map(|plan| plan.mounted()),
         _name: String::from_utf8_lossy(channel_name)
             .into_owned()
             .into_boxed_str(),
@@ -858,16 +865,20 @@ unsafe extern "C" fn request(
         channel_context: channel.cast(),
     };
     let mut rust_channel = ptr::null_mut();
-    // SAFETY: descriptor validity was checked at installation and reserve
-    // receives a live driver plus a stable channel context.
-    let result = unsafe {
-        (*host.descriptor)
-            .channel_reserve
-            .expect("validated channel_reserve")(
-            host.driver,
-            &raw const reserve,
-            &raw mut rust_channel,
-        )
+    let result = if let Some(plan) = typed {
+        // SAFETY: the matched driver, pinned plan and newly allocated stable control context are retained.
+        unsafe { plan.reserve(&reserve, &mut rust_channel) }
+    } else {
+        // SAFETY: the installed descriptor, live driver and stable channel context outlive reserve.
+        unsafe {
+            (*host.descriptor)
+                .channel_reserve
+                .expect("validated channel_reserve")(
+                host.driver,
+                &raw const reserve,
+                &raw mut rust_channel,
+            )
+        }
     };
     if result != URP_AST_OK {
         if !cause.is_null() && result == URP_AST_CHANNEL_BUSY {
@@ -1689,6 +1700,17 @@ pub(super) fn replay_transmit(channel: &Channel) -> i32 {
         );
     }
     result
+}
+
+#[cfg(test)]
+pub(super) unsafe fn test_station_start_stop(owner: *mut ffi::ast_channel, start: bool) -> i32 {
+    // SAFETY: the test retains its registered channel for the serialized operation.
+    let channel = unsafe { channel_from_owner(owner) }.expect("live station");
+    channel.control_status(if start {
+        ControlOperation::Start
+    } else {
+        ControlOperation::Stop
+    })
 }
 
 pub(super) fn service(channel: &Channel) -> i32 {

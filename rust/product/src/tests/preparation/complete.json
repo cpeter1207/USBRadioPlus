@@ -1,0 +1,209 @@
+{
+  "station": {
+    "eeprom_enabled": true,
+    "voter_reporting": 1,
+    "gpio_usb_port_path": "1-5",
+    "parallel_port": {
+      "device": "/dev/parport2",
+      "base_address": 632,
+      "output_assignments": [
+        "push_to_talk",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "input_assignments": [
+        "carrier",
+        null,
+        null,
+        null
+      ]
+    },
+    "receive": {
+      "frequency_hz": 144000000,
+      "squelch_delay_ms": 20
+    },
+    "transmit": {
+      "frequency_hz": 145000000
+    },
+    "duplex": {
+      "local_repeat_level": 333
+    },
+    "ctcss": {
+      "receive_frequencies": [
+        1230,
+        1000
+      ],
+      "transmit_frequencies": [
+        1365,
+        1035
+      ],
+      "transmit_default": 1035
+    }
+  },
+  "local": {
+    "rnnoise_enabled": true,
+    "receive": {
+      "bandpass_enabled": true,
+      "bandpass_highpass_hz": 110,
+      "bandpass_lowpass_hz": 3050,
+      "pl_filter": "high_pass",
+      "highpass_hz": 150
+    }
+  },
+  "voice_telemetry": {
+    "transmit_tail": {
+      "bandpass_enabled": true,
+      "bandpass_highpass_hz": 110,
+      "bandpass_lowpass_hz": 3050
+    }
+  },
+  "link": {
+    "enabled": true,
+    "stage_order": [
+      "deesser",
+      "limiter",
+      "expander",
+      "equalizer",
+      "agc",
+      "compressor"
+    ],
+    "input_gain_db": 1,
+    "output_gain_db": -1,
+    "equalizer": {
+      "enabled": true,
+      "low_gain_db": 1,
+      "low_frequency_hz": 400,
+      "low_slope": 0.5,
+      "mid_gain_db": 1,
+      "mid_frequency_hz": 1200,
+      "mid_width_octaves": 0.8,
+      "high_gain_db": 1,
+      "high_frequency_hz": 2500,
+      "high_slope": 0.5
+    },
+    "deesser": {
+      "enabled": true,
+      "frequency_hz": 4500,
+      "width_octaves": 0.8,
+      "threshold_dbfs": -20,
+      "ratio": 4,
+      "max_reduction_db": 5,
+      "attack_ms": 3,
+      "release_ms": 70
+    },
+    "agc": {
+      "enabled": true,
+      "target_lufs": -20,
+      "max_gain_db": 8,
+      "max_attenuation_db": 8,
+      "loudness_window_ms": 500,
+      "gain_increase_db_per_second": 3,
+      "gain_decrease_db_per_second": 7,
+      "activity_threshold_dbfs": -45,
+      "activity_hysteresis_db": 4,
+      "hold_ms": 600,
+      "deadband_db": 2
+    },
+    "expander": {
+      "enabled": true,
+      "threshold_dbfs": -50,
+      "ratio": 2,
+      "max_attenuation_db": 10,
+      "attack_ms": 20,
+      "release_ms": 300,
+      "sidechain_highpass_hz": 400,
+      "sidechain_lowpass_hz": 1600
+    },
+    "compressor": {
+      "enabled": true,
+      "layout": "full_band",
+      "low_crossover_hz": 600,
+      "high_crossover_hz": 2200,
+      "full": {
+        "threshold_dbfs": -8,
+        "ratio": 3,
+        "makeup_gain_db": 1,
+        "attack_ms": 80,
+        "release_ms": 350,
+        "knee_db": 9
+      },
+      "low": {
+        "threshold_dbfs": -8,
+        "ratio": 3,
+        "makeup_gain_db": 1,
+        "knee_db": 8,
+        "attack_ms": 80,
+        "release_ms": 350
+      },
+      "mid": {
+        "threshold_dbfs": -8,
+        "ratio": 3,
+        "makeup_gain_db": 1,
+        "knee_db": 8,
+        "attack_ms": 80,
+        "release_ms": 350
+      },
+      "high": {
+        "threshold_dbfs": -8,
+        "ratio": 3,
+        "makeup_gain_db": 1,
+        "knee_db": 8,
+        "attack_ms": 80,
+        "release_ms": 350
+      },
+      "sidechain_highpass_hz": 700,
+      "sidechain_lowpass_hz": 1600
+    },
+    "peak_limiter": {
+      "enabled": true,
+      "oversample": 2,
+      "ceiling_dbfs": -2,
+      "lookahead_ms": 4,
+      "attack_ms": 2,
+      "release_ms": 80
+    },
+    "limiter": {
+      "enabled": true,
+      "layout": "full_band",
+      "low_crossover_hz": 600,
+      "high_crossover_hz": 2200,
+      "full": {
+        "threshold_dbfs": -2,
+        "ratio": 18,
+        "knee_db": 1,
+        "attack_ms": 2,
+        "release_ms": 60,
+        "makeup_gain_db": 0
+      },
+      "low": {
+        "threshold_dbfs": -2,
+        "ratio": 12,
+        "knee_db": 5,
+        "attack_ms": 40,
+        "release_ms": 200,
+        "makeup_gain_db": 0
+      },
+      "mid": {
+        "threshold_dbfs": -2,
+        "ratio": 12,
+        "knee_db": 5,
+        "attack_ms": 8,
+        "release_ms": 80,
+        "makeup_gain_db": 0
+      },
+      "high": {
+        "threshold_dbfs": -2,
+        "ratio": 18,
+        "knee_db": 5,
+        "attack_ms": 0.8,
+        "release_ms": 40,
+        "makeup_gain_db": 0
+      }
+    }
+  }
+}

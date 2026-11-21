@@ -213,6 +213,7 @@ impl ProductionOperations {
             .as_ref()
             .expect("reload control gate is closed")
             .iter()
+            .filter(|channel| channel.typed.is_none())
             .nth(index)
             .expect("reload channel index came from the frozen membership")
     }
@@ -244,6 +245,7 @@ impl ReloadOperations for ProductionOperations {
             .as_ref()
             .expect("reload control gate is closed")
             .iter()
+            .filter(|channel| channel.typed.is_none())
             .count()
     }
 

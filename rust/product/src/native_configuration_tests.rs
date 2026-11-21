@@ -277,3 +277,208 @@ fn resolution_rejects_bad_abi_utf8_missing_node_and_invalid_visitors() {
     // SAFETY: null destruction is explicitly supported.
     unsafe { destroy(ptr::null_mut()) };
 }
+
+#[test]
+fn public_ini_equality_compares_vox_controls_only_for_the_vox_carrier() {
+    let compare = |carrier: &str| {
+        let default = format!(
+            "[a]\n[radio]\ndevice_selection=automatic_lowest_alsa_card\ncarrier_source={carrier}\n"
+        );
+        let adjusted = format!("{default}vox_threshold=123\nvox_hang_ms=4321\n");
+        // SAFETY: both getters return process-lifetime tables. Resolver input and result
+        // slots remain live; the two handles are destroyed after the synchronous comparison.
+        unsafe {
+            let product = &*crate::usbradioplus_product_descriptor_v1();
+            let resolve = product.native_configuration_resolve.unwrap();
+            let release = product.native_configuration_destroy.unwrap();
+            let prepared = &*crate::usbradioplus_preparation_descriptor();
+            let owner = |source: &str| {
+                let mut out = ptr::null_mut();
+                assert_eq!(
+                    resolve(&args(source, "a"), None, ptr::null_mut(), &mut out),
+                    0
+                );
+                out
+            };
+            let left = owner(&default);
+            let right = owner(&adjusted);
+            let mut same = 2;
+            let status = (prepared.equal)(left, right, &mut same);
+            release(left);
+            release(right);
+            assert_eq!(status, 0);
+            same
+        }
+    };
+    assert_eq!([compare("dsp"), compare("vox")], [1, 0]);
+}
+
+#[test]
+fn typed_preparation_matches_ini_station_roles_and_owned_remote_policy() {
+    struct Comparison<'a> {
+        dto: &'a [u8],
+        owner: *mut c_void,
+    }
+    unsafe extern "C" fn prepare(
+        context: *mut c_void,
+        station: *const UrpNativeStationConfig,
+    ) -> c_int {
+        // SAFETY: visit lends a full native request and this synchronous test context.
+        let (context, mut station) = unsafe { (&mut *context.cast::<Comparison>(), *station) };
+        station.processing_configuration_length = 0;
+        station.processing_node_length = 0;
+        station.receive_graph_length = 0;
+        station.transmit_graph_length = 0;
+        let args = crate::preparation::UrpTypedPreparation {
+            struct_size: size_of::<crate::preparation::UrpTypedPreparation>() as u32,
+            abi_version: 1,
+            station: &station,
+            settings: context.dto.as_ptr(),
+            settings_length: context.dto.len() as u32,
+        };
+        // SAFETY: all borrowed values live through synchronous preparation.
+        unsafe {
+            (crate::preparation::descriptor().prepare)(
+                &args,
+                None,
+                ptr::null_mut(),
+                &mut context.owner,
+            )
+        }
+    }
+    let source = "[a]\n[radio]\ndevice_selection=automatic_lowest_alsa_card\n[hardware]\nhardware_voter_reporting=1\n[local]\noutput_gain_db=-3\n[link]\ninput_gain_db=2\n[voice_telemetry]\noutput_gain_db=-2\n";
+
+    let remote_source = concat!(
+        "[a]\n[radio]\ndevice_selection=automatic_lowest_alsa_card\n",
+        "receive_signaling=ctcss\nctcss_source=usb\n",
+        "[remote_base a]\nenabled=yes\nbackend=hamlib\nhamlib_model=RIG_MODEL_DUMMY\n",
+        "hamlib_device=/dev/ttyUSB0\nhamlib_option_ptt_type=RIG\nstartup_memory=local A\n",
+        "allowed_modes=FM\nallowed_rx_ranges_hz=144000000-148000000\n",
+        "allowed_tx_ranges_hz=144000000-148000000\nmax_power_w=10\n",
+        "dtmf_access=open\ndtmf_prefix=65\npower_low_w=1\nscan_slow_ms=3000\n",
+        "timeout_ms=900\nretries=3\ntimeout_retries=4\nptt_source=hamlib\ncor_source=dsp\n",
+        "[remote_memory a local A]\nselector=5\nrx_frequency_hz=146520000\ntx_frequency_hz=146520000\n",
+        "ctcss_decode_source=external\nctcss_decode_hz=114.8\ndecode_control_source=hamlib\n",
+        "power_w=5\nreceive_vfo=A\ntransmit_vfo=B\nsplit=yes\nrit_hz=100\nrit_enabled=no\n",
+        "[remote_scan a channel list]\nselector=2\nmembers=local A\npriority=local A\ndwell_ms=900\n"
+    );
+    let remote_dto = include_str!("tests/preparation/remote.json");
+    let ordinary_dto=br#"{"station":{"voter_reporting":1},"local":{"output_gain_db":-3},"link":{"input_gain_db":2},"voice_telemetry":{"output_gain_db":-2}}"#;
+    let dcs_source = "[a]\n[radio]\ndevice_selection=automatic_lowest_alsa_card\nreceive_signaling=dcs\ndcs_receive_code=125I\ntransmit_signaling=dcs\ntransmit_dcs_code=134N\ntransmit_dcs_level_dbfs=-16\ntransmit_dcs_turnoff_enabled=no\ntransmit_dcs_turnoff_duration_ms=155\n";
+    let ordinary_with_inactive_vox = source.replace(
+        "[radio]",
+        "[radio]\ncarrier_source=dsp\nvox_threshold=123\nvox_hang_ms=4321",
+    );
+    for (source, dto) in [
+        (source, ordinary_dto.as_slice()),
+        (ordinary_with_inactive_vox.as_str(), ordinary_dto.as_slice()),
+        (
+            "[a]\n[hardware]\nhardware_gpio_usb_port_path=1-5\n",
+            br#"{"station":{"gpio_usb_port_path":"1-5"}}"#.as_slice()
+        ),
+        (remote_source, remote_dto.as_bytes()),
+        (dcs_source, b"{}".as_slice()),
+        (
+            dcs_source,
+            br#"{"station":{"dcs":{"receive_code":{"value":85,"polarity":"inverted"},"transmit_code":{"value":92,"polarity":"normal"},"peak_dbfs":-16,"turnoff_code_enabled":false,"turnoff_duration_ms":155}}}"#.as_slice()
+        ),
+        (
+            "[a]\n[radio]\ndevice_selection=automatic_lowest_alsa_card\nreceive_signaling=ctcss\nctcss_source=usb\n",
+            b"{}".as_slice()
+        ),
+        (
+            include_str!("tests/preparation/complete.ini"),
+            include_bytes!("tests/preparation/complete.json").as_slice(),
+        ),
+    ] {
+        let request = args(source, "a");
+        let mut ini = ptr::null_mut();
+        let mut comparison = Comparison {
+            dto,
+            owner: ptr::null_mut(),
+        };
+        let mut same = 0;
+        // SAFETY: each complete borrowed request, output and visitor context lives through its call.
+        unsafe {
+            assert_eq!(resolve(&request, None, ptr::null_mut(), &mut ini), 0);
+            assert_eq!(
+                visit(ini, Some(prepare), ptr::from_mut(&mut comparison).cast()),
+                0
+            );
+            assert_eq!(
+                (crate::preparation::descriptor().equal)(ini, comparison.owner, &mut same),
+                0
+            );
+            let mut observed = Observation::default();
+            assert_eq!(visit(comparison.owner, Some(observe), ptr::from_mut(&mut observed).cast()), 0);
+            assert_eq!(observed.radio.as_ref(),Some(&prepared(comparison.owner).unwrap().radio));
+            assert!(observed.source.is_empty() && observed.node.is_empty());
+            if same == 0 {
+                let left = prepared(ini).unwrap();
+                let right = prepared(comparison.owner).unwrap();
+                assert_eq!(left.configuration.station, right.configuration.station);
+                assert_eq!(left.configuration.local, right.configuration.local);
+                assert_eq!(left.configuration.link, right.configuration.link);
+                assert_eq!(left.configuration.voice_telemetry, right.configuration.voice_telemetry);
+                assert_eq!(left, right);
+            }
+            assert_eq!(same, 1);
+            if source == remote_source {
+                let decoder = prepared(comparison.owner).unwrap().remote.as_ref().unwrap().memories[0].state.decode;
+                assert_eq!(decoder.source, usbradioplus_core::RemoteSignalSource::External);
+                assert_eq!(decoder.control_source, Some(usbradioplus_core::RemoteSignalSource::Rig));
+                assert_eq!(decoder.tone_tenths_hz, 1148);
+                let follow_qualification = remote_dto.replace("\"control_source\":\"rig\",", "");
+                let mut follow = Comparison { dto: follow_qualification.as_bytes(), owner: ptr::null_mut() };
+                assert_eq!(visit(ini, Some(prepare), ptr::from_mut(&mut follow).cast()), 0);
+                assert_eq!(prepared(follow.owner).unwrap().remote.as_ref().unwrap().memories[0].state.decode.control_source, None);
+                assert_eq!((crate::preparation::descriptor().equal)(comparison.owner, follow.owner, &mut same), 0);
+                assert_eq!(same, 0);
+                destroy(follow.owner);
+                for invalid in [
+                    remote_dto.replace("\"encode\":{\"source\"", "\"encode\":{\"control_source\":\"rig\",\"source\""),
+                    remote_dto.replace("RIG_MODEL_DUMMY", "RIG_MODEL_NOT_REAL"),
+                    remote_dto.replace("\"external_encode_inverted\":false", "\"external_encode_inverted\":false,\"external_encode_output\":{\"usb\":1}"),
+                    remote_dto.replace("\"ptt_type\":\"RIG\"", "\"ptt_type\":\"RIG\",\"ptt_type\":\"RIG\""),
+                ] {
+                    let mut invalid = Comparison {dto: invalid.as_bytes(), owner: ptr::null_mut()};
+                    assert_ne!(visit(ini, Some(prepare), ptr::from_mut(&mut invalid).cast()), 0);
+                    assert!(invalid.owner.is_null());
+                }
+                let changed = remote_dto
+                    .replace("local A", "  A;# memory  ")
+                    .replace("/dev/ttyUSB0", "  /dev/tty;#  ");
+                let mut changed = Comparison {
+                    dto: changed.as_bytes(),
+                    owner: ptr::null_mut(),
+                };
+                assert_eq!(
+                    visit(ini, Some(prepare), ptr::from_mut(&mut changed).cast()),
+                    0
+                );
+                let plan = prepared(changed.owner).unwrap();
+                let remote = plan.remote.as_ref().unwrap();
+                assert_eq!(remote.memories[0].name, "  A;# memory  ");
+                assert_eq!(remote.hamlib_options["rig_pathname"], "  /dev/tty;#  ");
+                let mut options: UrpRemoteCommandOptions = std::mem::zeroed();
+                options.struct_size = size_of::<UrpRemoteCommandOptions>() as u32;
+                options.abi_version = 1;
+                assert_eq!(remote_options(changed.owner, &mut options), 0);
+                assert_eq!(options.access, 1);
+                assert_eq!(&options.prefix[..options.prefix_length as usize], b"65");
+                assert_eq!(
+                    (crate::preparation::descriptor().equal)(
+                        comparison.owner,
+                        changed.owner,
+                        &mut same
+                    ),
+                    0
+                );
+                assert_eq!(same, 0);
+                destroy(changed.owner);
+            }
+            destroy(ini);
+            destroy(comparison.owner);
+        }
+    }
+}

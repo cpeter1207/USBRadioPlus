@@ -35,6 +35,26 @@ const HARDWARE_CARRIER: u32 = 1 << 0;
 const PARALLEL_CARRIER: u32 = 1 << 1;
 const HARDWARE_SUBAUDIBLE: u32 = 1 << 2;
 const PARALLEL_SUBAUDIBLE: u32 = 1 << 3;
+const CHIP_ACQUIRED: u64 = 1 << 32;
+const PARALLEL_ACQUIRED: u64 = 1 << 33;
+
+// The released radio ABI interprets signed USB/parallel level selectors itself.
+// An unavailable bank must supply the level that resolves to inactive at that selector.
+pub(crate) fn inactive_qualifier_levels(policy: usbradioplus_radio::QualificationConfig) -> u32 {
+    use usbradioplus_radio::{CarrierSource, SubaudibleSource};
+    let carrier = match policy.carrier_source {
+        CarrierSource::UsbInverted => HARDWARE_CARRIER,
+        CarrierSource::ParallelInverted => PARALLEL_CARRIER,
+        _ => 0,
+    };
+    let tone = match policy.subaudible_source {
+        SubaudibleSource::UsbInverted => HARDWARE_SUBAUDIBLE,
+        SubaudibleSource::ParallelInverted => PARALLEL_SUBAUDIBLE,
+        _ => 0,
+    };
+    carrier | tone
+}
+
 const PHYSICAL_PTT: u32 = 1 << 4;
 const CM119_GPIO_SHIFT: u32 = 5;
 const PARALLEL_INPUT_SHIFT: u32 = 13;
@@ -52,6 +72,16 @@ const OUTPUT_TONE_SHIFT: u32 = 1;
 /// Hardware values already sampled by the non-real-time device-control owner.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct HardwareInputs {
+    /// Validity-aware CM119 carrier and tone after ordinary typed inversion.
+    pub inverted_cm119: [Option<bool>; 2],
+    /// Fresh dedicated modem-line carrier, independent of remote CAT carrier.
+    pub serial_carrier: Option<bool>,
+    /// Held-key carrier from a healthy explicit evdev device.
+    pub keyboard_carrier: Option<bool>,
+    /// Manually requested TX while the configured key is held.
+    pub manual_key: bool,
+    /// Fresh dedicated modem-line tone qualification.
+    pub serial_tone: Option<bool>,
     /// Normal CM119 carrier input.
     pub carrier: bool,
     /// Normal parallel-port carrier input.
@@ -109,6 +139,13 @@ pub struct CallbackStatistics {
     pub transmit_failures: u64,
 }
 
+impl HardwareInputs {
+    /// Normalize the selected chip inputs only when the current poll and status are healthy.
+    pub fn observe_inverted_cm119(&mut self, selected: [bool; 2], raw: Option<[bool; 2]>) {
+        self.inverted_cm119 = std::array::from_fn(|i| raw.filter(|_| selected[i]).map(|v| !v[i]));
+    }
+}
+
 /// Audio-adapter and station-callback statistics sampled together.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct StationRuntimeStatistics {
@@ -118,10 +155,33 @@ pub struct StationRuntimeStatistics {
     pub callbacks: CallbackStatistics,
 }
 
+struct InputClock(std::time::Instant);
+impl InputClock {
+    fn deadline(&self, acquired: std::time::Instant, lifetime: std::time::Duration) -> u64 {
+        acquired
+            .saturating_duration_since(self.0)
+            .saturating_add(lifetime)
+            .as_millis()
+            .min(u128::from(u64::MAX - 1)) as u64
+    }
+    fn fresh(&self, before: u64, after: u64) -> bool {
+        let deadline = before.min(after);
+        deadline == u64::MAX || self.0.elapsed().as_millis() < u128::from(deadline)
+    }
+}
+impl Default for InputClock {
+    fn default() -> Self {
+        Self(std::time::Instant::now())
+    }
+}
+
 #[derive(Default)]
 struct HardwareAtomics {
     feedback: crate::feedback::FeedbackState,
-    inputs: AtomicU32,
+    inputs: AtomicU64,
+    input_clock: InputClock,
+    input_deadline: AtomicU64,
+    cat_key_deadline: AtomicU64,
     requests: AtomicU32,
     outputs: AtomicU32,
     receiver_keyed: AtomicU32,
@@ -249,8 +309,18 @@ impl SharedHardwareState {
             .physical(request, serviced, observed, acquisition_valid);
     }
 
+    /// Publish a positive CAT readback with its own acquisition lifetime. None
+    /// withdraws that proof without producing an observed OFF feedback record.
+    pub fn publish_cat_key(&self, confirmed: Option<(std::time::Instant, std::time::Duration)>) {
+        let deadline = confirmed.map_or(0, |(at, lifetime)| {
+            self.0.input_clock.deadline(at, lifetime)
+        });
+        self.0.cat_key_deadline.store(deadline, Ordering::Release);
+    }
+
     /// Invalidate evidence on acquisition failure, retirement, or owner change.
     pub fn invalidate_physical_feedback(&self) {
+        self.publish_cat_key(None);
         self.0
             .feedback
             .physical(Default::default(), None, None, false);
@@ -325,13 +395,67 @@ impl SharedHardwareState {
     }
     /// Publish the latest already-read hardware inputs.
     pub fn publish_inputs(&self, inputs: HardwareInputs) {
-        self.0.inputs.store(pack_inputs(inputs), Ordering::Release);
+        self.store_inputs(
+            u64::from(pack_inputs(inputs)) | CHIP_ACQUIRED | PARALLEL_ACQUIRED,
+            u64::MAX,
+        );
     }
 
-    /// Read the latest complete hardware-input snapshot.
+    /// Publish native inputs acquired at a known monotonic time. A stalled physical
+    /// owner cannot extend their freshness by completing an unrelated CAT call.
+    pub fn publish_sampled_inputs(&self, inputs: HardwareInputs, acquired: std::time::Instant) {
+        self.publish_sampled_banks(inputs, acquired, true, true);
+    }
+
+    /// Publish the sampled native banks, retaining each physical acquisition's availability.
+    pub fn publish_sampled_banks(
+        &self,
+        inputs: HardwareInputs,
+        acquired: std::time::Instant,
+        chip: bool,
+        parallel: bool,
+    ) {
+        let bits = u64::from(pack_inputs(inputs))
+            | (u64::from(chip) * CHIP_ACQUIRED)
+            | (u64::from(parallel) * PARALLEL_ACQUIRED);
+        let deadline = self
+            .0
+            .input_clock
+            .deadline(acquired, std::time::Duration::from_millis(100));
+        self.store_inputs(bits, deadline);
+    }
+
+    /// Discard all physical input acquisitions when the owner is unavailable.
+    pub fn invalidate_inputs(&self) {
+        self.store_inputs(0, 0);
+    }
+
+    fn store_inputs(&self, bits: u64, deadline: u64) {
+        // The sole physical writer narrows any earlier deadline before installing the
+        // bits, then permits a longer lifetime only after the new bits are visible.
+        // Healthy overlapping snapshots therefore retain their shared valid interval.
+        self.0.input_deadline.fetch_min(deadline, Ordering::Release);
+        self.0.inputs.store(bits, Ordering::Release);
+        self.0.input_deadline.store(deadline, Ordering::Release);
+    }
+
+    /// Read a complete fresh hardware snapshot without waiting for physical service.
     #[must_use]
     pub fn inputs(&self) -> HardwareInputs {
-        unpack_inputs(self.0.inputs.load(Ordering::Acquire))
+        let mut inputs = unpack_inputs(self.fresh_input_bits() as u32);
+        let confirmed = self.0.cat_key_deadline.load(Ordering::Acquire);
+        inputs.physical_ptt |= confirmed != 0 && self.0.input_clock.fresh(confirmed, confirmed);
+        inputs
+    }
+
+    fn fresh_input_bits(&self) -> u64 {
+        let before = self.0.input_deadline.load(Ordering::Acquire);
+        let bits = self.0.inputs.load(Ordering::Acquire);
+        let after = self.0.input_deadline.load(Ordering::Acquire);
+        if !self.0.input_clock.fresh(before, after) {
+            return 0;
+        }
+        bits
     }
 
     /// Publish the complete current controller request.
@@ -398,11 +522,31 @@ impl SharedHardwareState {
         }
     }
 
-    fn receive_controls(&self) -> ReceiveControls {
-        let inputs = self.inputs();
+    /// Sample current qualified receive controls for one radio callback.
+    pub fn receive_controls(&self) -> ReceiveControls {
+        self.receive_controls_for(0)
+    }
+
+    fn receive_controls_for(&self, inactive_levels: u32) -> ReceiveControls {
+        let bits = self.fresh_input_bits();
+        let mut levels = bits as u32;
+        if bits & CHIP_ACQUIRED == 0 {
+            let bank = HARDWARE_CARRIER | HARDWARE_SUBAUDIBLE;
+            levels = (levels & !bank) | (inactive_levels & bank);
+        }
+        if bits & PARALLEL_ACQUIRED == 0 {
+            let bank = PARALLEL_CARRIER | PARALLEL_SUBAUDIBLE;
+            levels = (levels & !bank) | (inactive_levels & bank);
+        }
+        let inputs = unpack_inputs(levels);
         let requests = self.requests();
         ReceiveControls {
-            external_carrier: self.remote_signals().carrier,
+            external_carrier: inputs
+                .serial_carrier
+                .or(inputs.inverted_cm119[0])
+                .or(inputs.keyboard_carrier)
+                .or(self.remote_signals().carrier),
+            external_subaudible: inputs.serial_tone.or(inputs.inverted_cm119[1]),
             hardware_carrier: inputs.carrier,
             parallel_carrier: inputs.parallel_carrier,
             hardware_subaudible: inputs.subaudible,
@@ -417,7 +561,7 @@ impl SharedHardwareState {
         let remote = self.remote_signals();
         let tune = self.0.remote_tune.load(Ordering::Acquire) != 0;
         TransmitControls {
-            external_ptt_request: requests.transmit || tune,
+            external_ptt_request: requests.transmit || inputs.manual_key || tune,
             physical_ptt_applied: if remote.ptt_selected {
                 remote.physical_ptt == Some(true)
             } else {
@@ -1006,11 +1150,13 @@ unsafe extern "C" fn receive_callback(
         &mut context.voter_reporting,
     );
     let station = &mut context.station;
-    let mut result = match station.radio().process(
-        input,
-        &mut context.mono[..frames],
-        context.hardware.receive_controls(),
-    ) {
+    let controls = context
+        .hardware
+        .receive_controls_for(station.inactive_qualifier_levels);
+    let mut result = match station
+        .radio()
+        .process(input, &mut context.mono[..frames], controls)
+    {
         Ok(result) => result,
         Err(_) => {
             return fail_receive(context, frames);
@@ -1362,6 +1508,17 @@ fn pack_inputs(value: HardwareInputs) -> u32 {
         | (u32::from(value.physical_ptt) * PHYSICAL_PTT)
         | (u32::from(value.cm119_gpio_mask) << CM119_GPIO_SHIFT)
         | (u32::from(value.parallel_input_mask) << PARALLEL_INPUT_SHIFT)
+        | (u32::from(value.serial_carrier.is_some()) << 21)
+        | (u32::from(value.serial_carrier == Some(true)) << 22)
+        | (u32::from(value.serial_tone.is_some()) << 23)
+        | (u32::from(value.serial_tone == Some(true)) << 24)
+        | (u32::from(value.keyboard_carrier.is_some()) << 25)
+        | (u32::from(value.keyboard_carrier == Some(true)) << 26)
+        | (u32::from(value.manual_key) << 27)
+        | (u32::from(value.inverted_cm119[0].is_some()) << 28)
+        | (u32::from(value.inverted_cm119[0] == Some(true)) << 29)
+        | (u32::from(value.inverted_cm119[1].is_some()) << 30)
+        | (u32::from(value.inverted_cm119[1] == Some(true)) << 31)
 }
 
 fn unpack_inputs(value: u32) -> HardwareInputs {
@@ -1373,6 +1530,14 @@ fn unpack_inputs(value: u32) -> HardwareInputs {
         physical_ptt: value & PHYSICAL_PTT != 0,
         cm119_gpio_mask: (value >> CM119_GPIO_SHIFT) as u8,
         parallel_input_mask: (value >> PARALLEL_INPUT_SHIFT) as u8,
+        serial_carrier: (value & (1 << 21) != 0).then_some(value & (1 << 22) != 0),
+        serial_tone: (value & (1 << 23) != 0).then_some(value & (1 << 24) != 0),
+        keyboard_carrier: (value & (1 << 25) != 0).then_some(value & (1 << 26) != 0),
+        manual_key: value & (1 << 27) != 0,
+        inverted_cm119: [
+            (value & (1 << 28) != 0).then_some(value & (1 << 29) != 0),
+            (value & (1 << 30) != 0).then_some(value & (1 << 31) != 0),
+        ],
     }
 }
 

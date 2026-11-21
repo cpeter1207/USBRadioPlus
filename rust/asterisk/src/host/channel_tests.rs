@@ -883,6 +883,7 @@ pub(in crate::host) fn callback_channel(
     calls: &Mutex<DriverCalls>,
 ) -> (Box<Channel>, Box<FakeChannel>) {
     let mut channel = Box::new(Channel {
+        typed: None,
         _name: "usb".into(),
         descriptor,
         rust_channel: AtomicPtr::new(ptr::from_ref(calls).cast_mut().cast()),
@@ -1233,6 +1234,7 @@ fn feedback_option_acknowledges_only_a_valid_retained_binding() {
     descriptor.channel_feedback_bind = Some(retain_feedback);
     let mut retention = URP_AST_OK;
     let mut channel = Channel {
+        typed: None,
         _name: "usb".into(),
         descriptor: &descriptor,
         rust_channel: AtomicPtr::new(ptr::from_mut(&mut retention).cast()),
@@ -1400,6 +1402,7 @@ fn direct_attachment_acknowledges_only_valid_retained_descriptor() {
     descriptor.channel_set_direct_callbacks = Some(retain_direct);
     let mut retention = URP_AST_OK;
     let mut channel = Channel {
+        typed: None,
         _name: "usb".into(),
         descriptor: &descriptor,
         rust_channel: AtomicPtr::new(ptr::from_mut(&mut retention).cast()),
@@ -1490,6 +1493,7 @@ fn link_binding_option_acknowledges_only_valid_profile_attachment() {
     // SAFETY: descriptor consists of scalar fields and optional C callbacks.
     let descriptor: UrpAstDescriptor = unsafe { zeroed() };
     let mut channel = Channel {
+        typed: None,
         _name: "specific-radio".into(),
         descriptor: &descriptor,
         rust_channel: AtomicPtr::new(ptr::null_mut()),
@@ -2415,6 +2419,7 @@ fn programme_fence_option_requires_exact_successful_retention_ack() {
     let mut descriptor: UrpAstDescriptor = unsafe { zeroed() };
     let mut case = 0_u32;
     let mut channel = Channel {
+        typed: None,
         _name: "usb".into(),
         descriptor: &descriptor,
         rust_channel: AtomicPtr::new(ptr::from_mut(&mut case).cast()),

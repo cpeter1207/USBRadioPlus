@@ -1,0 +1,15 @@
+{"remote":{
+        "backend":"hamlib","audio_source":"cm119","hamlib_model":"RIG_MODEL_DUMMY",
+        "hamlib_options":{"rig_pathname":"/dev/ttyUSB0","ptt_type":"RIG"},
+        "timeout_ms":900,"retries":3,"timeout_retries":4,"poll_interval_ms":500,
+        "ptt_source":"hamlib","cor_source":"dsp","external_encode_inverted":false,
+        "receive_ranges":[[144000000,148000000]],"transmit_ranges":[[144000000,148000000]],"receive_only_ranges":[],
+        "modes":[1],"maximum_power_mw":10000,"startup_memory":5,"dtmf_access":"open","dtmf_prefix":"65",
+        "power_presets_mw":[1000,null,null],"scan_presets_ms":[3000,null,null],"tune_duration_ms":1000,
+        "memories":[{"selector":5,"name":"local A","state":{"receive_hz":146520000,"transmit_hz":146520000,
+        "mode":1,"bandwidth_hz":0,"receive_vfo":1,"transmit_vfo":2,"split":true,"offset_hz":0,
+        "rit_hz":100,"rit_enabled":false,"xit_hz":0,"xit_enabled":false,"power_mw":5000,
+        "encode":{"source":"disabled","enabled":false,"tone_tenths_hz":1000,"dcs_code":0,"inverted":false},
+        "decode":{"source":"external","control_source":"rig","enabled":true,"tone_tenths_hz":1148,"dcs_code":0,"inverted":false}}}],
+        "scan_lists":[{"selector":2,"name":"channel list","members":[5],"priority":5,"dwell_ms":900,"resume_delay_ms":2000,"settle_ms":0}]
+    }}

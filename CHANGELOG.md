@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.0~alpha38 - Unreleased
+
+- Add independently sized station ownership and Asterisk station binding descriptors for typed physical radio reservations, live updates and rollback.
+
+## 0.1.0~alpha37 - Unreleased
+
+- Add explicit physical station preparation to product SONAME 1. Use GPIO adapter alpha5 and radio alpha13 for the new capabilities.
+
+## 0.1.0~alpha36 - Unreleased
+
+- Add independent link-role preparation for metered peers on ports without a physical station.
+- Add the independently sized ABI 1 typed station preparation descriptor to product SONAME 1.
+- Resolve station, per-role processing, remote policy and peer graphs on the control owner before activation.
+- Compare owned semantic settings and reuse native creation, update and rollback with prepared candidates.
+
 ## 0.1.0~alpha35 - 2026-11-12
 
 - Add acknowledged native and Asterisk bindings for a final-programme permission fence.

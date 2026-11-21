@@ -215,6 +215,24 @@ fn remote_dsp_recaptures_a_revised_generation_without_overwriting_tuner_settings
 }
 
 #[test]
+fn physical_held_key_supplies_only_a_manual_request_and_its_own_carrier_observation() {
+    let state = SharedHardwareState::default();
+    for held in [true, false] {
+        state.publish_inputs(HardwareInputs {
+            manual_key: held,
+            keyboard_carrier: Some(!held),
+            ..Default::default()
+        });
+        assert_eq!(state.transmit_controls().external_ptt_request, held);
+        assert!(!state.transmit_controls().physical_ptt_applied);
+        assert_eq!(state.receive_controls().external_carrier, Some(!held));
+    }
+    state.publish_inputs(HardwareInputs::default());
+    assert_eq!(state.receive_controls().external_carrier, None);
+    assert!(!state.transmit_controls().external_ptt_request);
+}
+
+#[test]
 fn remote_hardware_signals_preserve_gpio_and_require_selected_ptt_confirmation() {
     let state = SharedHardwareState::default();
     let gpio = HardwareInputs {
@@ -2031,8 +2049,13 @@ fn shared_hardware_state_round_trips_complete_atomic_snapshots() {
         subaudible: true,
         parallel_subaudible: true,
         physical_ptt: true,
+        inverted_cm119: [Some(false), Some(true)],
         cm119_gpio_mask: 0xa5,
         parallel_input_mask: 0x30,
+        serial_carrier: Some(false),
+        serial_tone: Some(true),
+        keyboard_carrier: None,
+        manual_key: true,
     };
     let requests = ControllerRequests {
         transmit: true,
@@ -3271,5 +3294,161 @@ fn programme_fence_stays_closed_through_failed_forward_and_reverse_adoption() {
         runtime.stop().unwrap();
         // SAFETY: successful stop quiesced all borrowers before releasing the counter.
         unsafe { runtime.bind_programme_fence(None) }.unwrap();
+    }
+}
+
+#[test]
+fn physical_publishing_healthy_inputs_never_invents_an_intermediate_release() {
+    use std::sync::{Arc, Barrier};
+    let state = SharedHardwareState::default();
+    let active = HardwareInputs {
+        carrier: true,
+        manual_key: true,
+        ..Default::default()
+    };
+    state.publish_inputs(active);
+    let start = Arc::new(Barrier::new(2));
+    std::thread::scope(|scope| {
+        let writer = state.clone();
+        let ready = Arc::clone(&start);
+        scope.spawn(move || {
+            ready.wait();
+            for _ in 0..250_000 {
+                writer.publish_inputs(active);
+            }
+        });
+        start.wait();
+        for _ in 0..250_000 {
+            assert_eq!(
+                state.inputs(),
+                active,
+                "a write of the same healthy inputs manufactured a release"
+            );
+        }
+    });
+}
+
+#[test]
+fn physical_callback_accepts_only_the_shared_valid_interval_across_a_publication() {
+    let clock = InputClock(std::time::Instant::now() - std::time::Duration::from_millis(100));
+    // A load of the packed value may see either complete sample across an overlapping renewal.
+    for (before, after, valid) in [
+        (u64::MAX, u64::MAX, true),
+        (u64::MAX - 2, u64::MAX - 1, true),
+        (u64::MAX, u64::MAX - 1, true),
+        (1, u64::MAX - 1, false),
+        (u64::MAX, 1, false),
+        (0, u64::MAX, false),
+    ] {
+        assert_eq!(clock.fresh(before, after), valid);
+    }
+}
+
+fn remote_inverted_receive_expiry(
+    carrier: usbradioplus_radio::CarrierSource,
+    tone: usbradioplus_radio::SubaudibleSource,
+) {
+    use std::time::{Duration, Instant};
+    unsafe extern "C" {
+        fn dlsym(handle: *mut c_void, name: *const std::ffi::c_char) -> *mut c_void;
+    }
+    // SAFETY: this ignored test's harness preloads the real radio DSO for its lifetime.
+    let provider = unsafe {
+        let symbol = dlsym(ptr::null_mut(), c"rptadv_radio_descriptor".as_ptr());
+        assert!(!symbol.is_null());
+        let get = std::mem::transmute::<*mut c_void, extern "C" fn() -> *const c_void>(symbol);
+        usbradioplus_radio::RadioProvider::from_raw_descriptor(get()).unwrap()
+    };
+    let prepared = prepared(crate::ControllerTransport::RptAdvanced, 24);
+    let selected = selected(&prepared, 960);
+    let (plan, processing) = prepared.into_parts();
+    let mut config = *plan.radio();
+    config.receive.signaling = usbradioplus_radio::ReceiveSignaling::Disabled;
+    config.qualification.carrier_source = carrier;
+    config.qualification.subaudible_source = tone;
+    config.qualification.subaudible_override = false;
+    config.qualification.receive_on_delay_blocks = 0;
+    config.qualification.transmit_off_delay_blocks = 0;
+    let mut capture = DirectCapture::default();
+    let callbacks = crate::DirectCallbacks {
+        struct_size: size_of::<crate::DirectCallbacks>() as u32,
+        abi_version: crate::DirectCallbacks::ABI_VERSION,
+        receive_context: ptr::from_mut(&mut capture).cast(),
+        receive: Some(direct_receive),
+        transmit_context: ptr::from_mut(&mut capture).cast(),
+        transmit: Some(direct_transmit),
+        metadata: Some(direct_metadata),
+        accepted_abi_version: 0,
+    };
+    let media =
+        // SAFETY: the fixture retains the callback context through synchronous teardown.
+        unsafe { crate::NativeStationMedia::prepare(config, processing, provider, callbacks) }
+            .unwrap();
+    let (mut runtime, _control) =
+        StationRuntime::open_native(media, &selected, audio_provider()).unwrap();
+    runtime.hardware.publish_remote_control(RemoteRadioControl {
+        enabled: true,
+        receive_permitted: true,
+        ..Default::default()
+    });
+    let state = runtime.hardware_state();
+    let high = HardwareInputs {
+        carrier: true,
+        subaudible: true,
+        parallel_carrier: true,
+        parallel_subaudible: true,
+        ..Default::default()
+    };
+    let mut check = |expected: bool, stage: &str| {
+        remote_dsp_render(&mut runtime, false);
+        assert_eq!(capture.keyed != 0, expected, "{carrier:?}/{tone:?} {stage}");
+        assert_eq!(
+            state.remote_activity().local_receiving,
+            expected,
+            "{stage} raw activity"
+        );
+    };
+    check(false, "before first acquisition");
+    state.publish_sampled_inputs(high, Instant::now());
+    check(false, "fresh inactive pin");
+    std::thread::sleep(Duration::from_millis(125));
+    check(false, "expired inactive pin");
+    state.publish_sampled_inputs(high, Instant::now());
+    check(false, "recovered inactive pin");
+    state.publish_sampled_inputs(HardwareInputs::default(), Instant::now());
+    check(true, "fresh active pin");
+    std::thread::sleep(Duration::from_millis(125));
+    check(false, "expired active pin");
+    let usb = carrier == usbradioplus_radio::CarrierSource::UsbInverted
+        || tone == usbradioplus_radio::SubaudibleSource::UsbInverted;
+    state.publish_sampled_banks(HardwareInputs::default(), Instant::now(), !usb, usb);
+    check(false, "selected bank unavailable, other bank healthy");
+    state.publish_sampled_banks(HardwareInputs::default(), Instant::now(), usb, !usb);
+    check(true, "selected bank healthy, other bank unavailable");
+    assert_eq!(
+        state.inputs(),
+        HardwareInputs::default(),
+        "qualifier polarity must preserve raw telemetry"
+    );
+}
+
+#[test]
+#[ignore = "requires the staged radio DSO"]
+fn physical_remote_inverted_carrier_expiry() {
+    use usbradioplus_radio::{CarrierSource, SubaudibleSource};
+    for carrier in [CarrierSource::UsbInverted, CarrierSource::ParallelInverted] {
+        remote_inverted_receive_expiry(carrier, SubaudibleSource::Disabled);
+    }
+}
+
+#[test]
+#[ignore = "requires the staged radio DSO"]
+fn physical_remote_inverted_tone_expiry() {
+    use usbradioplus_radio::{CarrierSource, SubaudibleSource};
+    for tone in [
+        SubaudibleSource::UsbInverted,
+        SubaudibleSource::ParallelInverted,
+    ] {
+        remote_inverted_receive_expiry(CarrierSource::Open, tone);
     }
 }

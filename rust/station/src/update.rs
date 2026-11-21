@@ -143,6 +143,7 @@ impl StationUpdatePreparation {
 }
 
 struct UpdateOwner {
+    inactive_qualifier_levels: u32,
     physical_duplex: bool,
     radio: PreparedUpdate<'static>,
     processing: Box<ProcessingGeneration>,
@@ -168,6 +169,7 @@ impl UpdateOwner {
         Ok(Self {
             radio,
             physical_duplex: plan.radio().qualification.radio_duplex,
+            inactive_qualifier_levels: inactive_qualifier_levels(plan.radio().qualification),
             processing,
             controller_ctcss: controller_ctcss_table(plan),
             voter_reporting: plan.configuration().station.hardware.voter_reporting != 0,
@@ -297,6 +299,7 @@ impl UpdateMailbox {
         let owner = unsafe { &*pointer };
         let result = station.radio().apply_update(&owner.radio);
         if result.is_ok() {
+            station.inactive_qualifier_levels = owner.inactive_qualifier_levels;
             *ctcss = owner.controller_ctcss;
             *voter = owner.voter_reporting;
             self.receive_processing.store(

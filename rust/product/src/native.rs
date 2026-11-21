@@ -13,7 +13,8 @@ use std::mem::{align_of, size_of};
 use usbradioplus_audio::AudioProvider;
 use usbradioplus_core::{
     ChannelConfiguration, ConfigDocument, GpioMode, HardwareInterfaceType, NativeDeviceSelection,
-    ResolvedNativeConfiguration, ResolvedRemoteConfiguration,
+    NativePhysicalOptions, ProcessingChain, ResolvedNativeConfiguration,
+    ResolvedRemoteConfiguration,
 };
 use usbradioplus_driver::{HardwareMaintenance, HardwarePreflight, HardwareService, RemoteSetup};
 use usbradioplus_ffmpeg::GraphProvider;
@@ -151,22 +152,9 @@ struct NativeStation {
 
 impl NativeStation {
     fn start(&mut self) -> Result<(), Status> {
-        if self.runtime.running() && !self.runtime.started() {
-            // Failed startup can leave callbacks active. Confirm stop before
-            // hardware initialization, including configured gain reapplication.
-            self.runtime.stop().map_err(|_| Status::SetupFailed)?;
-        }
-        if self.runtime.started() {
-            self.maintenance.start_preserving_gains()
-        } else {
-            self.maintenance.start()
-        }
-        .map_err(|_| Status::SetupFailed)?;
-        if self.runtime.start().is_err() {
-            let _ = self.maintenance.stop();
-            return Err(Status::SetupFailed);
-        }
-        Ok(())
+        self.maintenance
+            .start_station(&mut self.runtime)
+            .map_err(|_| Status::SetupFailed)
     }
 
     fn stop(&mut self) -> Result<(), Status> {
@@ -220,12 +208,20 @@ pub(crate) unsafe extern "C" fn create(
     args: *const UrpNativeCreateArgs,
     output: *mut *mut c_void,
 ) -> c_int {
+    // SAFETY: forwards the existing synchronous template contract.
+    unsafe { create_from(args, output, RequestSource::Template) }
+}
+
+pub(super) unsafe fn create_from(
+    args: *const UrpNativeCreateArgs,
+    output: *mut *mut c_void,
+    source: RequestSource,
+) -> c_int {
     ffi_status(|| {
         let output = output_pointer(output)?;
         // SAFETY: the caller supplies advertised ABI request bytes during this call.
-        let (args, config, providers, callbacks) = unsafe {
+        let (args, providers, callbacks) = unsafe {
             let args = copy_abi(args)?;
-            let config = copy_native_config(args.config)?;
             let providers = copy_abi(args.providers)?;
             if args.callbacks.is_null() {
                 return Err(Status::InvalidArgument);
@@ -236,7 +232,7 @@ pub(crate) unsafe extern "C" fn create(
                 return Err(Status::IncompatibleAbi);
             }
             let callbacks = args.callbacks.read_unaligned();
-            (args, config, providers, callbacks)
+            (args, providers, callbacks)
         };
         if args.generation_id == 0
             || args.maximum_frames == 0
@@ -253,7 +249,8 @@ pub(crate) unsafe extern "C" fn create(
             mut radio,
             gains,
             remote,
-        } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+            ..
+        } = unsafe { source.resolve(&args)? };
         if remote.is_some() && callbacks.metadata.is_none() {
             return Err(Status::IncompatibleAbi);
         }
@@ -270,6 +267,22 @@ pub(crate) unsafe extern "C" fn create(
                 GpioAdapter::from_raw(providers.gpio).map_err(|_| Status::IncompatibleAbi)?,
             )
         };
+        if hardware.keyboard.is_some() && !gpio.has_keyboard()
+            || hardware.serial.is_some() && !gpio.has_serial()
+            || hardware.cm119.is_some()
+                && !matches!(
+                    hardware.ordinary_ptt,
+                    usbradioplus_station::OrdinaryPtt::Legacy
+                        | usbradioplus_station::OrdinaryPtt::Usb
+                )
+                && !gpio.has_input_only_ptt()
+            || (radio.qualification.subaudible_source
+                == usbradioplus_radio::SubaudibleSource::External
+                || hardware.serial.as_ref().is_some_and(|s| s.tone != 0))
+                && !radio_provider.has_external_tone()
+        {
+            return Err(Status::IncompatibleAbi);
+        }
         let denoise = if providers.rnnoise.is_null() {
             None
         } else {
@@ -645,17 +658,27 @@ pub(crate) unsafe extern "C" fn prepare_update(
     args: *const UrpNativeCreateArgs,
     output: *mut *mut c_void,
 ) -> c_int {
+    // SAFETY: forwards the existing synchronous template contract.
+    unsafe { prepare_update_from(handle, args, output, RequestSource::Template) }
+}
+
+pub(super) unsafe fn prepare_update_from(
+    handle: *mut c_void,
+    args: *const UrpNativeCreateArgs,
+    output: *mut *mut c_void,
+    source: RequestSource,
+) -> c_int {
     ffi_status(|| {
         let output = output_pointer(output)?;
         // SAFETY: the caller retains a serialized native owner and the complete
         // synchronous request, including every borrowed configuration span.
-        let (station, args, config) = unsafe {
+        let (station, args) = unsafe {
             let station = handle
                 .cast::<NativeStation>()
                 .as_mut()
                 .ok_or(Status::InvalidArgument)?;
             let args = copy_abi(args)?;
-            (station, args, copy_native_config(args.config)?)
+            (station, args)
         };
         if !station.runtime.started() {
             return Err(Status::NotReady);
@@ -676,7 +699,8 @@ pub(crate) unsafe extern "C" fn prepare_update(
             mut radio,
             gains,
             remote,
-        } = unsafe { resolve_request(&config, args.generation_id, args.maximum_frames)? };
+            ..
+        } = unsafe { source.resolve(&args)? };
         if remote != station.remote {
             // Changed remote definitions require their physical-owner generation
             // handoff; an ordinary DSP update must not silently retain old policy.
@@ -826,13 +850,15 @@ pub(super) unsafe fn text(pointer: *const u8, length: u32) -> Result<String, Sta
     Ok(value.to_owned())
 }
 
-struct ResolvedRequest {
-    configuration: ChannelConfiguration,
-    hardware: HardwarePlan,
-    processing: ExplicitNativeProcessingPlan,
-    radio: SessionConfig,
-    gains: [Option<f64>; 3],
-    remote: Option<ResolvedRemoteConfiguration>,
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct ResolvedRequest {
+    pub(super) link: Option<ProcessingChain>,
+    pub(super) configuration: ChannelConfiguration,
+    pub(super) hardware: HardwarePlan,
+    pub(super) processing: ExplicitNativeProcessingPlan,
+    pub(super) radio: SessionConfig,
+    pub(super) gains: [Option<f64>; 3],
+    pub(super) remote: Option<ResolvedRemoteConfiguration>,
 }
 
 unsafe fn resolve_request(
@@ -840,27 +866,84 @@ unsafe fn resolve_request(
     generation_id: u64,
     maximum_frames: u32,
 ) -> Result<ResolvedRequest, Status> {
-    // SAFETY: the request points to the complete released radio template.
-    let mut radio = unsafe { SessionConfig::from_abi(config.radio) }
-        .map_err(|_| Status::InvalidConfiguration)?;
-    radio.generation_id = generation_id;
-    radio.maximum_receive_frame_count = maximum_frames;
-    radio.maximum_transmit_frame_count = maximum_frames;
-    radio.publication_interval_milliseconds = 50;
-    // SAFETY: configuration spans are retained through this synchronous creation.
-    let profiles = unsafe {
-        crate::native_processing::Profiles::resolve(
-            &text(
+    // SAFETY: the request owns both source spans through synchronous resolution.
+    let (source, node) = unsafe {
+        (
+            text(
                 config.processing_configuration,
                 config.processing_configuration_length,
             )?,
-            &text(config.processing_node, config.processing_node_length)?,
+            text(config.processing_node, config.processing_node_length)?,
+        )
+    };
+    let profiles = crate::native_processing::Profiles::resolve(&source, &node)?;
+    let node = if node.is_empty() { "native" } else { &node };
+    let document = ConfigDocument::new(if source.is_empty() {
+        format!("[{node}]\n")
+    } else {
+        source
+    });
+    let resolved = ResolvedNativeConfiguration::from_document(&document, "rpt_advanced.conf", node)
+        .map_err(|_| Status::InvalidConfiguration)?;
+    let remote = ResolvedRemoteConfiguration::from_document(
+        &document,
+        "rpt_advanced.conf",
+        node,
+        &resolved.config().station,
+    )
+    .map_err(|_| Status::InvalidConfiguration)?;
+    let physical = resolved.physical().clone();
+    // SAFETY: the synchronous native template supplies a complete ABI-5 radio.
+    let radio = unsafe { SessionConfig::from_abi(config.radio) }
+        .map_err(|_| Status::InvalidConfiguration)?;
+    // SAFETY: native scalar fields and every source span remain readable through the common builder.
+    let mut request = unsafe {
+        build_request(
+            config,
+            radio,
+            resolved.into_config(),
+            physical,
+            profiles,
+            remote,
         )?
     };
-    // SAFETY: the synchronous request owns every advertised text span.
-    let (mut configuration, hardware, mut processing, remote) = unsafe { resolve(config, &radio)? };
+    request.set_generation(generation_id, maximum_frames);
+    Ok(request)
+}
+
+impl ResolvedRequest {
+    pub(super) fn set_generation(&mut self, generation_id: u64, maximum_frames: u32) {
+        self.radio.generation_id = generation_id;
+        self.radio.maximum_receive_frame_count = maximum_frames;
+        self.radio.maximum_transmit_frame_count = maximum_frames;
+        self.radio.publication_interval_milliseconds = 50;
+    }
+}
+
+pub(super) unsafe fn build_request(
+    config: &UrpNativeStationConfig,
+    mut radio: SessionConfig,
+    channel: ChannelConfiguration,
+    physical: NativePhysicalOptions,
+    mut profiles: crate::native_processing::Profiles,
+    remote: Option<ResolvedRemoteConfiguration>,
+) -> Result<ResolvedRequest, Status> {
+    // SAFETY: config borrows live scalar and text records only for this call.
+    let (mut configuration, hardware, mut processing) =
+        unsafe { resolve(config, &radio, channel, physical, remote.as_ref())? };
+    let link = profiles.link.take();
     profiles.apply(&mut radio, &mut processing);
     apply_native_tuning_configuration(&radio, &mut configuration);
+    // Generation, frame bounds and publication cadence belong to the lifecycle,
+    // independently of the generation used to construct the host's template.
+    radio.generation_id = 1;
+    radio.maximum_receive_frame_count = 4096;
+    radio.maximum_transmit_frame_count = 4096;
+    radio.publication_interval_milliseconds = 50;
+    let remote = remote.map(|mut value| {
+        value.warnings.clear();
+        value
+    });
     let gain_values = [
         config.hardware_input_gain_db,
         config.hardware_output_a_gain_db,
@@ -870,6 +953,7 @@ unsafe fn resolve_request(
         (config.hardware_gain_mask & (1 << index) != 0).then_some(gain_values[index])
     });
     Ok(ResolvedRequest {
+        link,
         configuration,
         hardware,
         processing,
@@ -879,8 +963,39 @@ unsafe fn resolve_request(
     })
 }
 
+pub(super) enum RequestSource {
+    Template,
+    Prepared(*const c_void),
+}
+
+impl RequestSource {
+    unsafe fn resolve(self, args: &UrpNativeCreateArgs) -> Result<ResolvedRequest, Status> {
+        match self {
+            Self::Template => {
+                // SAFETY: the caller lends the published native request for the entire call.
+                unsafe {
+                    resolve_request(
+                        &copy_native_config(args.config)?,
+                        args.generation_id,
+                        args.maximum_frames,
+                    )
+                }
+            }
+            Self::Prepared(owner) => {
+                if !args.config.is_null() {
+                    return Err(Status::InvalidArgument);
+                }
+                // SAFETY: this synchronous call retains a live provider preparation.
+                let mut request = unsafe { crate::native_configuration::prepared(owner)? }.clone();
+                request.set_generation(args.generation_id, args.maximum_frames);
+                Ok(request)
+            }
+        }
+    }
+}
+
 /// Admit the sized ABI-3 request before reading shared-processing fields.
-unsafe fn copy_native_config(
+pub(super) unsafe fn copy_native_config(
     raw: *const UrpNativeStationConfig,
 ) -> Result<UrpNativeStationConfig, Status> {
     if raw.is_null() || (raw as usize) % align_of::<UrpNativeStationConfig>() != 0 {
@@ -900,12 +1015,14 @@ unsafe fn copy_native_config(
 unsafe fn resolve(
     config: &UrpNativeStationConfig,
     radio: &SessionConfig,
+    mut channel: ChannelConfiguration,
+    mut physical: NativePhysicalOptions,
+    remote: Option<&ResolvedRemoteConfiguration>,
 ) -> Result<
     (
         ChannelConfiguration,
         HardwarePlan,
         ExplicitNativeProcessingPlan,
-        Option<ResolvedRemoteConfiguration>,
     ),
     Status,
 > {
@@ -958,36 +1075,9 @@ unsafe fn resolve(
         1 => NativeDeviceSelection::AutomaticLowestAlsaCard,
         _ => return Err(Status::InvalidConfiguration),
     };
-    if policy == NativeDeviceSelection::Exact && identifier.is_empty() && serial.is_empty() {
-        return Err(Status::InvalidConfiguration);
-    }
-    // SAFETY: these source spans are borrowed only during this request.
-    let (source, node) = unsafe {
-        (
-            text(
-                config.processing_configuration,
-                config.processing_configuration_length,
-            )?,
-            text(config.processing_node, config.processing_node_length)?,
-        )
-    };
-    let node = if node.is_empty() {
-        "native"
-    } else {
-        node.as_str()
-    };
-    let document = ConfigDocument::new(if source.is_empty() {
-        format!("[{node}]\n")
-    } else {
-        source
-    });
-    let resolved = ResolvedNativeConfiguration::from_document(&document, "rpt_advanced.conf", node)
-        .map_err(|_| Status::InvalidConfiguration)?;
-    let mut physical = resolved.physical().clone();
     physical.device_selection = policy;
     physical.input_device_channels = config.input_device_channels;
     physical.output_device_channels = config.output_device_channels;
-    let mut channel = resolved.into_config();
     let hardware = &mut channel.station.hardware;
     hardware.device_identifier = identifier;
     hardware.serial = serial;
@@ -1029,14 +1119,16 @@ unsafe fn resolve(
             ][index];
         }
     }
-    let remote = ResolvedRemoteConfiguration::from_document(
-        &document,
-        "rpt_advanced.conf",
-        node,
-        &channel.station,
-    )
-    .map_err(|_| Status::InvalidConfiguration)?;
     let mut hardware = native_hardware_plan(&channel, &physical);
+    let selector = &hardware.audio_selector;
+    if policy == NativeDeviceSelection::Exact
+        && selector.identifier.is_none()
+        && selector.serial.is_none()
+    {
+        return Err(Status::InvalidConfiguration);
+    }
+    // The topology fallback has the same effective identity as its explicit spelling.
+    channel.station.hardware.device_identifier = selector.identifier.clone().unwrap_or_default();
     if remote
         .as_ref()
         .is_some_and(|remote| remote.audio_source == usbradioplus_core::RemoteAudioSource::Alsa)
@@ -1068,6 +1160,5 @@ unsafe fn resolve(
             receive_ctcss_mask,
             transmit_dcs: matches!(radio.transmit.signaling, TransmitSignaling::Dcs(_)),
         },
-        remote,
     ))
 }

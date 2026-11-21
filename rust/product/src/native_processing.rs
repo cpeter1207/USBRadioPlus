@@ -45,20 +45,31 @@ pub(super) struct Profiles {
 }
 
 impl Profiles {
+    pub(super) fn selected(
+        resolved: &usbradioplus_core::ResolvedNativeConfiguration,
+        node: &str,
+    ) -> Self {
+        let present = |kind| {
+            usbradioplus_core::native_processing_profile_configured(
+                resolved.source_document(),
+                node,
+                kind,
+            )
+        };
+        let channel = resolved.config();
+        Self {
+            local: present("local").then(|| channel.local.clone()),
+            link: present("link").then(|| channel.link.clone()),
+            voice_telemetry: present("voice_telemetry").then(|| channel.voice_telemetry.clone()),
+            warnings: Vec::new(),
+        }
+    }
+
     pub(super) fn resolve(configuration: &str, node: &str) -> Result<Self, Status> {
         let document = ConfigDocument::new(configuration);
-        let sections = document.section_names();
-        let selectors = document.explicit_values(node);
         let mut warnings = Vec::new();
         let mut role = |kind: &str, role| -> Result<Option<ProcessingChain>, Status> {
-            let scoped = format!("{kind} {node}");
-            let selector = format!("{kind}_profile");
-            let configured = sections.iter().any(|section| {
-                section.eq_ignore_ascii_case(kind) || section.eq_ignore_ascii_case(&scoped)
-            }) || selectors
-                .keys()
-                .any(|name| name.eq_ignore_ascii_case(&selector));
-            if !configured {
+            if !usbradioplus_core::native_processing_profile_configured(&document, node, kind) {
                 return Ok(None);
             }
             let resolved = ResolvedProfile::from_document(&document, SOURCE, node, role)
@@ -86,6 +97,9 @@ impl Profiles {
             eprintln!("{warning}");
         }
         if let Some(local) = &self.local {
+            // The selected profile owns output gain. Its unused native fallback
+            // cannot change the effective plan or trigger adoption.
+            processing.receive_output_gain_db = 0;
             // Zero represents a disabled source; finite configured dB gains are positive.
             if radio.receive_input_gain != 0.0 {
                 radio.receive_input_gain = 10.0_f64.powf(local.input_gain_db / 20.0) as f32;
@@ -141,35 +155,50 @@ pub(crate) unsafe extern "C" fn link_prepare(
             return Err(Status::InvalidArgument);
         }
         // SAFETY: the caller retains the request strings throughout preparation.
-        let profile = (unsafe { from_args(args)? }).link.unwrap_or_else(|| {
-            let mut identity =
-                usbradioplus_core::ProcessingChain::shipped(usbradioplus_core::ChainRole::Link);
-            identity.enabled = false;
-            identity.input_gain_db = 0.0;
-            identity.output_gain_db = 0.0;
-            identity
-        });
-        // SAFETY: the host retains this released descriptor through graph destruction.
-        let provider = unsafe { GraphProvider::from_raw_descriptor(ffmpeg) }
-            .map_err(|_| Status::IncompatibleAbi)?;
-        let descriptions = GraphDescriptionFactory::new(AGC_PLUGIN_PATH)
-            .map_err(|_| Status::InvalidConfiguration)?;
-        let description = descriptions
-            .dynamics(&profile)
-            .map_err(|_| Status::SetupFailed)?;
-        let processing = LinkProcessingFactory::new(provider, descriptions)
-            .prepare(&profile, 48_000, maximum_frames)
-            .map_err(|_| Status::SetupFailed)?;
-        let link = Box::new(LinkHandle {
-            processing,
-            description,
-            sample_rate_hz: 48_000,
-            maximum_frame_count: maximum_frames,
-        });
-        // SAFETY: the output was validated; ownership transfers to link_destroy.
-        unsafe { output.as_ptr().write(Box::into_raw(link).cast()) };
-        Ok(())
+        let profile = unsafe { from_args(args)? }.link;
+        // SAFETY: the host retains the released graph provider through peer destruction.
+        unsafe { prepare_link(profile, ffmpeg, 48_000, maximum_frames, output) }
     })
+}
+
+pub(super) unsafe fn prepare_link(
+    profile: Option<ProcessingChain>,
+    ffmpeg: *const c_void,
+    sample_rate_hz: u32,
+    maximum_frames: u32,
+    output: std::ptr::NonNull<*mut c_void>,
+) -> Result<(), Status> {
+    if !(1..=4096).contains(&maximum_frames) {
+        return Err(Status::InvalidArgument);
+    }
+    let profile = profile.unwrap_or_else(|| {
+        let mut identity =
+            usbradioplus_core::ProcessingChain::shipped(usbradioplus_core::ChainRole::Link);
+        identity.enabled = false;
+        identity.input_gain_db = 0.0;
+        identity.output_gain_db = 0.0;
+        identity
+    });
+    // SAFETY: the host retains this released descriptor through graph destruction.
+    let provider = unsafe { GraphProvider::from_raw_descriptor(ffmpeg) }
+        .map_err(|_| Status::IncompatibleAbi)?;
+    let descriptions =
+        GraphDescriptionFactory::new(AGC_PLUGIN_PATH).map_err(|_| Status::InvalidConfiguration)?;
+    let description = descriptions
+        .dynamics_recipe_at_rate(&profile, sample_rate_hz)
+        .map_err(|_| Status::SetupFailed)?;
+    let processing = LinkProcessingFactory::new(provider, descriptions)
+        .prepare(&profile, sample_rate_hz, maximum_frames)
+        .map_err(|_| Status::SetupFailed)?;
+    let link = Box::new(LinkHandle {
+        processing,
+        description: description.description,
+        sample_rate_hz,
+        maximum_frame_count: maximum_frames,
+    });
+    // SAFETY: the output was validated; ownership transfers to link_destroy.
+    unsafe { output.as_ptr().write(Box::into_raw(link).cast()) };
+    Ok(())
 }
 
 pub(crate) unsafe extern "C" fn link_process_f32(

@@ -153,3 +153,76 @@ struct ast_channel *__ast_channel_alloc(int needqueue, int state, const char *ci
 	va_end(arguments);
 	return urp_test_channel_alloc(state, name);
 }
+
+#include "../../../../product/include/usbradioplus_product.h"
+#include <rptadvradio/rptadvradio.h>
+
+/* The same public typed radio template which a controller supplies to the product. */
+int urp_test_physical_station(const UrpAstDescriptor *product, uint32_t vad_mode, uint32_t inverted,
+			      uint32_t fixture_kind, void **prepared)
+{
+	Dl_info origin;
+	void *library;
+	const UrpPreparationDescriptor *(*getter)(void);
+	const struct rptadv_radio_session_config radio = {
+		.struct_size = sizeof(radio),
+		.abi_version = RPTADV_RADIO_ABI_VERSION,
+		.generation_id = 1,
+		.native_sample_rate_hz = 48000,
+		.interleaved_channels = 2,
+		.maximum_receive_frame_count = 960,
+		.maximum_transmit_frame_count = 960,
+		.publication_interval_ms = 50,
+		.receive_input_gain = 1.0f,
+		.receive = {.ctcss_decoder_gain = 1.0f,
+			    .vox_threshold = 1000,
+			    .vox_hang_ms = 500,
+			    .vad_external_delay = 1,
+			    .vad_mode = vad_mode},
+		.qualification = {.advanced_transport = 1,
+				  .radio_duplex = 1,
+				  .carrier_source = fixture_kind == 2 ? 5 : 4},
+		.transmit = {.output_a_route = 1,
+			     .output_a_tone_gain = 1.0f,
+			     .output_b_tone_gain = 1.0f},
+	};
+	const UrpNativeStationConfig station = {
+		.struct_size = sizeof(station),
+		.abi_version = URP_NATIVE_CONFIG_ABI_VERSION,
+		.radio = &radio,
+		.device_selection = fixture_kind == 2 ? 0 : 1,
+		.device_identifier = fixture_kind == 2 ? (const uint8_t *)"hw:3,0" : NULL,
+		.device_identifier_length = fixture_kind == 2 ? 6 : 0,
+		.hardware_gain_mask = fixture_kind == 1 ? URP_NATIVE_HARDWARE_GAIN_OUTPUT_B : 0,
+		.hardware_output_b_gain_db = fixture_kind == 1 ? 3.0f : 0.0f,
+		.ptt_inverted = inverted,
+		.input_device_channels = 2,
+		.output_device_channels = 2,
+		.receive_output_gain_db = -6,
+		.transmit_preemphasis_corner_hz = 300.0f,
+		.receive_deemphasis_corner_hz = 300.0f,
+	};
+	static const uint8_t settings[] =
+		"{\"physical\":{\"ordinary\":{\"audio_source\":\"cm119\",\"ptt_source\":\"usb\"},"
+		"\"parallel_carrier_inverted\":false,\"parallel_ctcss_inverted\":false}}";
+	static const uint8_t raw_settings[] =
+		"{\"physical\":{\"ordinary\":{\"audio_source\":\"alsa\",\"ptt_source\":"
+		"\"parallel\"},"
+		"\"parallel_carrier_inverted\":false,\"parallel_ctcss_inverted\":false},"
+		"\"station\":{\"parallel_port\":{\"output_assignments\":[\"push_to_talk\",null,"
+		"null,null,null,null,null,null]}}}";
+	const UrpTypedPreparation args = {
+		sizeof(args), 1, &station, fixture_kind == 2 ? raw_settings : settings,
+		fixture_kind == 2 ? sizeof(raw_settings) - 1 : sizeof(settings) - 1};
+	int result = -1;
+
+	*prepared = NULL;
+	if (!dladdr(product, &origin) ||
+	    !(library = dlopen(origin.dli_fname, RTLD_NOW | RTLD_NOLOAD)))
+		return -1;
+	getter = dlsym(library, "usbradioplus_physical_preparation_descriptor");
+	if (getter)
+		result = getter()->prepare(&args, NULL, NULL, prepared);
+	dlclose(library);
+	return result;
+}

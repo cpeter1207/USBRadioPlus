@@ -1,3 +1,26 @@
+usbradioplus (0.1.0~alpha38-1) UNRELEASED; urgency=medium
+
+  * Export checked station ownership from product SONAME 1 and typed station
+    binding from Asterisk adapter SONAME 1.
+
+ -- codex <codex@localhost>  Sat, 21 Nov 2026 08:45:00 -0600
+
+usbradioplus (0.1.0~alpha37-1) UNRELEASED; urgency=medium
+
+  * Add the separately sized physical station preparation capability to SONAME 1.
+  * Require GPIO adapter alpha5 and radio alpha13 for physical qualification.
+
+ -- codex <codex@localhost>  Fri, 20 Nov 2026 23:00:00 -0600
+
+usbradioplus (0.1.0~alpha36-1) UNRELEASED; urgency=medium
+
+  * Add the preparation1 capability to the product SONAME 1 SDK.
+  * Add an independent typed link role capability to the same SDK.
+  * Prepare typed station, processing and remote settings without hardware.
+  * Include the typed settings and lifecycle contract in the development package.
+
+ -- Chris Peterson <cpeter1207@users.noreply.github.com>  Fri, 20 Nov 2026 17:00:00 +0000
+
 usbradioplus (0.1.0~alpha35-1) unstable; urgency=medium
 
   * Add stopped-bound post-DSP programme fences on existing native/channel

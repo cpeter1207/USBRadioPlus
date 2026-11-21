@@ -9,6 +9,7 @@ publish = false
 
 [dependencies]
 crossbeam-queue = "0.3"
+libc = "0.2"
 usbradioplus-asl3 = { path = "../asl3" }
 usbradioplus-audio = { path = "../audio" }
 usbradioplus-core = { path = "../core" }

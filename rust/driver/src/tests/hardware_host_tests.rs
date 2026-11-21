@@ -36,6 +36,7 @@ static GPIO_OPENS: AtomicU32 = AtomicU32::new(0);
 static GPIO_CLOSES: AtomicU32 = AtomicU32::new(0);
 static SHUTDOWN_PULSE_STAGE: AtomicU32 = AtomicU32::new(0);
 static SHUTDOWN_SERVICE_FAILURES: AtomicU32 = AtomicU32::new(0);
+static PARALLEL_PUBLISHED_MASK: AtomicU32 = AtomicU32::new(0);
 static PARALLEL_APPLIED_MASK: AtomicU32 = AtomicU32::new(0);
 static GPIO_INITIAL_BYTE: AtomicU32 = AtomicU32::new(0);
 static GPIO_PUBLISHES: AtomicU32 = AtomicU32::new(0);
@@ -110,6 +111,7 @@ pub(super) fn reset_test_state() {
     GPIO_CLOSES.store(0, Ordering::Release);
     SHUTDOWN_PULSE_STAGE.store(0, Ordering::Release);
     SHUTDOWN_SERVICE_FAILURES.store(0, Ordering::Release);
+    PARALLEL_PUBLISHED_MASK.store(0, Ordering::Release);
     PARALLEL_APPLIED_MASK.store(0, Ordering::Release);
     GPIO_INITIAL_BYTE.store(0, Ordering::Release);
     GPIO_PUBLISHES.store(0, Ordering::Release);
@@ -176,9 +178,15 @@ fn hardware_errors_and_operations_are_complete_and_diagnostic() {
             "confirm serviced parallel PTT",
         ),
         (HardwareOperation::RemoteControl, "service remote radio"),
+        (
+            HardwareOperation::Serial,
+            "service dedicated serial modem lines",
+        ),
+        (HardwareOperation::HamlibPtt, "service ordinary Hamlib PTT"),
+        (HardwareOperation::Keyboard, "sample held keyboard input"),
     ];
     assert_eq!(HardwareOperation::from_u8(0), None);
-    assert_eq!(HardwareOperation::from_u8(22), None);
+    assert_eq!(HardwareOperation::from_u8(25), None);
     for (index, (operation, description)) in operations.into_iter().enumerate() {
         assert_eq!(HardwareOperation::from_u8(index as u8 + 1), Some(operation));
         assert_eq!(operation.to_string(), description);
@@ -652,6 +660,7 @@ fn persistent_outputs_and_parallel_ptt_are_independent() {
             output_initial_mask: 0,
         },
         ptt_mask: 0x01,
+        inverted_input_mask: 0,
         input_mask: 0,
         carrier_mask: 0,
         ctcss_mask: 0,
@@ -672,6 +681,7 @@ fn hardware_input_mapping_requires_online_devices() {
             output_initial_mask: 0,
         },
         ptt_mask: 0,
+        inverted_input_mask: 0,
         input_mask: 0,
         carrier_mask: 0x20,
         ctcss_mask: 0x10,
@@ -704,6 +714,7 @@ fn hardware_input_mapping_requires_online_devices() {
             physical_ptt: true,
             cm119_gpio_mask: 0,
             parallel_input_mask: 0x30,
+            ..HardwareInputs::default()
         }
     );
     assert_eq!(
@@ -718,6 +729,77 @@ fn hardware_input_mapping_requires_online_devices() {
         ),
         HardwareInputs::default()
     );
+}
+
+#[test]
+fn physical_parallel_input_inverts_each_claimed_pin_only_on_a_healthy_sample() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut hardware, _) = selected_hardware(true);
+    let plan = hardware.parallel.as_mut().unwrap();
+    plan.carrier_mask = 0x60;
+    plan.ctcss_mask = 0x18;
+    plan.inverted_input_mask = 0x60;
+    for (raw, online, carrier, tone) in [
+        (0x00, true, true, false),
+        (0x40, true, true, false),
+        (0x61, true, false, false),
+        (0x78, true, false, true),
+        (0x18, false, false, false),
+    ] {
+        let input = hardware_inputs(
+            Cm119Inputs::default(),
+            Some(plan),
+            Some(ParallelInputs {
+                online,
+                status_mask: raw,
+            }),
+            Cm119Statistics::default(),
+        );
+        assert_eq!(
+            (input.parallel_carrier, input.parallel_subaudible),
+            (carrier, tone)
+        );
+        assert_eq!(input.parallel_input_mask, if online { raw } else { 0 });
+    }
+}
+
+#[test]
+fn physical_ordinary_parallel_ptt_uses_only_the_selected_serviced_bank() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, selected) = selected_hardware(true);
+    plan.ordinary_ptt = usbradioplus_station::OrdinaryPtt::Parallel;
+    let port = plan.parallel.as_mut().unwrap();
+    port.ptt_mask = 3;
+    port.config.output_enable_mask |= 3;
+    let selected = plan
+        .select(
+            &audio_provider()
+                .select_device(&plan.audio_selector)
+                .unwrap(),
+            selected.stream.maximum_receive_frame_count,
+        )
+        .unwrap();
+    let state = SharedHardwareState::default();
+    let (worker, _, _) = service_worker(&plan, &selected, state.clone());
+    let mut devices =
+        ServiceDevices::open(gpio_provider(), &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    GPIO_APPLIED_PTT.store(1, Ordering::Release);
+    for (applied, acknowledged) in [(0, false), (1, false), (3, true)] {
+        PARALLEL_APPLIED_MASK.store(applied, Ordering::Release);
+        service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+        assert_eq!(PTT.load(Ordering::Acquire), 0);
+        assert_eq!(PARALLEL_PUBLISHED_MASK.load(Ordering::Acquire) & 3, 3);
+        assert_eq!(state.inputs().physical_ptt, acknowledged);
+    }
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert_eq!(PARALLEL_PUBLISHED_MASK.load(Ordering::Acquire) & 3, 0);
+    devices
+        .close_outputs(plan.parallel.as_ref(), &mut outputs)
+        .unwrap();
+    assert_eq!(PARALLEL_FINAL_BYTE.load(Ordering::Acquire) & 3, 0);
 }
 
 #[repr(C)]
@@ -1406,6 +1488,7 @@ struct GpioDescriptor {
     >,
     interlock_operations: [Option<unsafe extern "C" fn()>; 8],
     parallel_close_outputs: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
+    open_without_ptt: Option<GpioOpen>,
 }
 
 // SAFETY: the test descriptor and all referenced functions are immutable.
@@ -1631,11 +1714,13 @@ unsafe extern "C" fn gpio_pulse(_device: *mut c_void, _pulse: *const GpioCm119Pu
 
 unsafe extern "C" fn parallel_publish(
     _device: *mut c_void,
-    _outputs: *const GpioParallelOutputs,
+    outputs: *const GpioParallelOutputs,
 ) -> c_int {
     if fail_once(FAIL_PARALLEL_PUBLISH) {
         return -1;
     }
+    // SAFETY: the real GPIO client lends one complete output request through this call.
+    PARALLEL_PUBLISHED_MASK.store(unsafe { (*outputs).output_mask }, Ordering::Release);
     OK
 }
 
@@ -1796,6 +1881,7 @@ static GPIO_DESCRIPTOR: GpioDescriptor = GpioDescriptor {
     parallel_capabilities: Some(parallel_capabilities),
     interlock_operations: [None; 8],
     parallel_close_outputs: Some(parallel_close_outputs),
+    open_without_ptt: Some(gpio_open),
 };
 
 fn audio_provider() -> AudioProvider {
@@ -4169,7 +4255,7 @@ fn external_encoder_pin_stays_reserved_after_device_recovery() {
         outputs
             .bind_encoder(
                 Some(crate::remote_hardware::ExternalEncoder {
-                    bank,
+                    bank: bank.into(),
                     mask: 0x20,
                     inverted: false,
                 }),
@@ -4229,7 +4315,7 @@ fn external_encoder_owns_its_pin_and_closes_inactive_for_both_polarities() {
             let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
             outputs.site[bank.index()] = SiteBankState::new(0, 255, 0, 0);
             let encoder = crate::remote_hardware::ExternalEncoder {
-                bank,
+                bank: bank.into(),
                 mask: 2,
                 inverted,
             };
@@ -4281,7 +4367,7 @@ pub(super) fn service_worker(
     (
         ServiceWorker {
             native: false,
-            ptt_control: Cell::new(PhysicalPttControl::Ordinary),
+            ptt_control: Cell::new(PhysicalPttControl::ordinary(plan.ordinary_ptt)),
             provider: gpio_provider(),
             selected: selected.clone(),
             parallel: plan.parallel.clone(),
@@ -4439,6 +4525,10 @@ fn reserved_parallel_radio_pins_report_failure_instead_of_acknowledging_no_write
         )
         .unwrap();
     let mut devices = ServiceDevices {
+        serial_interlocked: false,
+        serial: None,
+        keyboard: None,
+        keyboard_retry: None,
         cm119: None,
         parallel: None,
         ptt_inverted: false,
@@ -5085,6 +5175,7 @@ fn input_edges_and_statistics_cover_online_offline_and_overflow_states() {
             output_initial_mask: 0,
         },
         ptt_mask: 0,
+        inverted_input_mask: 0,
         input_mask: 0x78,
         carrier_mask: 0,
         ctcss_mask: 0,
@@ -6086,6 +6177,45 @@ impl Drop for ReleaseWorkerFaults {
 }
 
 #[test]
+fn remote_worker_confirms_unkey_after_a_single_channel_selection_failure() {
+    let _guard = test_guard();
+    reset_test_state();
+    let mut station = open_hardware_station();
+    let factory = StationFactory::new(
+        station_providers(graph_provider(), sample_rate_adapter()),
+        "agc.so",
+        960,
+    )
+    .unwrap();
+    let (setup, control) = worker_remote_setup(station.control().plan().hardware());
+    station.bind_remote(setup, control).unwrap();
+    station.start().unwrap();
+    remote_station_command(
+        &mut station,
+        &factory,
+        RemoteOperation::new(usbradioplus_core::remote_operation::RemoteOperationKind::Status),
+    )
+    .unwrap();
+    let service = &station.maintenance.service;
+    assert_eq!(service.remote_error(), 0);
+    let before = GPIO_CLOSES.load(Ordering::Acquire);
+    FAILURE.store(FAIL_SELECT_CHANNEL, Ordering::Release);
+    service
+        .queue_service(ServiceCommand::SelectChannel(2))
+        .unwrap();
+    assert!(await_hardware_condition(|| GPIO_CLOSES
+        .load(Ordering::Acquire)
+        > before));
+    assert_eq!(
+        service.statistics().last_failure,
+        Some(HardwareOperation::SelectChannel)
+    );
+    assert_eq!(service.remote_error(), 0);
+    assert_eq!(PTT.load(Ordering::Acquire), 0);
+    station.stop().unwrap();
+}
+
+#[test]
 fn remote_worker_retries_initial_and_final_physical_off_confirmation() {
     let _guard = test_guard();
     reset_test_state();
@@ -6253,4 +6383,596 @@ fn legacy_remote_worker_reopens_only_to_finish_safe_shutdown_and_retries_close()
         assert!(SHUTDOWN_PULSE_STAGE.load(Ordering::Acquire) >= 4);
         assert_eq!(PTT.load(Ordering::Acquire), 0);
     }
+}
+
+#[test]
+fn physical_ordinary_hamlib_demand_reaches_real_rig_without_rf_operating_owner() {
+    let _guard = test_guard();
+    reset_test_state();
+    let (mut plan, mut selected) = selected_hardware(false);
+    plan.cm119 = None;
+    selected.cm119 = None;
+    plan.ordinary_ptt = usbradioplus_station::OrdinaryPtt::Hamlib;
+    let settings = usbradioplus_station::HamlibPttPlan {
+        model: "RIG_MODEL_DUMMY".into(),
+        options: std::collections::BTreeMap::from([("ptt_type".into(), "RIG".into())]),
+        timeout_ms: 500,
+        retries: 1,
+        timeout_retries: 0,
+        poll_interval_ms: 100,
+    };
+    let mut rig = OrdinaryRig::open(&settings).unwrap();
+    assert!(rig.service(false, true).unwrap());
+    let state = SharedHardwareState::default();
+    let (worker, _, _) = service_worker(&plan, &selected, state.clone());
+    let mut devices = ServiceDevices::open(gpio_provider(), &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    for keyed in [true, false, true, false] {
+        service_native_with_rig(&mut devices, &mut outputs, &worker, keyed, Some(&mut rig))
+            .unwrap();
+        assert_eq!(state.inputs().physical_ptt, keyed);
+        assert!(!state.remote_control().enabled);
+    }
+}
+
+fn physical_fixture_symbol(name: &std::ffi::CStr) -> *mut c_void {
+    // SAFETY: the explicit test harness preloads the actual exported GPIO descriptor
+    // getter and the two modem-line syscall fixture functions for this process.
+    unsafe extern "C" {
+        fn dlsym(handle: *mut c_void, name: *const c_char) -> *mut c_void;
+    }
+    // SAFETY: RTLD_DEFAULT and the nul-terminated function name are valid.
+    let result = unsafe { dlsym(ptr::null_mut(), name.as_ptr()) };
+    assert!(!result.is_null(), "{name:?}");
+    result
+}
+
+#[test]
+#[ignore = "requires the staged actual GPIO DSO and the Linux tty syscall fixture"]
+fn physical_serial_station_drives_and_reads_the_dedicated_uart() {
+    use std::mem::transmute;
+    type RawSymbol = *mut c_void;
+    type DescriptorGetter = extern "C" fn() -> *const c_void;
+    // SAFETY: the named functions match the published descriptor and tests/modem_ioctl.c.
+    let (get, set_lines, read_lines, set_key, disconnect) = unsafe {
+        (
+            transmute::<RawSymbol, DescriptorGetter>(physical_fixture_symbol(
+                c"rptadv_gpio_adapter_descriptor",
+            )),
+            transmute::<RawSymbol, extern "C" fn(i32)>(physical_fixture_symbol(
+                c"rpt_test_modem_set",
+            )),
+            transmute::<RawSymbol, extern "C" fn() -> i32>(physical_fixture_symbol(
+                c"rpt_test_modem_get",
+            )),
+            transmute::<RawSymbol, extern "C" fn(u32, i32, i32)>(physical_fixture_symbol(
+                c"rpt_test_evdev_key",
+            )),
+            transmute::<RawSymbol, extern "C" fn(i32)>(physical_fixture_symbol(
+                c"rpt_test_evdev_offline",
+            )),
+        )
+    };
+    // SAFETY: preload retains the actual descriptor and DSO for the test process lifetime.
+    let provider = unsafe { GpioAdapter::from_raw(get()) }.unwrap();
+    let (mut plan, mut selected) = selected_hardware(false);
+    selected.cm119 = None;
+    plan.cm119 = None;
+    plan.ordinary_ptt = usbradioplus_station::OrdinaryPtt::Serial;
+    selected.serial = Some(usbradioplus_station::SerialPlan {
+        port: usbradioplus_gpio::SerialConfig {
+            path: std::env::var("RPT_TEST_MODEM_TTY").unwrap(),
+            baud: 9600,
+            data_bits: 8,
+            parity: 0,
+            stop_half_bits: 2,
+            outputs: 3,
+            idle: 2,
+        },
+        ptt: 1,
+        encoder: 2,
+        carrier: 3,
+        tone: 12,
+        carrier_inverted: true,
+        tone_inverted: false,
+    });
+    plan.serial = selected.serial.clone();
+    set_key(42, 1, 0);
+    set_key(300, 1, 1);
+    selected.keyboard = Some(usbradioplus_station::KeyboardPlan {
+        device: std::env::var("RPT_TEST_KEYBOARD").unwrap(),
+        carrier: Some(42),
+        manual: Some(300),
+        carrier_inverted: true,
+    });
+    plan.keyboard = selected.keyboard.clone();
+    let state = SharedHardwareState::default();
+    let (mut worker, _, _) = service_worker(&plan, &selected, state.clone());
+    worker.provider = provider;
+    let mut devices = ServiceDevices::open(provider, &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    outputs
+        .bind_encoder(
+            Some(crate::remote_hardware::ExternalEncoder {
+                bank: EncoderBank::Serial,
+                mask: 2,
+                inverted: true,
+            }),
+            &devices,
+        )
+        .unwrap();
+    for (raw, keyed, encoded, carrier, tone) in [
+        (0x20 | 0x40, true, false, true, true),
+        (0x20 | 0x100, false, true, false, false),
+    ] {
+        outputs.set_encoder(encoded);
+        set_lines(raw);
+        service_native_once(&mut devices, &mut outputs, &worker, keyed).unwrap();
+        let inputs = state.inputs();
+        assert_eq!(
+            (
+                inputs.serial_carrier,
+                inputs.serial_tone,
+                inputs.physical_ptt
+            ),
+            (Some(carrier), Some(tone), keyed)
+        );
+        assert_eq!(
+            read_lines() & 6,
+            (if keyed { 4 } else { 0 }) | (if encoded { 0 } else { 2 })
+        );
+        assert_eq!(inputs.keyboard_carrier, Some(true));
+        assert!(inputs.manual_key);
+    }
+    set_key(42, 1, 1);
+    set_key(300, 1, 0);
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert_eq!(state.inputs().keyboard_carrier, Some(false));
+    assert!(!state.inputs().manual_key);
+    disconnect(1);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(state.inputs().keyboard_carrier, None);
+    assert!(!state.inputs().manual_key);
+    assert!(state.inputs().physical_ptt);
+    assert_eq!(state.inputs().serial_carrier, Some(false));
+    disconnect(0);
+    set_key(300, 1, 1);
+    devices.keyboard_retry = Some(Instant::now());
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert_eq!(state.inputs().keyboard_carrier, Some(false));
+    assert!(state.inputs().manual_key);
+    devices.close_outputs(None, &mut outputs).unwrap();
+    assert_eq!(read_lines() & 6, 2);
+}
+
+#[test]
+#[ignore = "requires the staged GPIO DSO and Linux device syscall fixture"]
+fn physical_serial_failure_preserves_other_inputs_and_interlocks_parallel_edges() {
+    use std::mem::transmute;
+    // SAFETY: the test harness retains these fixture functions and the actual GPIO provider.
+    let (get, fail, key, writes, level) = unsafe {
+        (
+            transmute::<*mut c_void, extern "C" fn() -> *const c_void>(physical_fixture_symbol(
+                c"rptadv_gpio_adapter_descriptor",
+            )),
+            transmute::<*mut c_void, extern "C" fn(libc::c_ulong)>(physical_fixture_symbol(
+                c"rpt_test_modem_fail_persistent",
+            )),
+            transmute::<*mut c_void, extern "C" fn(u32, i32, i32)>(physical_fixture_symbol(
+                c"rpt_test_evdev_key",
+            )),
+            transmute::<*mut c_void, extern "C" fn() -> i32>(physical_fixture_symbol(
+                c"rpt_test_parallel_writes",
+            )),
+            transmute::<*mut c_void, extern "C" fn(i32) -> i32>(physical_fixture_symbol(
+                c"rpt_test_parallel_level",
+            )),
+        )
+    };
+    // SAFETY: the test harness retains the named immutable descriptor throughout.
+    let provider = unsafe { GpioAdapter::from_raw(get()) }.unwrap();
+    let (mut plan, mut selected) = selected_hardware(true);
+    selected.cm119 = None;
+    selected.ptt_inverted = false;
+    plan.cm119 = None;
+    plan.ordinary_ptt = usbradioplus_station::OrdinaryPtt::Parallel;
+    let par = plan.parallel.as_mut().unwrap();
+    par.config.transport = usbradioplus_gpio::ParallelTransport::Ppdev;
+    par.config.ppdev_path = Some(std::env::var("RPT_TEST_PARALLEL").unwrap());
+    par.config.output_enable_mask = 1;
+    par.config.output_initial_mask = 0;
+    par.ptt_mask = 1;
+    par.carrier_mask = 0x10;
+    selected.serial = Some(usbradioplus_station::SerialPlan {
+        port: usbradioplus_gpio::SerialConfig {
+            path: std::env::var("RPT_TEST_MODEM_TTY").unwrap(),
+            baud: 9600,
+            data_bits: 8,
+            parity: 0,
+            stop_half_bits: 2,
+            outputs: 0,
+            idle: 0,
+        },
+        ptt: 0,
+        encoder: 0,
+        carrier: 0,
+        tone: 1,
+        carrier_inverted: false,
+        tone_inverted: true,
+    });
+    key(42, 1, 1);
+    selected.keyboard = Some(usbradioplus_station::KeyboardPlan {
+        device: std::env::var("RPT_TEST_KEYBOARD").unwrap(),
+        carrier: None,
+        manual: Some(42),
+        carrier_inverted: false,
+    });
+    if std::env::var_os("RPT_TEST_INDEPENDENT_INPUTS").is_some() {
+        let state = SharedHardwareState::default();
+        let mut service = HardwareService::native(&plan, selected, state.clone(), provider);
+        service.start().unwrap();
+        assert!(await_hardware_condition(
+            || state.inputs().serial_tone == Some(true)
+        ));
+        fail(libc::TIOCMGET);
+        let invalid = await_hardware_condition(|| service.statistics().service_failures > 1);
+        let input = state.inputs();
+        fail(0);
+        service.stop().unwrap();
+        assert!(
+            invalid && input.parallel_carrier && input.manual_key && input.serial_tone.is_none(),
+            "serial fault must clear only its own qualifier: {input:?}"
+        );
+        return;
+    }
+    let state = SharedHardwareState::default();
+    let (mut worker, _, _) = service_worker(&plan, &selected, state.clone());
+    worker.provider = provider;
+    worker.native = true;
+    let mut devices = ServiceDevices::open(provider, &selected, plan.parallel.as_ref()).unwrap();
+    let mut outputs = OutputState::new(&selected, plan.parallel.as_ref(), None);
+    service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    assert_eq!(level(writes() - 1) & 1, 1);
+    fail(libc::TIOCMGET);
+    let mut after_release = None;
+    for _ in 0..4 {
+        assert!(service_native_once(&mut devices, &mut outputs, &worker, true).is_err());
+        assert!(matches!(
+            service_remote_ptt(&mut devices, &mut outputs, &worker),
+            Err(ServiceFailure(HardwareOperation::Serial, _))
+        ));
+        assert_eq!(level(writes() - 1) & 1, 0);
+        let start = *after_release.get_or_insert(writes());
+        assert!(
+            (start..writes()).all(|i| level(i) & 1 == 0),
+            "rekey during persistent serial failure"
+        );
+    }
+    let inputs = state.inputs();
+    assert!(inputs.parallel_carrier && inputs.manual_key && inputs.serial_tone.is_none());
+    fail(0);
+    for _ in 0..2 {
+        service_native_once(&mut devices, &mut outputs, &worker, true).unwrap();
+    }
+    assert_eq!(level(writes() - 1) & 1, 1);
+    assert_eq!(state.inputs().serial_tone, Some(true));
+    devices
+        .close_outputs(plan.parallel.as_ref(), &mut outputs)
+        .unwrap();
+}
+
+#[test]
+#[ignore = "requires the real Hamlib DSO, GPIO DSO and Linux device syscall fixture"]
+fn physical_pending_cat_query_expires_held_key_before_reply() {
+    use std::mem::transmute;
+    // SAFETY: each named fixture function has this C signature and is preloaded for the process.
+    let (get, key, offline, pause, pending) = unsafe {
+        (
+            transmute::<*mut c_void, extern "C" fn() -> *const c_void>(physical_fixture_symbol(
+                c"rptadv_gpio_adapter_descriptor",
+            )),
+            transmute::<*mut c_void, extern "C" fn(u32, i32, i32)>(physical_fixture_symbol(
+                c"rpt_test_evdev_key",
+            )),
+            transmute::<*mut c_void, extern "C" fn(i32)>(physical_fixture_symbol(
+                c"rpt_test_evdev_offline",
+            )),
+            transmute::<*mut c_void, extern "C" fn(i32)>(physical_fixture_symbol(
+                c"rpt_test_cat_pause",
+            )),
+            transmute::<*mut c_void, extern "C" fn() -> i32>(physical_fixture_symbol(
+                c"rpt_test_cat_pending",
+            )),
+        )
+    };
+    // SAFETY: the immutable GPIO descriptor is retained by the harness through all service calls.
+    let provider = unsafe { GpioAdapter::from_raw(get()) }.unwrap();
+    let (mut plan, mut selected) = selected_hardware(false);
+    selected.cm119 = None;
+    plan.cm119 = None;
+    plan.ordinary_ptt = usbradioplus_station::OrdinaryPtt::Hamlib;
+    key(42, 1, 0);
+    key(300, 1, 1);
+    selected.keyboard = Some(usbradioplus_station::KeyboardPlan {
+        device: std::env::var("RPT_TEST_KEYBOARD").unwrap(),
+        carrier: Some(42),
+        manual: Some(300),
+        carrier_inverted: true,
+    });
+    crate::test_support::follow_radio_ptt_for_current_test();
+    let (mut runtime, _control) = StationRuntime::open(
+        station_media(resolved_hardware_channel()),
+        &selected,
+        audio_provider(),
+    )
+    .unwrap();
+    let state = runtime.hardware_state();
+    let (mut worker, _, _) = service_worker(&plan, &selected, state.clone());
+    worker.native = true;
+    worker.provider = provider;
+    let mut devices = ServiceDevices::open(provider, &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    service_native_once(&mut devices, &mut outputs, &worker, false).unwrap();
+    assert!(state.inputs().manual_key && state.inputs().keyboard_carrier == Some(true));
+    runtime.start().unwrap();
+    assert!(
+        state.outputs().logical_ptt,
+        "held keyboard must reach the real TX callback"
+    );
+    let (start, wait) = std::sync::mpsc::channel();
+    let (ready, check) = std::sync::mpsc::channel();
+    let owner = thread::spawn(move || {
+        let mut rig = OrdinaryRig::open(&usbradioplus_station::HamlibPttPlan {
+            model: "RIG_MODEL_DUMMY".into(),
+            options: std::collections::BTreeMap::from([("ptt_type".into(), "RIG".into())]),
+            timeout_ms: 500,
+            retries: 1,
+            timeout_retries: 0,
+            poll_interval_ms: 10,
+        })
+        .unwrap();
+        ready.send(()).unwrap();
+        wait.recv().unwrap();
+        service_native_with_rig(&mut devices, &mut outputs, &worker, false, Some(&mut rig))
+            .unwrap();
+        devices.close_outputs(None, &mut outputs).unwrap();
+    });
+    check.recv_timeout(Duration::from_secs(3)).unwrap();
+    pause(1);
+    start.send(()).unwrap();
+    let mut entered = false;
+    for _ in 0..500 {
+        if pending() != 0 {
+            entered = true;
+            break;
+        }
+        thread::sleep(Duration::from_millis(2));
+    }
+    offline(1);
+    thread::sleep(Duration::from_millis(150));
+    // SAFETY: the test owns the fake endpoint and both registered callbacks exclusively.
+    let callback_status = unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) };
+    let stale_ptt = state.outputs().logical_ptt;
+    let stale = state.inputs();
+    pause(0);
+    owner.join().unwrap();
+    offline(0);
+    runtime.stop().unwrap();
+    assert!(
+        callback_status == OK && !stale_ptt,
+        "expired manual request reached TX during CAT"
+    );
+    assert!(
+        entered,
+        "real Hamlib getter never reached the blocking fixture"
+    );
+    assert_eq!(
+        (stale.keyboard_carrier, stale.manual_key),
+        (None, false),
+        "stale callback input during pending CAT"
+    );
+    assert_eq!(
+        (state.inputs().keyboard_carrier, state.inputs().manual_key),
+        (None, false),
+        "CAT reply refreshed an old input"
+    );
+}
+
+#[test]
+#[ignore = "requires the staged GPIO DSO and Linux tty syscall fixture"]
+fn physical_failed_serial_start_retires_on_the_station_owner() {
+    use std::mem::transmute;
+    // SAFETY: all exported symbols match the installed test interposer and retained GPIO descriptor.
+    let (get, fail_after_setup, fail, level) = unsafe {
+        (
+            transmute::<*mut c_void, extern "C" fn() -> *const c_void>(physical_fixture_symbol(
+                c"rptadv_gpio_adapter_descriptor",
+            )),
+            transmute::<*mut c_void, extern "C" fn()>(physical_fixture_symbol(
+                c"rpt_test_modem_fail_after_setup",
+            )),
+            transmute::<*mut c_void, extern "C" fn(libc::c_ulong)>(physical_fixture_symbol(
+                c"rpt_test_modem_fail_persistent",
+            )),
+            transmute::<*mut c_void, extern "C" fn() -> i32>(physical_fixture_symbol(
+                c"rpt_test_modem_get",
+            )),
+        )
+    };
+    // SAFETY: the DSO remains live throughout both station generations.
+    let provider = unsafe { GpioAdapter::from_raw(get()) }.unwrap();
+    let (mut plan, mut selected) = selected_hardware(false);
+    selected.cm119 = None;
+    plan.cm119 = None;
+    plan.ordinary_ptt = usbradioplus_station::OrdinaryPtt::Serial;
+    selected.serial = Some(usbradioplus_station::SerialPlan {
+        port: usbradioplus_gpio::SerialConfig {
+            path: std::env::var("RPT_TEST_MODEM_TTY").unwrap(),
+            baud: 9600,
+            data_bits: 8,
+            parity: 0,
+            stop_half_bits: 2,
+            outputs: 1,
+            idle: 0,
+        },
+        ptt: 1,
+        encoder: 0,
+        carrier: 0,
+        tone: 0,
+        carrier_inverted: false,
+        tone_inverted: false,
+    });
+    let native = || {
+        HardwareService::native(
+            &plan,
+            selected.clone(),
+            SharedHardwareState::default(),
+            provider,
+        )
+    };
+    let mut owner = native();
+    let mut next = native();
+    fail_after_setup();
+    assert!(owner.start().is_err());
+    assert!(owner.retiring.is_some() && !owner.running());
+    assert!(next.start().is_err() && owner.stop().is_err());
+    assert_ne!(level() & libc::TIOCM_RTS, 0);
+    fail(0);
+    assert!(
+        next.start().is_err(),
+        "restoring transport alone must not transfer ownership"
+    );
+    owner.stop().unwrap();
+    assert_eq!(level() & libc::TIOCM_RTS, 0);
+    next.start().unwrap();
+    next.stop().unwrap();
+}
+
+#[test]
+#[ignore = "requires the frozen preceding GPIO DSO in the test process"]
+fn physical_prior_gpio_prefix_preserves_chip_and_rejects_incomplete_serial_and_keyboard() {
+    // SAFETY: the harness preloads the frozen native9 descriptor through this process lifetime.
+    let get = unsafe {
+        std::mem::transmute::<*mut c_void, extern "C" fn() -> *const c_void>(
+            physical_fixture_symbol(c"rptadv_gpio_adapter_descriptor"),
+        )
+    };
+    // SAFETY: the same retained immutable getter supplies this complete GPIO ABI-1 prefix.
+    let provider = unsafe { GpioAdapter::from_raw(get()) }.unwrap();
+    assert!(provider.has_input_only_ptt());
+    assert!(!provider.has_serial() && !provider.has_keyboard());
+}
+
+#[test]
+#[ignore = "requires the real Hamlib and GPIO DSOs and blocked CAT syscall fixture"]
+fn physical_pending_cat_preserves_confirmed_key_in_tx_callback() {
+    use std::mem::transmute;
+    // SAFETY: the harness preloads these known fixture functions and retains the GPIO descriptor.
+    let (provider, pause, pending) = unsafe {
+        let get = transmute::<*mut c_void, extern "C" fn() -> *const c_void>(
+            physical_fixture_symbol(c"rptadv_gpio_adapter_descriptor"),
+        );
+        (
+            GpioAdapter::from_raw(get()).unwrap(),
+            transmute::<*mut c_void, extern "C" fn(i32)>(physical_fixture_symbol(
+                c"rpt_test_cat_pause",
+            )),
+            transmute::<*mut c_void, extern "C" fn() -> i32>(physical_fixture_symbol(
+                c"rpt_test_cat_pending",
+            )),
+        )
+    };
+    let (mut plan, mut selected) = selected_hardware(false);
+    selected.cm119 = None;
+    plan.cm119 = None;
+    plan.ordinary_ptt = usbradioplus_station::OrdinaryPtt::Hamlib;
+    let (mut runtime, _control) = StationRuntime::open(
+        station_media(resolved_hardware_channel()),
+        &selected,
+        audio_provider(),
+    )
+    .unwrap();
+    runtime.start().unwrap();
+    let state = runtime.hardware_state();
+    let (mut worker, _, _) = service_worker(&plan, &selected, state.clone());
+    worker.native = true;
+    worker.provider = provider;
+    let mut devices = ServiceDevices::open(provider, &selected, None).unwrap();
+    let mut outputs = OutputState::new(&selected, None, None);
+    let (go, wait) = std::sync::mpsc::channel();
+    let (ready, check) = std::sync::mpsc::channel();
+    let owner = thread::spawn(move || {
+        let mut rig = OrdinaryRig::open(&usbradioplus_station::HamlibPttPlan {
+            model: "RIG_MODEL_DUMMY".into(),
+            options: std::collections::BTreeMap::from([("ptt_type".into(), "RIG".into())]),
+            timeout_ms: 500,
+            retries: 1,
+            timeout_retries: 0,
+            poll_interval_ms: 10,
+        })
+        .unwrap();
+        let mut poll = |keyed| {
+            service_native_with_rig(&mut devices, &mut outputs, &worker, keyed, Some(&mut rig))
+                .unwrap()
+        };
+        poll(true);
+        poll(true);
+        ready.send(()).unwrap();
+        wait.recv().unwrap();
+        poll(true);
+        ready.send(()).unwrap();
+        wait.recv().unwrap();
+        poll(false);
+        devices.close_outputs(None, &mut outputs).unwrap();
+    });
+    let applied = || {
+        crate::test_support::LAST_APPLIED_PTT.set(None);
+        assert_eq!(
+            // SAFETY: the fake stream is retained and both registered callbacks are owned by this thread.
+            unsafe { audio_stream_start(LAST_STREAM.load(Ordering::Acquire)) },
+            OK
+        );
+        crate::test_support::LAST_APPLIED_PTT.get().unwrap()
+    };
+    check.recv_timeout(Duration::from_secs(3)).unwrap();
+    let initial = applied();
+    thread::sleep(Duration::from_millis(15));
+    pause(1);
+    go.send(()).unwrap();
+    let limit = Instant::now() + Duration::from_secs(2);
+    while pending() == 0 && Instant::now() < limit {
+        thread::sleep(Duration::from_millis(1));
+    }
+    let entered = pending() != 0;
+    let during = applied();
+    thread::sleep(Duration::from_millis(125));
+    let after_input_expiry = applied();
+    thread::sleep(Duration::from_millis(510));
+    let after_confirmation_expiry = applied();
+    pause(0);
+    check.recv_timeout(Duration::from_secs(3)).unwrap();
+    let recovered = applied();
+    go.send(()).unwrap();
+    owner.join().unwrap();
+    let released = applied();
+    runtime.stop().unwrap();
+    eprintln!(
+        "confirmed={initial} blocked={entered} during={during} input_expired={after_input_expiry} cat_expired={after_confirmation_expiry} recovered={recovered} released={released}"
+    );
+    assert!(
+        entered && initial,
+        "initial KEY confirmation and blocked GET"
+    );
+    assert!(
+        during && after_input_expiry,
+        "lost still-valid confirmed KEY in registered TX callback"
+    );
+    assert!(
+        !after_confirmation_expiry,
+        "stalled GET indefinitely retained physical KEY"
+    );
+    assert!(
+        recovered && !released,
+        "fresh readback and terminal release"
+    );
 }

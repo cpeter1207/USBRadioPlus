@@ -13,6 +13,8 @@ use usbradioplus_station::HardwarePlan;
 pub enum RemotePttSource {
     /// The selected rig's supported PTT operation.
     Rig,
+    /// Dedicated serial modem-line output.
+    Serial,
     /// The selected CM119's dedicated PTT output.
     Usb,
     /// A configured parallel-port PTT assignment.
@@ -24,15 +26,36 @@ pub enum RemotePttSource {
 #[derive(Clone, Copy)]
 pub(crate) enum PhysicalPttControl {
     Ordinary,
+    /// A dedicated modem or CAT owner services the rendered request outside the GPIO banks.
+    Independent,
+    Selected(RemotePttSource),
     Remote {
         selected: Option<RemotePttSource>,
         key: bool,
     },
 }
 impl PhysicalPttControl {
+    pub(crate) fn ordinary(source: usbradioplus_station::OrdinaryPtt) -> Self {
+        use usbradioplus_station::OrdinaryPtt;
+        match source {
+            OrdinaryPtt::Legacy => Self::Ordinary,
+            OrdinaryPtt::Hamlib => Self::Independent,
+            OrdinaryPtt::Serial => Self::Selected(RemotePttSource::Serial),
+            OrdinaryPtt::Usb => Self::Selected(RemotePttSource::Usb),
+            OrdinaryPtt::Parallel => Self::Selected(RemotePttSource::Parallel),
+        }
+    }
+    pub(crate) fn parallel_feedback(self, has_cm119: bool) -> bool {
+        match self {
+            Self::Selected(source) => source == RemotePttSource::Parallel,
+            _ => !has_cm119,
+        }
+    }
     pub(crate) fn key_for(self, source: RemotePttSource, rendered: bool) -> bool {
         match self {
             Self::Ordinary => rendered,
+            Self::Independent => false,
+            Self::Selected(selected) => selected == source && rendered,
             Self::Remote { selected, key } => selected == Some(source) && key,
         }
     }
@@ -55,24 +78,41 @@ pub struct RemotePhysicalWiring {
 /// One admitted output on this radio's existing GPIO owner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct ExternalEncoder {
-    pub bank: crate::SiteBank,
+    pub bank: EncoderBank,
     pub mask: u8,
     pub inverted: bool,
 }
-impl ExternalEncoder {
-    pub(crate) fn configured(config: &ResolvedRemoteConfiguration) -> Option<Self> {
-        let (bank, mask) = match config.external_encode_output? {
-            RemoteEncoderOutput::Usb(pin) => (crate::SiteBank::Cm119, 1 << (pin.get() - 1)),
-            RemoteEncoderOutput::Parallel(pin) => (crate::SiteBank::Parallel, 1 << (pin.get() - 2)),
-        };
-        Some(Self {
-            bank,
-            mask,
-            inverted: config.external_encode_inverted,
-        })
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum EncoderBank {
+    Site(crate::SiteBank),
+    Serial,
+}
+impl From<crate::SiteBank> for EncoderBank {
+    fn from(bank: crate::SiteBank) -> Self {
+        Self::Site(bank)
     }
 }
-
+impl ExternalEncoder {
+    pub(crate) fn configured(config: &ResolvedRemoteConfiguration) -> Option<Self> {
+        config
+            .external_encode_output
+            .map(|output| Self::binding(output, config.external_encode_inverted))
+    }
+    pub(crate) fn binding(output: RemoteEncoderOutput, inverted: bool) -> Self {
+        let (bank, mask) = match output {
+            RemoteEncoderOutput::Usb(pin) => (crate::SiteBank::Cm119.into(), 1 << (pin.get() - 1)),
+            RemoteEncoderOutput::Parallel(pin) => {
+                (crate::SiteBank::Parallel.into(), 1 << (pin.get() - 2))
+            }
+            RemoteEncoderOutput::Serial(mask) => (EncoderBank::Serial, mask),
+        };
+        Self {
+            bank,
+            mask,
+            inverted,
+        }
+    }
+}
 /// Inspect existing pin capabilities without opening a device or claiming I/O.
 pub(crate) fn external_encoder(
     config: &ResolvedRemoteConfiguration,
@@ -84,13 +124,23 @@ pub(crate) fn external_encoder(
     };
     let mask = output.mask;
     match output.bank {
-        crate::SiteBank::Cm119 => {
+        EncoderBank::Serial => {
+            if mask == 0
+                || plan
+                    .serial
+                    .as_ref()
+                    .is_none_or(|s| s.encoder != u32::from(mask))
+            {
+                return Err(unavailable());
+            }
+        }
+        EncoderBank::Site(crate::SiteBank::Cm119) => {
             let plan = plan.cm119.as_ref().ok_or_else(unavailable)?;
             if plan.output_enable_mask & mask == 0 || plan.clip_led_mask & mask != 0 {
                 return Err(unavailable());
             }
         }
-        crate::SiteBank::Parallel => {
+        EncoderBank::Site(crate::SiteBank::Parallel) => {
             let plan = plan.parallel.as_ref().ok_or_else(unavailable)?;
             let reserved = match config.backend {
                 RemoteBackend::ParallelChannel => 0xf0,
@@ -146,6 +196,9 @@ impl RemotePhysicalWiring {
             .is_some_and(|plan| plan.ptt_mask != 0);
         let ptt = match config.ptt_source.as_deref() {
             Some("hamlib") if rig_ptt => RemotePttSource::Rig,
+            Some("serial") if plan.serial.as_ref().is_some_and(|s| s.ptt != 0) => {
+                RemotePttSource::Serial
+            }
             Some("usb") if usb => RemotePttSource::Usb,
             Some("parallel") if parallel_ptt => RemotePttSource::Parallel,
             None if rig_ptt => RemotePttSource::Rig,
@@ -191,6 +244,12 @@ impl RemotePhysicalWiring {
             Some("hamlib") | None if rig_carrier => (CarrierSource::External, true),
             Some("open") => (CarrierSource::Open, false),
             Some("dsp") => (CarrierSource::Dsp, false),
+            Some("key_down") if plan.keyboard.as_ref().is_some_and(|k| k.carrier.is_some()) => {
+                (CarrierSource::External, false)
+            }
+            Some("serial") if plan.serial.as_ref().is_some_and(|s| s.carrier != 0) => {
+                (CarrierSource::External, false)
+            }
             Some("usb") => (
                 if inherited_carrier == CarrierSource::UsbInverted {
                     CarrierSource::UsbInverted
@@ -218,11 +277,17 @@ impl RemotePhysicalWiring {
                 .parallel
                 .as_ref()
                 .is_none_or(|plan| plan.carrier_mask == 0)
-            || carrier == CarrierSource::External && !rig_carrier
+            || carrier == CarrierSource::External
+                && !rig_carrier
+                && plan.serial.as_ref().is_none_or(|s| s.carrier == 0)
+                && plan.keyboard.as_ref().is_none_or(|k| k.carrier.is_none())
         {
             return Err(unavailable());
         }
         let external_decode = match inherited_decode {
+            SubaudibleSource::External if plan.serial.as_ref().is_some_and(|s| s.tone != 0) => {
+                inherited_decode
+            }
             SubaudibleSource::Usb | SubaudibleSource::UsbInverted if usb => inherited_decode,
             SubaudibleSource::Parallel | SubaudibleSource::ParallelInverted
                 if plan

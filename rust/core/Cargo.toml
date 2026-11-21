@@ -15,4 +15,5 @@ missing_docs = "deny"
 undocumented_unsafe_blocks = "deny"
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
 ebur128 = "=0.1.11"

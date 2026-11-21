@@ -16,7 +16,8 @@ pub enum ChainRole {
 }
 
 /// Local-receiver PL rejection mode.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum PlFilter {
     /// Bypass PL rejection.
     Disabled,
@@ -27,7 +28,8 @@ pub enum PlFilter {
 }
 
 /// One three-band equalizer configuration.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Equalizer {
     /// Whether the equalizer participates in the optional graph.
     pub enabled: bool,
@@ -69,7 +71,8 @@ impl Default for Equalizer {
 }
 
 /// One split-band de-esser configuration.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Deesser {
     /// Whether the de-esser participates in the optional graph.
     pub enabled: bool,
@@ -105,7 +108,8 @@ impl Default for Deesser {
 }
 
 /// Automatic gain-control configuration.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Agc {
     /// Whether AGC participates in the optional graph.
     pub enabled: bool,
@@ -150,7 +154,8 @@ impl Default for Agc {
 }
 
 /// Downward-expander configuration.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Expander {
     /// Whether the expander participates in the optional graph.
     pub enabled: bool,
@@ -186,7 +191,8 @@ impl Default for Expander {
 }
 
 /// One compressor or limiter band's controls.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DynamicsBand {
     /// Threshold in dBFS.
     pub threshold_dbfs: f64,
@@ -203,7 +209,8 @@ pub struct DynamicsBand {
 }
 
 /// Full-band or three-band dynamics selection.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum BandLayout {
     /// Process the full signal as one band.
     FullBand,
@@ -212,7 +219,8 @@ pub enum BandLayout {
 }
 
 /// Compressor configuration.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Compressor {
     /// Whether the compressor participates in the optional graph.
     pub enabled: bool,
@@ -262,7 +270,8 @@ impl Default for Compressor {
 }
 
 /// Shared FFmpeg limiter configuration.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Limiter {
     /// Whether the limiter participates in the optional graph.
     pub enabled: bool,
@@ -356,7 +365,8 @@ impl Default for ReceiveConditioning {
 }
 
 /// Fixed final limiter.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct PeakLimiter {
     /// Whether the final limiter is enabled.
     pub enabled: bool,
@@ -386,7 +396,8 @@ impl Default for PeakLimiter {
 }
 
 /// Fixed final transmitter band-pass.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct TransmitTail {
     /// Whether the band-pass before the final limiter is enabled.
     pub bandpass_enabled: bool,

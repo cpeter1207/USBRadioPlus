@@ -93,11 +93,11 @@ ifeq ($(shell $(PKG_CONFIG) --exists rptadvradio && echo yes),)
 $(error USBRadioPlus requires the librptadvradio development package)
 endif
 ifneq ($(shell $(PKG_CONFIG) --variable=abi_version rptadvradio),5)
-$(error USBRadioPlus requires librptadvradio descriptor ABI 5 from alpha.10 or newer)
+$(error USBRadioPlus requires librptadvradio descriptor ABI 5 from alpha.13 or newer)
 endif
-RPTADV_RADIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadvradio)),0.1.0-alpha.10,0.1.0~alpha10)
+RPTADV_RADIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadvradio)),0.1.0-alpha.13,0.1.0~alpha13)
 ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(RPTADV_RADIO_MIN_VERSION) rptadvradio && echo yes),)
-$(error USBRadioPlus requires librptadvradio alpha10 or newer for neural speech admission)
+$(error USBRadioPlus requires librptadvradio alpha13 or newer for external tone qualification)
 endif
 RPTADV_RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags rptadvradio)
 RPTADV_RADIO_LIBS := $(shell $(PKG_CONFIG) --variable=libdir rptadvradio)/librptadvradio.so.5
@@ -168,9 +168,9 @@ AUDIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversio
 ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(AUDIO_MIN_VERSION) rptadv_portaudio_alsa_adapter && echo yes),)
 $(error USBRadioPlus requires librptadv-portaudio-alsa-adapter-dev 0.2.0~alpha4 or newer)
 endif
-GPIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadv_gpio_adapter)),0.1.0-alpha.4,0.1.0~alpha4)
+GPIO_MIN_VERSION := $(if $(findstring -alpha.,$(shell $(PKG_CONFIG) --modversion rptadv_gpio_adapter)),0.1.0-alpha.5,0.1.0~alpha5)
 ifeq ($(shell $(PKG_CONFIG) --atleast-version=$(GPIO_MIN_VERSION) rptadv_gpio_adapter && echo yes),)
-$(error USBRadioPlus requires librptadv-gpio-adapter-dev alpha4 or newer)
+$(error USBRadioPlus requires librptadv-gpio-adapter-dev alpha5 or newer)
 endif
 RADIO_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(RADIO_PACKAGES))
 # Keep non-library transitive flags while pinning each direct DSO to its provider.
@@ -533,7 +533,7 @@ install: all
 	$(INSTALL_PROGRAM) $(TUNER) $(DESTDIR)$(sbindir)/usbradioplus-tune
 	$(INSTALL_DATA) README.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) CHANGELOG.md $(DESTDIR)$(docdir)/
-	$(INSTALL_DATA) doc/native-radio.md $(DESTDIR)$(docdir)/
+	$(INSTALL_DATA) doc/native-radio.md doc/typed-preparation.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/programme-buffering.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) doc/adr-programme-buffering.md $(DESTDIR)$(docdir)/
 	$(INSTALL_DATA) examples/usbradioplus.conf.sample $(DESTDIR)$(docdir)/
@@ -571,6 +571,7 @@ uninstall:
 		$(DESTDIR)$(mandir)/man8/usbradioplus-tune.8 \
 		$(DESTDIR)$(docdir)/README.md \
 		$(DESTDIR)$(docdir)/CHANGELOG.md \
+		$(DESTDIR)$(docdir)/typed-preparation.md \
 		$(DESTDIR)$(docdir)/native-radio.md \
 		$(DESTDIR)$(docdir)/programme-buffering.md \
 		$(DESTDIR)$(docdir)/adr-programme-buffering.md \

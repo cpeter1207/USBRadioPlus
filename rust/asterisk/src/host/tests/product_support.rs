@@ -94,3 +94,35 @@ pub(crate) fn direct_callbacks() -> UrpAstDirectCallbacks {
         accepted_abi_version: 0,
     }
 }
+
+pub(crate) fn fail_station_preflight() {
+    provider_support::set_failure(provider_support::FAIL_PREFLIGHT);
+}
+pub(crate) fn station_audio_events() -> (u32, u32) {
+    provider_support::audio_lifecycle()
+}
+pub(crate) fn station_audio_clock(enabled: bool) {
+    provider_support::periodic_audio(enabled);
+}
+
+pub(crate) fn set_start_levels(levels: [u32; 3]) {
+    provider_support::restored_mixer_levels(levels);
+}
+pub(crate) fn start_levels() -> [u32; 3] {
+    provider_support::audio_start_mixer_levels()
+}
+pub(crate) fn fail_audio_stop() {
+    provider_support::set_failure(provider_support::FAIL_STOP);
+}
+pub(crate) fn station_mixer_levels() -> [u32; 3] {
+    provider_support::mixer_levels()
+}
+pub(crate) fn fail_mixer_write() {
+    provider_support::set_failure(provider_support::FAIL_MIXER);
+}
+pub(crate) fn mixer_discoveries() -> u32 {
+    provider_support::mixer_discoveries()
+}
+pub(crate) fn count_station_streams(enabled: bool) {
+    provider_support::exclusive_audio(enabled);
+}

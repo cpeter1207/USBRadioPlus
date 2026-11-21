@@ -6,12 +6,15 @@ use crate::{ResolutionWarning, ResolutionWarningKind};
 use std::{collections::BTreeMap, fmt};
 
 /// One ordinary output that enables a separately wired external tone encoder.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RemoteEncoderOutput {
     /// Configured CM119 output, using its one-based physical GPIO number.
     Usb(GpioPin),
     /// Configured parallel data output, using its connector pin number.
     Parallel(ParallelPin),
+    /// Selected dedicated modem output mask, bit 0 RTS and bit 1 DTR.
+    Serial(u8),
 }
 fn encoder_output(value: &str) -> Option<RemoteEncoderOutput> {
     let (bank, pin) = value.split_once(':')?;
@@ -24,7 +27,8 @@ fn encoder_output(value: &str) -> Option<RemoteEncoderOutput> {
 }
 
 /// Explicit physical control backend; parallel operations retain their existing owner.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RemoteBackend {
     /// Released Hamlib adapter and one rig per node.
     Hamlib,
@@ -35,7 +39,8 @@ pub enum RemoteBackend {
 }
 
 /// Physical audio admission; both paths use the shared PortAudio adapter.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RemoteAudioSource {
     /// CM119 audio plus its existing HID/mixer capabilities.
     Cm119,
@@ -44,7 +49,8 @@ pub enum RemoteAudioSource {
 }
 
 /// Remote operating command authorization; status remains read-only and public.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RemoteDtmfAccess {
     /// Any command source may operate the rig.
     Open,
@@ -57,6 +63,8 @@ pub enum RemoteDtmfAccess {
 /// Configured signal provider, resolved once against physical capabilities.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RemoteSignalSource {
     /// Signal is not used.
     #[default]
@@ -72,7 +80,8 @@ pub enum RemoteSignalSource {
 }
 
 /// One independently configured signaling direction.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RemoteSignal {
     /// Provider, with automatic resolved before creating the shared engine.
     pub source: RemoteSignalSource,
@@ -90,7 +99,8 @@ pub struct RemoteSignal {
 }
 
 /// Complete owned operating configuration; no hardware or runtime handle is retained.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RemoteOperatingState {
     /// Base receive VFO frequency in hertz.
     pub receive_hz: u64,
@@ -127,7 +137,8 @@ pub struct RemoteOperatingState {
 }
 
 /// Configuration-only named memory.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RemoteMemory {
     /// Stable positive DTMF selector.
     pub selector: u32,
@@ -138,7 +149,8 @@ pub struct RemoteMemory {
 }
 
 /// Configuration-only named scan list.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RemoteScanList {
     /// Stable positive DTMF selector.
     pub selector: u32,
@@ -157,7 +169,8 @@ pub struct RemoteScanList {
 }
 
 /// Shared resolved settings. RF admission itself belongs to the remote-base DSO.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ResolvedRemoteConfiguration {
     /// One explicit control backend.
     pub backend: RemoteBackend,
@@ -166,6 +179,7 @@ pub struct ResolvedRemoteConfiguration {
     /// Canonical named model, never a numeric model value.
     pub hamlib_model: String,
     /// Named native transport options. Diagnostic formatting must not expose values.
+    #[serde(deserialize_with = "unique_options")]
     pub hamlib_options: BTreeMap<String, String>,
     /// Positive port timeout, milliseconds.
     pub timeout_ms: u32,
@@ -212,7 +226,33 @@ pub struct ResolvedRemoteConfiguration {
     /// Maximum duration of the admitted manual tune operation.
     pub tune_duration_ms: u64,
     /// Shared unknown-value/inheritance diagnostics, with transport values redacted.
+    #[serde(skip)]
     pub warnings: Vec<ResolutionWarning>,
+}
+
+fn unique_options<'de, D: serde::Deserializer<'de>>(
+    input: D,
+) -> Result<BTreeMap<String, String>, D::Error> {
+    struct Options;
+    impl<'de> serde::de::Visitor<'de> for Options {
+        type Value = BTreeMap<String, String>;
+        fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("a named string option map")
+        }
+        fn visit_map<A: serde::de::MapAccess<'de>>(
+            self,
+            mut values: A,
+        ) -> Result<Self::Value, A::Error> {
+            let mut result = BTreeMap::new();
+            while let Some((key, value)) = values.next_entry()? {
+                if result.insert(key, value).is_some() {
+                    return Err(serde::de::Error::custom("duplicate transport option"));
+                }
+            }
+            Ok(result)
+        }
+    }
+    input.deserialize_map(Options)
 }
 
 impl fmt::Debug for ResolvedRemoteConfiguration {

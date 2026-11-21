@@ -1512,7 +1512,7 @@ typedef struct UrpAstDescriptor {
 	/** Validate shared source profiles without opening devices or graphs. */
 	int (*native_processing_validate)(const struct UrpNativeProcessingArgs *args,
 					  UrpNativeProcessingDiagnostic diagnostic, void *context);
-	/** Prepare a native 48 kHz link graph; absent profiles return a null handle.
+	/** Prepare a native 48 kHz link graph; absent profiles return a metered neutral handle.
 	 * The caller retains the FFmpeg provider until link_destroy has returned.
 	 */
 	int (*native_link_prepare)(const struct UrpNativeProcessingArgs *args, const void *ffmpeg,
@@ -1667,6 +1667,121 @@ typedef struct UrpAstDescriptor {
 	(offsetof(UrpAstDescriptor, channel_programme_fence_bind) +                                \
 	 sizeof(((UrpAstDescriptor *)0)->channel_programme_fence_bind))
 
+/** Provider-owned typed settings DTO, copied synchronously during preparation. */
+typedef struct UrpTypedPreparation {
+	/** Complete version-one prefix. */
+	uint32_t struct_size;
+	/** One. */
+	uint32_t abi_version;
+	/** ABI-4 station and ABI-5 standalone radio template. Source, node and graph lengths
+	 * must be zero. Use controller-owned RX delay, advanced transport and disabled CPU savers.
+	 */
+	const UrpNativeStationConfig *station;
+	/** UTF-8 settings DTO defined in doc/typed-preparation.md. */
+	const uint8_t *settings;
+	/** Positive byte count, at most 1048576. */
+	uint32_t settings_length;
+} UrpTypedPreparation;
+
+/** Immutable ABI 1 capability. Check size, version, identity and all operations before use. */
+typedef struct UrpPreparationDescriptor {
+	/** At least sizeof(UrpPreparationDescriptor). */
+	uint32_t struct_size;
+	/** One. */
+	uint32_t abi_version;
+	/** NUL-terminated usbradioplus.preparation1. */
+	const char *capability_name;
+	/** Return an owned candidate and synchronous static-field diagnostics, without device
+	 * access. */
+	int (*prepare)(const UrpTypedPreparation *, UrpNativeProcessingDiagnostic, void *, void **);
+	/** Compare semantic station, roles and remote policy. Return zero status and a boolean. */
+	int (*equal)(const void *, const void *, uint32_t *);
+	/** Use the prepared candidate. The lifecycle request's config must be null. */
+	int (*create)(const void *, const UrpNativeCreateArgs *, void **);
+	/** Prepare a token for product1 native_begin/accept/finish/destroy_update. */
+	int (*prepare_update)(void *, const void *, const UrpNativeCreateArgs *, void **);
+	/** Create an independent metered peer. An absent peer role yields a neutral handle. */
+	int (*link_prepare)(const void *, const void *, uint32_t sample_rate_hz,
+			    uint32_t maximum_frames, void **);
+} UrpPreparationDescriptor;
+
+/** Opaque hardware-independent link role. Release through its own descriptor. */
+typedef struct UrpPreparedLinkRole UrpPreparedLinkRole;
+
+/** Immutable ABI 1 capability. Check the complete size, identity, version and all operations. */
+typedef struct UrpLinkPreparationDescriptor {
+	/** At least sizeof(UrpLinkPreparationDescriptor). */
+	uint32_t struct_size;
+	/** One. */
+	uint32_t abi_version;
+	/** NUL-terminated usbradioplus.link-preparation1. */
+	const char *capability_name;
+	/** Copy the bounded UTF-8 link DTO and report a rejected static field synchronously.
+	 * On failure the output is null. No station, device or graph provider is required. */
+	int (*prepare)(const uint8_t *settings, uint32_t settings_length,
+		       UrpNativeProcessingDiagnostic diagnostic, void *context,
+		       UrpPreparedLinkRole **output);
+	/** Compare role presence and effective settings. Write a boolean on success. */
+	int (*equal)(const UrpPreparedLinkRole *, const UrpPreparedLinkRole *, uint32_t *);
+	/** Prepare a product1 peer. Retain the FFmpeg provider until product1 link_destroy.
+	 * On failure the output is null. Each successful peer is independent of its role. */
+	int (*link_prepare)(const UrpPreparedLinkRole *, const void *ffmpeg,
+			    uint32_t sample_rate_hz, uint32_t maximum_frames, void **output);
+	/** Release one live role or accept null. */
+	void (*destroy)(UrpPreparedLinkRole *);
+} UrpLinkPreparationDescriptor;
+
+/** A borrowed exact prepared station, valid through this synchronous call. */
+typedef struct UrpBoundStationRequest {
+	uint32_t struct_size;	     /**< Complete request size. */
+	uint32_t abi_version;	     /**< One. */
+	uint8_t port_uuid[16];	     /**< Registry port UUID in network byte order. */
+	uint64_t candidate_identity; /**< Nonzero semantic selection, independent of hardware
+					generation. */
+	const struct UrpAstDescriptor *product; /**< Producer of the preparation. */
+	const void *prepared;			/**< Immutable physical preparation from product. */
+} UrpBoundStationRequest;
+
+/** Callback synchronously invokes public ast_request with the supplied one-shot address. */
+typedef int (*UrpStationRequestChannel)(void *context, const char *address);
+/** Registered RadioPlusAdvanced technology operations supplied by libusbradioplus_asterisk. */
+typedef struct UrpAstStationBindingDescriptor {
+	uint32_t struct_size;	     /**< Complete table size. */
+	uint32_t abi_version;	     /**< One. */
+	const char *capability_name; /**< Exact usbradioplus.asterisk-station1. */
+	/** Pin the registered module and driver, copy the immutable provider request and return a
+	 * dormant owner. */
+	int (*prepare)(const UrpBoundStationRequest *, void **plan);
+	/** Lend a single-use address during the synchronous request; cancellation is implicit on
+	 * return. */
+	int (*with_request)(const void *plan, void *context, UrpStationRequestChannel);
+	/** Stage through the matching mounted channel's original taskprocessor. */
+	int (*stage)(void *asterisk_channel, const void *plan);
+	/** Commit or restore the mounted channel's staged station operation. */
+	int (*finish)(void *asterisk_channel, uint32_t commit);
+	/** Release the dormant plan; active and queued uses hold independent owners. */
+	void (*release)(void *plan);
+} UrpAstStationBindingDescriptor;
+
+/** Immutable extension for hosts retaining independently owned typed station plans. */
+typedef struct UrpStationOwnershipDescriptor {
+	uint32_t struct_size;	     /**< Complete readable descriptor size. */
+	uint32_t abi_version;	     /**< One. */
+	const char *capability_name; /**< Exact usbradioplus.station-ownership1. */
+	/** Copy a live typed configuration from the identified product1 module. Success transfers
+	 * one independent configuration, released by that module's native_configuration_destroy.
+	 * Keep the same DSO alive until the last owned configuration is released. */
+	int (*copy_prepared)(const struct UrpAstDescriptor *product, const void *prepared,
+			     void **output);
+	/** Reserve the exact station after publication on its existing Asterisk driver. */
+	int (*channel_reserve)(void *driver, const UrpBoundStationRequest *,
+			       const UrpAstChannelReserveArgs *, void **channel);
+	/** Stage on this mounted station. Zero staged, one untouched handoff, two pending. */
+	int (*channel_stage)(void *channel, const UrpBoundStationRequest *);
+	/** Commit or abort. Zero confirmed, two pending. */
+	int (*channel_finish)(void *channel, uint32_t commit);
+} UrpStationOwnershipDescriptor;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -1676,6 +1791,27 @@ extern "C" {
  * @return Pointer to the process-lifetime descriptor.
  */
 const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void);
+
+/** Return the complete typed preparation descriptor. Destroy candidates through product1
+ * native_configuration_destroy, and inspect via native_configuration_visit/remote_options.
+ * @return Pointer to the immutable, process-lifetime station preparation descriptor. */
+const UrpPreparationDescriptor *usbradioplus_preparation_descriptor(void);
+
+/** ABI version for the explicit physical station preparation capability. */
+#define URP_NATIVE_PHYSICAL_PREPARATION_ABI_VERSION 1U
+
+/** Same table layout as preparation1, with exact identity usbradioplus.physical-preparation1.
+ * The caller supplies the required physical DTO. No device access occurs during prepare. */
+const UrpPreparationDescriptor *usbradioplus_physical_preparation_descriptor(void);
+
+/** Get the independent prepared station ownership capability from this product module. */
+const UrpStationOwnershipDescriptor *usbradioplus_station_ownership_descriptor(void);
+/** Defined by the Asterisk adapter DSO. Pin that DSO while using this table. */
+const UrpAstStationBindingDescriptor *usbradioplus_asterisk_station_binding_descriptor(void);
+
+/** Return the independent peer-role preparation descriptor.
+ * @return Pointer to the immutable, process-lifetime peer-role preparation descriptor. */
+const UrpLinkPreparationDescriptor *usbradioplus_link_preparation_descriptor(void);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -285,6 +285,9 @@ impl NativeStationMedia {
             config,
             receive: StationReceive {
                 radio: receive,
+                inactive_qualifier_levels: crate::runtime::inactive_qualifier_levels(
+                    config.qualification,
+                ),
                 controller: None,
                 direct: Some(callbacks),
                 qualification: None,
@@ -341,6 +344,7 @@ impl StationMedia {
 
 /// Sole local receive callback owner and its ASL3 publication endpoint.
 pub struct StationReceive {
+    pub(crate) inactive_qualifier_levels: u32,
     radio: ReceiveEndpoint<'static>,
     controller: Option<ReceivePublisher>,
     pub(crate) direct: Option<DirectCallbacks>,
@@ -481,10 +485,13 @@ impl PreparedStation {
         let (receive, transmit, control) =
             unsafe { prepare_owned_session(radio_provider, plan.radio(), resources_mut)? };
         let physical_duplex = plan.radio().qualification.radio_duplex;
+        let inactive_qualifier_levels =
+            crate::runtime::inactive_qualifier_levels(plan.radio().qualification);
         Ok(StationMedia {
             plan,
             receive: StationReceive {
                 radio: receive,
+                inactive_qualifier_levels,
                 controller: Some(controller_publisher),
                 direct: None,
                 qualification: Some(qualification),

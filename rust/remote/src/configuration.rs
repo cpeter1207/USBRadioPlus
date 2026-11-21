@@ -39,12 +39,30 @@ impl HamlibRig {
         provider: Arc<HamlibProvider>,
         config: &ResolvedRemoteConfiguration,
     ) -> Result<Self, CallError> {
+        Self::transport(
+            provider,
+            &config.hamlib_model,
+            &config.hamlib_options,
+            config.timeout_ms,
+            config.retries,
+            config.timeout_retries,
+        )
+    }
+
+    /// Open an explicit rig transport on the calling physical worker without an operating engine.
+    pub fn transport(
+        provider: Arc<HamlibProvider>,
+        model: &str,
+        options: &std::collections::BTreeMap<String, String>,
+        timeout_ms: u32,
+        retries: u32,
+        timeout_retries: u32,
+    ) -> Result<Self, CallError> {
         let span = |value: &str| raw::rptadv_hamlib_string {
             data: value.as_ptr().cast(),
             size: value.len(),
         };
-        let options: Vec<_> = config
-            .hamlib_options
+        let options: Vec<_> = options
             .iter()
             .map(|(name, value)| raw::rptadv_hamlib_option {
                 name: span(name),
@@ -55,12 +73,12 @@ impl HamlibRig {
             struct_size: size_of::<raw::rptadv_hamlib_config>(),
             abi_version: 1,
             reserved: 0,
-            model: span(&config.hamlib_model),
+            model: span(model),
             options: options.as_ptr(),
             option_count: options.len(),
-            timeout_ms: config.timeout_ms,
-            retries: config.retries,
-            timeout_retries: config.timeout_retries,
+            timeout_ms,
+            retries,
+            timeout_retries,
             reserved2: 0,
         };
         // SAFETY: every borrowed string/option remains readable through open;
