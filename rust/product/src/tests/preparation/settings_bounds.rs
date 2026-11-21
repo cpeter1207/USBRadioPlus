@@ -261,7 +261,9 @@ fn alsa_remote_does_not_inherit_cm119_wiring_or_ignore_parallel_pin_claims() {
 fn remote_record_deserializer_explains_malformed_transport_records() {
     // The shared type is also consumed independently of the controller's named-record DTO.
     use usbradioplus_core::ResolvedRemoteConfiguration;
-    assert!(serde_json::from_str::<ResolvedRemoteConfiguration>("[]").is_err());
+    let truncated = r#"["hamlib","cm119","RIG_MODEL_DUMMY",{"ptt_type":"RIG"}]"#;
+    let error = serde_json::from_str::<ResolvedRemoteConfiguration>(truncated).unwrap_err();
+    assert!(error.to_string().contains("invalid length 4"), "{error}");
     let mut dto: Value = serde_json::from_str(include_str!("remote.json")).unwrap();
     dto["remote"]["hamlib_options"] = json!(false);
     let error =
