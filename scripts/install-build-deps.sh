@@ -68,13 +68,13 @@ esac
 pkg-config --atleast-version="$urp_ring_min_version" rate_adjusting_pcm_ring3 || \
 	die "rate_adjusting_pcm_ring3 $urp_ring_min_version or newer is unavailable"
 case "$(pkg-config --modversion rptadvradio)" in
-	*-alpha.*) urp_radio_min_version=0.1.0-alpha.10 ;;
-	*) urp_radio_min_version=0.1.0~alpha10 ;;
+	*-alpha.*) urp_radio_min_version=0.1.0-alpha.13 ;;
+	*) urp_radio_min_version=0.1.0~alpha13 ;;
 esac
 pkg-config --atleast-version="$urp_radio_min_version" rptadvradio || \
 	die "rptadvradio $urp_radio_min_version or newer is unavailable"
 [ "$(pkg-config --variable=abi_version rptadvradio)" = 5 ] || \
-	die "rptadvradio descriptor ABI 5 (alpha.10 or newer) is unavailable"
+	die "rptadvradio descriptor ABI 5 (alpha.13 or newer) is unavailable"
 pkg-config --atleast-version=0.1.0~alpha2 rptadv_samplerate_adapter || \
 	die "rptadv_samplerate_adapter 0.1.0~alpha2 or newer is unavailable"
 pkg-config --atleast-version=0.1.0~alpha2 rptadv_ffmpeg_adapter || \
@@ -85,8 +85,12 @@ case "$(pkg-config --modversion rptadv_portaudio_alsa_adapter)" in
 esac
 pkg-config --atleast-version="$urp_audio_min_version" rptadv_portaudio_alsa_adapter || \
 	die "rptadv_portaudio_alsa_adapter $urp_audio_min_version or newer is unavailable"
-pkg-config --atleast-version=0.1.0~alpha2 rptadv_gpio_adapter || \
-	die "rptadv_gpio_adapter 0.1.0~alpha2 or newer is unavailable"
+case "$(pkg-config --modversion rptadv_gpio_adapter)" in
+	*-alpha.*) urp_gpio_min_version=0.1.0-alpha.5 ;;
+	*) urp_gpio_min_version=0.1.0~alpha5 ;;
+esac
+pkg-config --atleast-version="$urp_gpio_min_version" rptadv_gpio_adapter || \
+	die "rptadv_gpio_adapter $urp_gpio_min_version or newer is unavailable"
 pkg-config --atleast-version=0.1.0~alpha2 rptadv_rnnoise_adapter || \
 	die "rptadv_rnnoise_adapter 0.1.0~alpha2 or newer is unavailable"
 

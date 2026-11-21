@@ -11,11 +11,16 @@ use crate::hardware_site::{
     SiteBank, SiteBankState, SiteCache, SiteDigitalBinding, SiteDigitalRequest,
     SiteDigitalSnapshot, SiteError,
 };
-use crate::remote_hardware::{PhysicalPttControl, RemotePttSource};
+use crate::remote_hardware::{EncoderBank, PhysicalPttControl, RemotePttSource};
 use crate::{RemoteQueue, RemoteRequestError, RemoteSetup, RemoteTicket};
 use usbradioplus_core::remote_operation::RemoteOperation;
+#[path = "ordinary_hamlib.rs"]
+mod ordinary_hamlib;
 #[path = "hardware_remote.rs"]
 mod remote;
+use ordinary_hamlib::OrdinaryRig;
+#[path = "transport_claim.rs"]
+mod transport_claim;
 use std::cell::{Cell, RefCell, RefMut};
 use std::fmt;
 use std::sync::Arc;
@@ -114,6 +119,12 @@ pub enum HardwareOperation {
     ConfirmParallelPtt,
     /// Selected remote engine or CAT/DSP owner failure.
     RemoteControl,
+    /// Opening, servicing or safely retiring dedicated serial modem lines.
+    Serial,
+    /// Applying or confirming ordinary Hamlib PTT.
+    HamlibPtt,
+    /// Sampling an explicitly selected evdev observation endpoint.
+    Keyboard,
 }
 
 impl HardwareOperation {
@@ -140,6 +151,9 @@ impl HardwareOperation {
             19 => Some(Self::ConfirmCm119Ptt),
             20 => Some(Self::ConfirmParallelPtt),
             21 => Some(Self::RemoteControl),
+            22 => Some(Self::Serial),
+            23 => Some(Self::HamlibPtt),
+            24 => Some(Self::Keyboard),
             _ => None,
         }
     }
@@ -169,6 +183,9 @@ impl fmt::Display for HardwareOperation {
             Self::ConfirmCm119Ptt => "confirm serviced CM119 PTT",
             Self::ConfirmParallelPtt => "confirm serviced parallel PTT",
             Self::RemoteControl => "service remote radio",
+            Self::Serial => "service dedicated serial modem lines",
+            Self::HamlibPtt => "service ordinary Hamlib PTT",
+            Self::Keyboard => "sample held keyboard input",
         })
     }
 }
@@ -2172,6 +2189,10 @@ enum ServiceCommand {
 /// Dropping the service joins its worker and applies the existing fail-safe unkey sequence.
 pub struct HardwareService {
     native: bool,
+    ordinary_ptt: usbradioplus_station::OrdinaryPtt,
+    hamlib: Option<usbradioplus_station::HamlibPttPlan>,
+    hamlib_ready: Arc<AtomicBool>,
+    transport: Option<transport_claim::Lease>,
     provider: GpioAdapter,
     selected: SelectedHardwarePlan,
     parallel: Option<ParallelPlan>,
@@ -2237,6 +2258,10 @@ impl HardwareService {
     ) -> Self {
         Self {
             native: false,
+            ordinary_ptt: plan.ordinary_ptt,
+            hamlib: plan.hamlib_ptt.clone(),
+            hamlib_ready: Arc::new(AtomicBool::new(false)),
+            transport: None,
             provider,
             parallel: plan.parallel.clone(),
             statistics: Arc::new(ServiceStatistics::new(plan.parallel.is_some())),
@@ -2305,10 +2330,14 @@ impl HardwareService {
         self.remote_error.load(Ordering::Acquire)
     }
     /// Nonblocking activation observation, not a thread-start acknowledgment.
-    /// Non-remote radios are immediately ready; failures retain their first cause.
+    /// An ordinary CAT radio requires confirmed idle. A remote radio requires its operating owner.
     pub fn remote_ready(&self) -> Result<bool, i32> {
         if self.remote.is_none() {
-            return Ok(true);
+            let error = self.remote_error();
+            if self.hamlib.is_some() && error != 0 {
+                return Err(error);
+            }
+            return Ok(self.hamlib.is_none() || self.hamlib_ready.load(Ordering::Acquire));
         }
         let failure = self.remote_error();
         if failure != 0 {
@@ -2333,8 +2362,35 @@ impl HardwareService {
         if self.running() {
             return Ok(());
         }
+        let serial = self.selected.serial.as_ref().map(|s| s.port.path.as_str());
+        let cat = self
+            .hamlib
+            .as_ref()
+            .map(|plan| (plan.model.as_str(), &plan.options))
+            .or_else(|| {
+                let config = self.remote.as_ref()?.configuration();
+                (config.backend == usbradioplus_core::RemoteBackend::Hamlib)
+                    .then_some((config.hamlib_model.as_str(), &config.hamlib_options))
+            });
+        let transport = transport_claim::TransportClaim::acquire(serial, cat)?;
+        let mut selected = self.selected.clone();
+        if let Some(serial) = selected.serial.as_mut() {
+            transport.path(&mut serial.port.path);
+        }
+        let mut hamlib = self.hamlib.clone();
+        if let Some(plan) = hamlib.as_mut() {
+            if let Some(options) = transport.cat_options(&plan.options) {
+                plan.options = options;
+            }
+        }
+        let mut remote = self.remote.clone();
+        if let Some(setup) = remote.as_mut() {
+            if let Some(options) = transport.cat_options(&setup.configuration().hamlib_options) {
+                Arc::make_mut(setup).pin_hamlib_options(options);
+            }
+        }
         let mut outputs = OutputState::new(
-            &self.selected,
+            &selected,
             self.parallel.as_ref(),
             self.initial_remote_radio
                 .filter(|_| !self.state.remote_control().enabled),
@@ -2344,7 +2400,7 @@ impl HardwareService {
         }
         let mut devices = ServiceDevices::open_at_outputs(
             self.provider,
-            &self.selected,
+            &selected,
             self.parallel.as_ref(),
             &outputs,
         )
@@ -2355,6 +2411,7 @@ impl HardwareService {
         self.stop.store(false, Ordering::Release);
         self.site_clock = Instant::now();
         self.remote_error.store(0, Ordering::Release);
+        self.hamlib_ready.store(false, Ordering::Release);
         self.remote_queue = self
             .remote
             .as_ref()
@@ -2367,10 +2424,10 @@ impl HardwareService {
                     key: false,
                 }
             } else {
-                PhysicalPttControl::Ordinary
+                PhysicalPttControl::ordinary(self.ordinary_ptt)
             }),
             provider: self.provider,
-            selected: self.selected.clone(),
+            selected,
             parallel: self.parallel.clone(),
             state: self.state.clone(),
             statistics: Arc::clone(&self.statistics),
@@ -2381,10 +2438,11 @@ impl HardwareService {
             input_sender,
             clock: self.site_clock,
             site: self.site.clone(),
-            remote: self.remote.as_ref().map(Arc::clone),
+            remote,
             remote_queue: self.remote_queue.as_ref().map(Arc::clone),
             remote_error: Arc::clone(&self.remote_error),
         };
+        self.transport = Some(transport);
         let setup = outputs.prepare_site(&devices, &worker).and_then(|()| {
             worker.publish_site(&outputs);
             if self.native {
@@ -2408,8 +2466,9 @@ impl HardwareService {
             return Err(failure.into());
         }
         let sidetone = self.sidetone.take();
+        let ready = Arc::clone(&self.hamlib_ready);
         self.worker = Some(thread::spawn(move || {
-            worker.run(devices, outputs, inputs, sidetone)
+            worker.run_with_hamlib(devices, outputs, inputs, sidetone, hamlib, ready)
         }));
         self.sender = Some(sender);
         self.input_events = Some(input_receiver);
@@ -2457,6 +2516,7 @@ impl HardwareService {
             }
             self.retiring = None;
         }
+        self.transport = None;
         Ok(())
     }
 
@@ -2566,15 +2626,23 @@ impl HardwareService {
     }
 
     fn validate_command(&self, command: OutputCommand) -> Result<(), HardwareStationError> {
-        let encoder = self.remote.as_ref().and_then(|setup| {
-            crate::remote_hardware::ExternalEncoder::configured(setup.configuration())
-        });
+        let encoder = self
+            .remote
+            .as_ref()
+            .and_then(|setup| {
+                crate::remote_hardware::ExternalEncoder::configured(setup.configuration())
+            })
+            .or_else(|| {
+                self.selected
+                    .ordinary_encoder
+                    .map(|(pin, inv)| crate::remote_hardware::ExternalEncoder::binding(pin, inv))
+            });
         if encoder.is_some_and(|encoder| match command {
             OutputCommand::Cm119(bit, _) => {
-                encoder.bank == SiteBank::Cm119 && encoder.mask & bit != 0
+                encoder.bank == EncoderBank::Site(SiteBank::Cm119) && encoder.mask & bit != 0
             }
             OutputCommand::Parallel(bit, _) => {
-                encoder.bank == SiteBank::Parallel && encoder.mask & bit != 0
+                encoder.bank == EncoderBank::Site(SiteBank::Parallel) && encoder.mask & bit != 0
             }
         }) {
             return Err(HardwareStationError::UnavailableOutput);
@@ -2697,6 +2765,11 @@ fn receive_value<T>(receiver: Receiver<T>) -> Result<T, HardwareStationError> {
 }
 
 struct ServiceDevices {
+    // A failed modem poll requires one confirmed idle sample before demand may drive any PTT again.
+    serial_interlocked: bool,
+    serial: Option<usbradioplus_gpio::SerialDevice>,
+    keyboard: Option<usbradioplus_gpio::KeyboardDevice>,
+    keyboard_retry: Option<Instant>,
     cm119: Option<Cm119Device>,
     parallel: Option<ParallelDevice>,
     ptt_inverted: bool,
@@ -2779,11 +2852,77 @@ impl ServiceDevices {
                     .map_err(|source| ServiceFailure(HardwareOperation::OpenParallel, source))
             })
             .transpose()?;
+        let keyboard = selected
+            .keyboard
+            .as_ref()
+            .map(|plan| Self::open_keyboard(provider, plan))
+            .transpose()?;
+        let serial = selected
+            .serial
+            .as_ref()
+            .map(|s| {
+                provider
+                    .open_serial_retiring(&s.port)
+                    .map_err(|e| ServiceFailure(HardwareOperation::Serial, e))
+            })
+            .transpose()?;
         Ok(Self {
+            serial_interlocked: false,
+            keyboard,
+            keyboard_retry: None,
+            serial,
             cm119,
             parallel,
             ptt_inverted: selected.ptt_inverted(),
         })
+    }
+
+    fn open_keyboard(
+        provider: GpioAdapter,
+        plan: &usbradioplus_station::KeyboardPlan,
+    ) -> Result<usbradioplus_gpio::KeyboardDevice, ServiceFailure> {
+        let keys: Vec<_> = [plan.carrier, plan.manual].into_iter().flatten().collect();
+        provider
+            .open_keyboard(&plan.device, &keys)
+            .map_err(|error| ServiceFailure(HardwareOperation::Keyboard, error))
+    }
+
+    fn sample_keyboard(&mut self, worker: &ServiceWorker, inputs: &mut HardwareInputs) {
+        let Some(plan) = worker.selected.keyboard.as_ref() else {
+            return;
+        };
+        if self
+            .keyboard_retry
+            .is_some_and(|deadline| Instant::now() < deadline)
+        {
+            return;
+        }
+        let down = (|| {
+            if self.keyboard.is_none() {
+                self.keyboard = Some(Self::open_keyboard(worker.provider, plan)?);
+            }
+            self.keyboard
+                .as_mut()
+                .expect("opened evdev owner")
+                .sample_valid()
+                .map_err(|error| ServiceFailure(HardwareOperation::Keyboard, error))
+        })();
+        match down {
+            Ok((down, valid)) => {
+                self.keyboard_retry = None;
+                inputs.keyboard_carrier = plan
+                    .carrier
+                    .filter(|_| valid & 1 != 0)
+                    .map(|_| (down & 1 != 0) != plan.carrier_inverted);
+                inputs.manual_key =
+                    plan.manual.is_some() && down & (1 << usize::from(plan.carrier.is_some())) != 0;
+            }
+            Err(failure) => {
+                self.keyboard = None;
+                self.keyboard_retry = Some(Instant::now() + RETRY_INTERVAL);
+                worker.statistics.failure(failure);
+            }
+        }
     }
 
     fn close_outputs(
@@ -2831,7 +2970,7 @@ impl ServiceDevices {
             let mut persistent = outputs.site[1].safe_high();
             if let Some(encoder) = outputs
                 .encoder
-                .filter(|encoder| encoder.bank == SiteBank::Parallel)
+                .filter(|encoder| encoder.bank == EncoderBank::Site(SiteBank::Parallel))
             {
                 persistent =
                     (persistent & !encoder.mask) | (u8::from(encoder.inverted) * encoder.mask);
@@ -2853,12 +2992,18 @@ impl ServiceDevices {
         } else {
             Ok(())
         };
-        cm119.and(port)
+        let serial = self
+            .serial
+            .as_mut()
+            .map_or(Ok(()), |s| s.close())
+            .map_err(|e| ServiceFailure(HardwareOperation::Serial, e));
+        cm119.and(port).and(serial)
     }
 }
 
 struct OutputState {
     encoder: Option<crate::remote_hardware::ExternalEncoder>,
+    serial_encoder_active: bool,
     native_outputs: Option<Cm119Outputs>,
     cm119: u8,
     parallel: u8,
@@ -2874,8 +3019,12 @@ impl OutputState {
     fn set_encoder(&mut self, active: bool) {
         if let Some(encoder) = self.encoder {
             let output = match encoder.bank {
-                SiteBank::Cm119 => &mut self.cm119,
-                SiteBank::Parallel => &mut self.parallel,
+                EncoderBank::Site(SiteBank::Cm119) => &mut self.cm119,
+                EncoderBank::Site(SiteBank::Parallel) => &mut self.parallel,
+                EncoderBank::Serial => {
+                    self.serial_encoder_active = active;
+                    return;
+                }
             };
             if active != encoder.inverted {
                 *output |= encoder.mask;
@@ -2891,11 +3040,18 @@ impl OutputState {
     ) -> Result<(), ServiceFailure> {
         if let Some(encoder) = encoder {
             // Startup/recovery bind signaling before site commands can own a pin.
-            assert!(self.site[encoder.bank.index()].reserve(u32::from(encoder.mask)));
+            if let EncoderBank::Site(bank) = encoder.bank {
+                if !self.site[bank.index()].reserve(u32::from(encoder.mask)) {
+                    return Err(ServiceFailure(
+                        HardwareOperation::RemoteControl,
+                        GpioError::Unsupported,
+                    ));
+                }
+                Self::cancel_pulses(bank, encoder.mask, devices)?;
+            }
             self.set_encoder(false);
             self.encoder = Some(encoder);
             self.set_encoder(false);
-            Self::cancel_pulses(encoder.bank, encoder.mask, devices)?;
         } else {
             self.set_encoder(false);
             self.encoder = None;
@@ -2942,7 +3098,10 @@ impl OutputState {
         remote_radio: Option<RemoteRadio>,
     ) -> Self {
         Self {
-            encoder: None,
+            encoder: selected
+                .ordinary_encoder
+                .map(|(pin, inv)| crate::remote_hardware::ExternalEncoder::binding(pin, inv)),
+            serial_encoder_active: false,
             native_outputs: None,
             cm119: selected
                 .cm119
@@ -2986,6 +3145,11 @@ impl OutputState {
         devices: &ServiceDevices,
         worker: &ServiceWorker,
     ) -> Result<(), ServiceFailure> {
+        if let Some(serial) = &devices.serial {
+            serial
+                .startup()
+                .map_err(|e| ServiceFailure(HardwareOperation::Serial, e))?;
+        }
         let safe_high = self.site.each_ref().map(SiteBankState::safe_high);
         self.site[0] = if let Some(device) = &devices.cm119 {
             let caps = device
@@ -3080,10 +3244,10 @@ impl OutputState {
     ) -> Result<(), ServiceFailure> {
         if self.encoder.is_some_and(|encoder| match command {
             OutputCommand::Cm119(bit, _) => {
-                encoder.bank == SiteBank::Cm119 && encoder.mask & bit != 0
+                encoder.bank == EncoderBank::Site(SiteBank::Cm119) && encoder.mask & bit != 0
             }
             OutputCommand::Parallel(bit, _) => {
-                encoder.bank == SiteBank::Parallel && encoder.mask & bit != 0
+                encoder.bank == EncoderBank::Site(SiteBank::Parallel) && encoder.mask & bit != 0
             }
         }) {
             return Err(ServiceFailure(
@@ -3347,13 +3511,50 @@ impl ServiceWorker {
         }
     }
 
+    #[cfg(test)]
     fn run(
+        self,
+        devices: ServiceDevices,
+        outputs: OutputState,
+        inputs: InputTracker,
+        sidetone: Option<HardwareSidetone>,
+    ) -> ServiceExit {
+        self.run_with_hamlib(
+            devices,
+            outputs,
+            inputs,
+            sidetone,
+            None,
+            Arc::new(AtomicBool::new(false)),
+        )
+    }
+
+    fn run_with_hamlib(
         self,
         initial_devices: ServiceDevices,
         mut outputs: OutputState,
         mut inputs: InputTracker,
         mut sidetone: Option<HardwareSidetone>,
+        hamlib: Option<usbradioplus_station::HamlibPttPlan>,
+        hamlib_ready: Arc<AtomicBool>,
     ) -> ServiceExit {
+        self.state.publish_cat_key(None);
+        let mut rig = hamlib.as_ref().and_then(|plan| {
+            let opened = OrdinaryRig::open(plan);
+            match opened {
+                Ok(mut rig) => {
+                    match rig.service(false, true) {
+                        Ok(_) => hamlib_ready.store(true, Ordering::Release),
+                        Err(error) => self.remote_error.store(error.0, Ordering::Release),
+                    }
+                    Some(rig)
+                }
+                Err(error) => {
+                    self.remote_error.store(error.0, Ordering::Release);
+                    None
+                }
+            }
+        });
         let mut devices = Some(initial_devices);
         // A remote generation starts with every dedicated PTT output proven
         // inactive before its rig owner can perform a tune transaction.
@@ -3441,7 +3642,7 @@ impl ServiceWorker {
                     Err(failure) => {
                         self.statistics.failure(failure);
                         self.state.invalidate_physical_feedback();
-                        self.state.publish_inputs(HardwareInputs::default());
+                        self.state.invalidate_inputs();
                         thread::park_timeout(RETRY_INTERVAL);
                         continue;
                     }
@@ -3456,6 +3657,7 @@ impl ServiceWorker {
                     }
                 }
             }
+            let mut sampled_native = false;
             let result = service_commands(
                 &self.receiver,
                 &mut outputs,
@@ -3464,13 +3666,46 @@ impl ServiceWorker {
                 self.parallel.as_ref(),
             )
             .and_then(|()| {
-                service_once(current, &mut outputs, &mut inputs, sidetone.as_mut(), &self)
+                sampled_native = self.native;
+                if let Some(rig) = rig.as_mut() {
+                    service_native_with_rig(
+                        current,
+                        &mut outputs,
+                        &self,
+                        self.state.outputs().logical_ptt && hamlib_ready.load(Ordering::Acquire),
+                        Some(rig),
+                    )
+                } else {
+                    service_once(current, &mut outputs, &mut inputs, sidetone.as_mut(), &self)
+                }
             });
             self.publish_site(&outputs);
             match result {
                 Ok(()) => thread::park_timeout(self.interval()),
                 Err(failure) => {
                     self.state.invalidate_physical_feedback();
+                    if !sampled_native {
+                        self.state.invalidate_inputs();
+                    }
+                    if self.native
+                        && matches!(
+                            self.ptt_control.get(),
+                            PhysicalPttControl::Selected(_) | PhysicalPttControl::Independent
+                        )
+                    {
+                        // Clear every explicitly selected ordinary actuator on a failed input/drive. The
+                        // declared electrical idle is serviced immediately, independent of later audio.
+                        outputs.set_encoder(false);
+                        if let Err(error) = service_remote_ptt(current, &mut outputs, &self) {
+                            self.statistics.failure(error);
+                        }
+                    }
+                    if let Some(rig) = rig.as_mut() {
+                        if let Err(error) = rig.service(false, true) {
+                            hamlib_ready.store(false, Ordering::Release);
+                            self.remote_error.store(error.0, Ordering::Release);
+                        }
+                    }
                     self.statistics.failure(failure);
                     if let Some(remote) = &mut remote {
                         if let Err(error) = remote.unkey(&self, current, &mut outputs) {
@@ -3481,7 +3716,7 @@ impl ServiceWorker {
                         // Native polling already published safe inputs/PTT and keeps its handle.
                         thread::park_timeout(self.interval());
                     } else {
-                        self.state.publish_inputs(HardwareInputs::default());
+                        self.state.invalidate_inputs();
                         outputs.retire_site();
                         self.publish_site(&outputs);
                         retiring = true;
@@ -3489,6 +3724,16 @@ impl ServiceWorker {
                 }
             }
         }
+        if let Some(rig) = rig.as_mut() {
+            self.state.publish_cat_key(None);
+            while let Err(error) = rig.service(false, true) {
+                self.remote_error.store(error.0, Ordering::Release);
+                self.statistics
+                    .failure_operation(HardwareOperation::HamlibPtt);
+                thread::park_timeout(RETRY_INTERVAL);
+            }
+        }
+        hamlib_ready.store(false, Ordering::Release);
         let remote_managed = remote.is_some();
         if let Some(mut remote) = remote {
             loop {
@@ -3541,7 +3786,7 @@ impl ServiceWorker {
         if let Some(control) = &mut sidetone {
             let _ = control.apply(false);
         }
-        self.state.publish_inputs(HardwareInputs::default());
+        self.state.invalidate_inputs();
         self.state.invalidate_physical_feedback();
         ServiceExit {
             sidetone,
@@ -3743,7 +3988,19 @@ fn service_remote_ptt(
         }
         Ok(())
     })();
-    cm119.and(parallel)
+    let serial = devices.serial.as_mut().map_or(Ok(()), |device| {
+        let plan = worker.selected.serial.as_ref().ok_or(ServiceFailure(
+            HardwareOperation::Serial,
+            GpioError::Unsupported,
+        ))?;
+        let active = (u32::from(worker.ptt_for(RemotePttSource::Serial, false)) * plan.ptt)
+            | (u32::from(outputs.serial_encoder_active) * plan.encoder);
+        device
+            .service_outputs(active)
+            .map(|_| ())
+            .map_err(|e| ServiceFailure(HardwareOperation::Serial, e))
+    });
+    cm119.and(parallel).and(serial)
 }
 
 fn observe_cm119(
@@ -3769,14 +4026,18 @@ fn collected_inputs(
     // Missing CM119 observations represent absent signals, not successful device I/O.
     let (cm119, statistics) = snapshot.unwrap_or_default();
     let mut inputs = hardware_inputs(cm119, worker.parallel.as_ref(), parallel, statistics);
-    if devices.cm119.is_none() {
+    if worker
+        .ptt_control
+        .get()
+        .parallel_feedback(devices.cm119.is_some())
+    {
+        inputs.physical_ptt = false;
         if let Some((device, plan)) = devices.parallel.as_ref().zip(worker.parallel.as_ref()) {
             let statistics = device.statistics().map_err(|error| {
                 ServiceFailure(HardwareOperation::ReadParallelStatistics, error)
             })?;
-            inputs.physical_ptt = plan.ptt_mask != 0
-                && statistics.online
-                && (statistics.applied_output_mask & plan.ptt_mask != 0) != devices.ptt_inverted;
+            inputs.physical_ptt =
+                parallel_feedback(&statistics, plan, devices.ptt_inverted) == Some(true);
         }
     }
     Ok(inputs)
@@ -3837,57 +4098,158 @@ fn service_native_once(
     worker: &ServiceWorker,
     logical_ptt: bool,
 ) -> Result<(), ServiceFailure> {
+    service_native_with_rig(devices, outputs, worker, logical_ptt, None)
+}
+
+fn service_native_with_rig(
+    devices: &mut ServiceDevices,
+    outputs: &mut OutputState,
+    worker: &ServiceWorker,
+    logical_ptt: bool,
+    rig: Option<&mut OrdinaryRig>,
+) -> Result<(), ServiceFailure> {
+    let acquired = Instant::now();
     // Indicator failures never prevent native input sampling or fail-safe PTT handling.
     let _ = outputs.service_clip_led(
         devices,
         worker.clip_led_mask,
         worker.state.receive_clip_events(),
     );
+    let demand = logical_ptt && !devices.serial_interlocked;
+    if worker.selected.ordinary_encoder.is_some() {
+        outputs.set_encoder(demand && worker.state.remote_activity().ctcss_requested);
+    }
     let snapshots = devices.cm119_snapshot();
     let snapshot = snapshots.as_ref().ok().copied().flatten();
+    let mut failure = snapshots.err();
     observe_cm119(outputs, snapshot, worker.now_ms());
-    let ready = snapshots
-        .as_ref()
-        .is_ok_and(|snapshot| snapshot.is_none_or(|(inputs, _)| inputs.online));
+    let chip_ready =
+        failure.is_none() && snapshot.is_none_or(|(input, stats)| input.online && stats.online);
     let parallel = service_parallel_once(
         devices,
         outputs,
         worker,
-        ready && worker.ptt_for(RemotePttSource::Parallel, logical_ptt),
+        chip_ready
+            && !devices.serial_interlocked
+            && worker.ptt_for(RemotePttSource::Parallel, demand),
     );
-    let mut inputs = if ready {
-        collected_inputs(
-            devices,
-            worker,
-            snapshot,
-            parallel.as_ref().ok().copied().flatten(),
-        )?
-    } else {
-        HardwareInputs::default()
-    };
+    let bank = parallel.as_ref().ok().copied().flatten();
+    let bank_ready = parallel.is_ok() && bank.is_none_or(|p| p.online);
+    if let Err(error) = parallel {
+        failure.get_or_insert(error);
+    }
+    let active_chip = snapshot.filter(|(input, stats)| input.online && stats.online);
+    let mut inputs = collected_inputs(devices, worker, active_chip, bank).unwrap_or_else(|error| {
+        failure.get_or_insert(error);
+        let (cm119, stats) = active_chip.unwrap_or_default();
+        hardware_inputs(cm119, worker.parallel.as_ref(), bank, stats)
+    });
+    inputs.observe_inverted_cm119(
+        worker.selected.inverted_cm119,
+        active_chip.map(|(input, _)| [input.cor_active, input.ctcss_active]),
+    );
+    let healthy = chip_ready && bank_ready && failure.is_none();
+    let allow_key = healthy && !devices.serial_interlocked;
     if let Some(device) = &devices.cm119 {
         let requested = Cm119Outputs {
-            ptt_asserted: ready && worker.ptt_for(RemotePttSource::Usb, logical_ptt),
+            ptt_asserted: allow_key && worker.ptt_for(RemotePttSource::Usb, demand),
             gpio_output_mask: outputs.cm119,
         };
         if outputs.native_outputs != Some(requested) {
-            if let Err(source) = device.publish_outputs(requested) {
-                outputs.native_outputs = None;
-                inputs.physical_ptt = false;
-                worker.state.publish_inputs(inputs);
-                return Err(ServiceFailure(HardwareOperation::PublishCm119, source));
+            match device.publish_outputs(requested) {
+                Ok(()) => outputs.native_outputs = Some(requested),
+                Err(source) => {
+                    outputs.native_outputs = None;
+                    failure.get_or_insert(ServiceFailure(HardwareOperation::PublishCm119, source));
+                }
             }
-            outputs.native_outputs = Some(requested);
         }
-        outputs.site[0].submitted(u32::from(requested.gpio_output_mask));
+        if outputs.native_outputs == Some(requested) {
+            outputs.site[0].submitted(u32::from(requested.gpio_output_mask));
+        }
     }
-    // Physical PTT is serviced feedback, never newly queued demand.
-    worker.state.publish_inputs(inputs);
-    parallel?;
-    publish_gpio_feedback(devices, worker, snapshot);
+    devices.sample_keyboard(worker, &mut inputs);
+    let mut independent = false;
+    if let Some((device, plan)) = devices.serial.as_mut().zip(worker.selected.serial.as_ref()) {
+        let keyed =
+            allow_key && failure.is_none() && worker.ptt_for(RemotePttSource::Serial, demand);
+        let active = (u32::from(keyed) * plan.ptt)
+            | (u32::from(allow_key && failure.is_none() && outputs.serial_encoder_active)
+                * plan.encoder);
+        let acquisition = worker.state.feedback_request();
+        match device.service_outputs(active) {
+            Ok((raw, levels)) => {
+                devices.serial_interlocked = false;
+                let sample = |pins: u32, inverted: bool| {
+                    (pins != 0).then_some((raw ^ if inverted { pins } else { 0 }) & pins != 0)
+                };
+                inputs.serial_carrier = sample(plan.carrier, plan.carrier_inverted);
+                inputs.serial_tone = sample(plan.tone, plan.tone_inverted);
+                if plan.ptt != 0 {
+                    independent = true;
+                    inputs.physical_ptt = ((levels ^ plan.port.idle) & plan.ptt) == plan.ptt;
+                    if let Some(mut request) = acquisition.filter(|_| {
+                        failure.is_none() && !worker.state.remote_signals().ptt_selected
+                    }) {
+                        request.request_id = 0;
+                        worker.state.publish_physical_feedback(
+                            request,
+                            Some(inputs.physical_ptt),
+                            None,
+                            false,
+                        );
+                    }
+                }
+            }
+            Err(error) => {
+                devices.serial_interlocked = true;
+                failure.get_or_insert(ServiceFailure(HardwareOperation::Serial, error));
+            }
+        }
+    }
+    if failure.is_some()
+        || rig.is_some()
+        || matches!(worker.ptt_control.get(), PhysicalPttControl::Independent)
+    {
+        inputs.physical_ptt = false;
+    }
+    // Publish disconnects and independent healthy banks before any blocking CAT work.
+    worker.state.publish_sampled_banks(
+        inputs,
+        acquired,
+        active_chip.is_some(),
+        bank.is_some_and(|sample| sample.online),
+    );
+    if let Some(failure) = failure {
+        worker.state.publish_cat_key(None);
+        return Err(failure);
+    }
+    if let Some(rig) = rig {
+        independent = true;
+        let keyed = allow_key && demand;
+        let acquisition = worker.state.feedback_request();
+        if !keyed {
+            worker.state.publish_cat_key(None);
+        }
+        let fresh = rig.service(keyed, false).map_err(|_| {
+            worker.state.publish_cat_key(None);
+            ServiceFailure(HardwareOperation::HamlibPtt, GpioError::Io)
+        })?;
+        if fresh {
+            worker.state.publish_cat_key(rig.confirmed_key());
+            if let Some(request) = acquisition {
+                worker
+                    .state
+                    .publish_physical_feedback(request, Some(keyed), Some(keyed), true);
+            }
+        }
+    }
+    if !independent && !matches!(worker.ptt_control.get(), PhysicalPttControl::Independent) {
+        publish_gpio_feedback(devices, worker, snapshot);
+    }
     worker
         .statistics
-        .success(snapshots?.map(|(_, statistics)| statistics));
+        .success(snapshot.map(|(_, statistics)| statistics));
     Ok(())
 }
 
@@ -3913,7 +4275,11 @@ fn publish_gpio_feedback(
         return;
     };
     request.request_id = 0;
-    let serviced = if devices.cm119.is_some() {
+    let serviced = if !worker
+        .ptt_control
+        .get()
+        .parallel_feedback(devices.cm119.is_some())
+    {
         snapshot
             .filter(|(input, statistics)| input.online && statistics.online)
             .map(|(_, statistics)| statistics.ptt_applied)
@@ -3923,15 +4289,9 @@ fn publish_gpio_feedback(
             .as_ref()
             .zip(worker.parallel.as_ref())
             .and_then(|(device, plan)| {
-                device
-                    .statistics()
-                    .ok()
-                    .filter(|statistics| statistics.online)
-                    .and_then(|statistics| {
-                        let levels = statistics.applied_output_mask & plan.ptt_mask;
-                        (plan.ptt_mask != 0 && (levels == 0 || levels == plan.ptt_mask))
-                            .then_some((levels != 0) != devices.ptt_inverted)
-                    })
+                device.statistics().ok().and_then(|statistics| {
+                    parallel_feedback(&statistics, plan, devices.ptt_inverted)
+                })
             })
     };
     worker
@@ -3946,6 +4306,16 @@ impl From<ServiceFailure> for HardwareStationError {
             source: failure.1,
         }
     }
+}
+
+fn parallel_feedback(
+    statistics: &ParallelStatistics,
+    plan: &ParallelPlan,
+    inverted: bool,
+) -> Option<bool> {
+    let levels = statistics.applied_output_mask & plan.ptt_mask;
+    (statistics.online && plan.ptt_mask != 0 && (levels == 0 || levels == plan.ptt_mask))
+        .then_some((levels != 0) != inverted)
 }
 
 fn parallel_output(
@@ -3973,10 +4343,14 @@ fn hardware_inputs(
         subaudible: cm119.online && cm119.ctcss_active,
         parallel_carrier: parallel_online
             .zip(parallel_plan)
-            .is_some_and(|(inputs, plan)| inputs.status_mask & plan.carrier_mask != 0),
+            .is_some_and(|(inputs, plan)| {
+                (inputs.status_mask ^ plan.inverted_input_mask) & plan.carrier_mask != 0
+            }),
         parallel_subaudible: parallel_online
             .zip(parallel_plan)
-            .is_some_and(|(inputs, plan)| inputs.status_mask & plan.ctcss_mask != 0),
+            .is_some_and(|(inputs, plan)| {
+                (inputs.status_mask ^ plan.inverted_input_mask) & plan.ctcss_mask != 0
+            }),
         physical_ptt: statistics.online && statistics.ptt_applied,
         cm119_gpio_mask: if cm119.online {
             cm119.gpio_input_mask
@@ -3984,6 +4358,7 @@ fn hardware_inputs(
             0
         },
         parallel_input_mask: parallel_online.map_or(0, |inputs| inputs.status_mask),
+        ..HardwareInputs::default()
     }
 }
 

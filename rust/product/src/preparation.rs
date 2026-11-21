@@ -86,11 +86,50 @@ pub extern "C" fn usbradioplus_preparation_descriptor() -> *const UrpPreparation
     descriptor()
 }
 
+static PHYSICAL_DESCRIPTOR: UrpPreparationDescriptor = UrpPreparationDescriptor {
+    struct_size: size_of::<UrpPreparationDescriptor>() as u32,
+    abi_version: 1,
+    capability_name: c"usbradioplus.physical-preparation1".as_ptr(),
+    prepare: prepare_physical,
+    equal,
+    create,
+    prepare_update,
+    link_prepare,
+};
+
+/// Return the ABI-1 preparation table admitting explicit physical station selections.
+#[unsafe(no_mangle)]
+pub extern "C" fn usbradioplus_physical_preparation_descriptor() -> *const UrpPreparationDescriptor
+{
+    &PHYSICAL_DESCRIPTOR
+}
+
 unsafe extern "C" fn prepare(
     args: *const UrpTypedPreparation,
     diagnostic: Option<UrpNativeProcessingDiagnostic>,
     context: *mut c_void,
     out: *mut *mut c_void,
+) -> c_int {
+    // SAFETY: preserve the v1 caller's borrowed request and output contract.
+    unsafe { prepare_request(args, diagnostic, context, out, false) }
+}
+
+unsafe extern "C" fn prepare_physical(
+    args: *const UrpTypedPreparation,
+    diagnostic: Option<UrpNativeProcessingDiagnostic>,
+    context: *mut c_void,
+    out: *mut *mut c_void,
+) -> c_int {
+    // SAFETY: this capability uses the same complete request and lifetime contract.
+    unsafe { prepare_request(args, diagnostic, context, out, true) }
+}
+
+unsafe fn prepare_request(
+    args: *const UrpTypedPreparation,
+    diagnostic: Option<UrpNativeProcessingDiagnostic>,
+    context: *mut c_void,
+    out: *mut *mut c_void,
+    explicit_physical: bool,
 ) -> c_int {
     ffi_status(|| {
         let output = output_pointer(out)?;
@@ -127,6 +166,9 @@ unsafe extern "C" fn prepare(
                 .map_err(report)?
                 .resolve(template.receive_output_gain_db)
                 .map_err(report)?;
+        if explicit_physical != semantic.physical.is_some() {
+            return Err(report("physical"));
+        }
         let mut channel = semantic.channel;
         let mut radio =
             // SAFETY: the bridge copies the sized released radio template before return.
@@ -195,7 +237,7 @@ unsafe extern "C" fn prepare(
         template.transmit_graph = b"anull".as_ptr();
         template.transmit_graph_length = 5;
         // SAFETY: the shared builder copies the entire borrowed template and semantic settings.
-        let request = unsafe {
+        let mut request = unsafe {
             native::build_request(
                 &template,
                 radio,
@@ -212,6 +254,19 @@ unsafe extern "C" fn prepare(
                 status
             }
         })?;
+        if semantic.physical.is_none()
+            && (request.radio.qualification.subaudible_source
+                == usbradioplus_radio::SubaudibleSource::External
+                || request.remote.as_ref().is_some_and(|r| {
+                    r.ptt_source.as_deref() == Some("serial")
+                        || matches!(r.cor_source.as_deref(), Some("serial" | "key_down"))
+                }))
+        {
+            return Err(report("physical"));
+        }
+        if let Some(policy) = semantic.physical {
+            policy.apply(&mut request).map_err(report)?;
+        }
         if let Some(cm119) = &request.hardware.cm119 {
             if u32::from(cm119.output_enable_mask) != template.gpio_output_enable_mask
                 || u32::from(cm119.output_initial_mask) != template.gpio_output_initial_mask

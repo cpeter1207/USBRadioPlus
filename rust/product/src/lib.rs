@@ -26,7 +26,8 @@ pub use native::{
 pub use native_configuration::{UrpNativeConfigurationSink, UrpRemoteCommandOptions};
 pub use native_processing::{UrpNativeProcessingArgs, UrpNativeProcessingDiagnostic};
 pub use preparation::{
-    UrpPreparationDescriptor, UrpTypedPreparation, usbradioplus_preparation_descriptor,
+    UrpPreparationDescriptor, UrpTypedPreparation, usbradioplus_physical_preparation_descriptor,
+    usbradioplus_preparation_descriptor,
 };
 mod site;
 pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};

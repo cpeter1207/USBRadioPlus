@@ -1560,6 +1560,7 @@ struct GpioDescriptor {
         Option<unsafe extern "C" fn(*const c_void, *mut GpioCapabilities) -> c_int>,
     interlock_operations: [Option<unsafe extern "C" fn()>; 8],
     parallel_close_outputs: Option<unsafe extern "C" fn(*mut c_void, u32) -> c_int>,
+    open_without_ptt: Option<GpioOpen>,
 }
 
 // SAFETY: the immutable descriptor contains only function pointers.
@@ -1815,6 +1816,7 @@ static GPIO: GpioDescriptor = GpioDescriptor {
     parallel_capabilities: Some(gpio_capabilities),
     interlock_operations: [None; 8],
     parallel_close_outputs: Some(gpio_parallel_close_outputs),
+    open_without_ptt: Some(gpio_open),
 };
 
 pub(crate) fn manifest() -> UrpAstProviderManifest {

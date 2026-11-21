@@ -437,6 +437,7 @@ fn adapter(raw: &Descriptor) -> GpioAdapter {
 
 fn cm119_config() -> Cm119Config {
     Cm119Config {
+        disable_ptt: false,
         usb_port_path: "3-1.2".into(),
         vendor_id: 0,
         product_id: 0,
@@ -695,6 +696,40 @@ fn safe_close_keeps_handle_on_failure_and_does_not_zero_after_success() {
     assert_eq!(PARALLEL_SAFE_CLOSES.load(Ordering::Relaxed), 1);
     assert_eq!(PARALLEL_FINAL_BYTE.load(Ordering::Relaxed), 0x08);
     assert_eq!(PARALLEL_CLOSES.load(Ordering::Relaxed), 0);
+}
+
+#[test]
+fn physical_extension_reads_only_complete_slots_in_the_advertised_prefix() {
+    unsafe extern "C" fn unavailable() -> *const c_void {
+        ptr::null()
+    }
+    let mut raw = ExtendedDescriptor {
+        base: descriptor(),
+        open_without_ptt: Some(device_open),
+        serial: Some(unavailable),
+        keyboard: Some(unavailable),
+    };
+    let direction = std::mem::offset_of!(ExtendedDescriptor, serial);
+    let serial = std::mem::offset_of!(ExtendedDescriptor, keyboard);
+    let keyboard = size_of::<ExtendedDescriptor>();
+    for size in [
+        size_of::<Descriptor>(),
+        direction - 1,
+        direction,
+        serial - 1,
+        serial,
+        keyboard - 1,
+        keyboard,
+    ] {
+        raw.base.struct_size = size as u32;
+        // SAFETY: the complete backing table lives for this call; only its advertised prefix is available.
+        let provider = unsafe { GpioAdapter::from_raw(ptr::from_ref(&raw).cast()) }.unwrap();
+        assert_eq!(provider.has_input_only_ptt(), size >= direction);
+        assert_eq!(provider.serial.is_some(), size >= serial);
+        assert_eq!(provider.keyboard.is_some(), size >= keyboard);
+        assert!(!provider.has_serial());
+        assert!(!provider.has_keyboard());
+    }
 }
 
 #[test]

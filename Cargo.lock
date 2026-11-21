@@ -360,6 +360,7 @@ name = "usbradioplus-driver"
 version = "0.1.0-alpha19"
 dependencies = [
  "crossbeam-queue",
+ "libc",
  "usbradioplus-asl3",
  "usbradioplus-audio",
  "usbradioplus-core",

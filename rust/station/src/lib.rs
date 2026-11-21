@@ -38,8 +38,8 @@ use usbradioplus_runtime::NativeProcessingPlan;
 
 pub use control::{PreparedStation, StationPlan, StationPreparationError};
 pub use hardware::{
-    Cm119Plan, HardwarePlan, HardwarePlanError, ParallelPlan, SelectedHardwarePlan, hardware_plan,
-    native_hardware_plan,
+    Cm119Plan, HamlibPttPlan, HardwarePlan, HardwarePlanError, KeyboardPlan, OrdinaryPtt,
+    ParallelPlan, SelectedHardwarePlan, SerialPlan, hardware_plan, native_hardware_plan,
 };
 pub use media::{
     ControllerSetup, DirectCallbacks, DirectReceiveMetadata, NativeStationMedia, StationControl,
@@ -223,6 +223,7 @@ fn subaudible_source(channel: &ChannelConfiguration) -> SubaudibleSource {
             CtcssSource::Dsp => SubaudibleSource::Dsp,
             CtcssSource::Parallel => SubaudibleSource::Parallel,
             CtcssSource::ParallelInverted => SubaudibleSource::ParallelInverted,
+            CtcssSource::External => SubaudibleSource::External,
         },
     }
 }

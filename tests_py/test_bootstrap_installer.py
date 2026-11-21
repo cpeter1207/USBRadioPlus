@@ -16,13 +16,14 @@ INSTALLER = ROOT / "packaging/repository/install-usbradioplus.sh"
 BUILD_PROVIDER_MINIMUMS = (
     ("rate_adjusting_pcm_ring3", "3.0.0~alpha6"),
     ("rate_adjusting_pcm_ring3", "3.0.0-alpha.6"),
-    ("rptadvradio", "0.1.0~alpha10"),
+    ("rptadvradio", "0.1.0~alpha13"),
     ("rptadv_samplerate_adapter", "0.1.0~alpha2"),
     ("rptadv_ffmpeg_adapter", "0.1.0~alpha2"),
     ("rptadv_portaudio_alsa_adapter", "0.2.0~alpha4"),
-    ("rptadv_gpio_adapter", "0.1.0~alpha2"),
+    ("rptadv_gpio_adapter", "0.1.0~alpha5"),
+    ("rptadv_gpio_adapter", "0.1.0-alpha.5"),
     ("rptadv_rnnoise_adapter", "0.1.0~alpha2"),
-    ("rptadvradio", "0.1.0-alpha.10"),
+    ("rptadvradio", "0.1.0-alpha.13"),
     ("rptadv_portaudio_alsa_adapter", "0.2.0-alpha.4"),
 )
 

@@ -25,6 +25,20 @@ fn prepare(
     dto: &[u8],
     configure: impl FnOnce(&mut UrpNativeStationConfig),
 ) -> Result<Owner, (c_int, String)> {
+    prepare_with(
+        crate::usbradioplus_preparation_descriptor(),
+        raw,
+        dto,
+        configure,
+    )
+}
+
+fn prepare_with(
+    descriptor: *const crate::UrpPreparationDescriptor,
+    raw: &RawSessionConfig,
+    dto: &[u8],
+    configure: impl FnOnce(&mut UrpNativeStationConfig),
+) -> Result<Owner, (c_int, String)> {
     unsafe extern "C" fn diagnostic(context: *mut c_void, field: *const u8, length: u32) {
         // SAFETY: prepare lends the field and this caller retains its exclusive string.
         unsafe { *context.cast::<String>() = crate::native::text(field, length).unwrap() };
@@ -44,7 +58,7 @@ fn prepare(
     let mut owner = ptr::null_mut();
     // SAFETY: the readable template and all borrowed spans stay live until return.
     let status = unsafe {
-        ((*crate::usbradioplus_preparation_descriptor()).prepare)(
+        ((*descriptor).prepare)(
             &args,
             Some(diagnostic),
             ptr::from_mut(&mut field).cast(),
@@ -171,3 +185,127 @@ fn present_role_scalars_and_groups_reject_null() {
 mod radio_bounds;
 #[path = "settings_bounds.rs"]
 mod settings_bounds;
+
+#[test]
+fn physical_preparation_keeps_legacy_api_and_operating_policy_independent() {
+    let raw = standalone_radio();
+    let table = crate::usbradioplus_physical_preparation_descriptor();
+    let configure = |station: &mut UrpNativeStationConfig| {
+        station.device_selection = 0;
+        station.device_identifier = b"hw:3,0".as_ptr();
+        station.device_identifier_length = 6;
+    };
+    let settings = br#"{"physical":{"ordinary":{"audio_source":"alsa","ptt_source":"parallel"},"parallel_carrier_inverted":false,"parallel_ctcss_inverted":false},"station":{"parallel_port":{"output_assignments":["push_to_talk",null,null,null,null,null,null,null]}}}"#;
+    assert!(prepare(&raw, settings, configure).is_err());
+    assert!(prepare_with(table, &raw, b"{}", configure).is_err());
+    let owner = prepare_with(table, &raw, settings, configure).unwrap();
+    // SAFETY: this unique immutable owner stays alive through the borrow.
+    let request = unsafe { crate::native_configuration::prepared(owner.0).unwrap() };
+    assert!(request.remote.is_none());
+    assert!(request.hardware.cm119.is_none());
+    assert_eq!(
+        request.hardware.ordinary_ptt,
+        usbradioplus_station::OrdinaryPtt::Parallel
+    );
+    assert!(prepare_with(table, &raw, settings, |_| {}).is_err());
+    assert!(
+        prepare_with(table, &raw, settings, |s| {
+            configure(s);
+            s.hardware_gain_mask = 1;
+        })
+        .is_err()
+    );
+    for name in [
+        "hw:7",
+        "hw:07,0",
+        "default",
+        "plughw:7,0",
+        "hw:+7,0",
+        "hw:7,",
+        "hw:4294967296",
+    ] {
+        let candidate = prepare_with(table, &raw, settings, |s| {
+            configure(s);
+            s.device_identifier = name.as_ptr();
+            s.device_identifier_length = name.len() as u32;
+        });
+        assert_eq!(
+            candidate.is_ok(),
+            matches!(name, "hw:7" | "hw:07,0"),
+            "{name}"
+        );
+    }
+    let mut conflicting = raw;
+    conflicting.qualification.carrier_source = 4;
+    assert!(prepare_with(table, &conflicting, settings, configure).is_err());
+}
+
+#[test]
+fn physical_descriptor_checks_request_size_version_and_initializes_failures() {
+    let table = crate::usbradioplus_physical_preparation_descriptor();
+    for (size, version) in [(0, 1), (size_of::<crate::UrpTypedPreparation>() as u32, 2)] {
+        let args = crate::UrpTypedPreparation {
+            struct_size: size,
+            abi_version: version,
+            station: ptr::null(),
+            settings: ptr::null(),
+            settings_length: 0,
+        };
+        let mut output = ptr::dangling_mut::<c_void>();
+        // SAFETY: a readable header and exclusive output are supplied; the rejected record has no spans.
+        let status = unsafe { ((*table).prepare)(&args, None, ptr::null_mut(), &mut output) };
+        assert_ne!(status, 0);
+        assert!(output.is_null());
+    }
+}
+
+#[test]
+fn physical_inverted_chip_receive_requires_live_acquisition() {
+    use usbradioplus_radio::{RadioProvider, SessionPorts};
+    let settings = br#"{"physical":{"ordinary":{"audio_source":"cm119","ptt_source":"usb"},"parallel_carrier_inverted":false,"parallel_ctcss_inverted":false}}"#;
+    for (carrier, tone) in [(4, 0), (8, 2)] {
+        let mut raw = standalone_radio();
+        raw.qualification.carrier_source = carrier;
+        raw.qualification.subaudible_source = tone;
+        let owner = prepare_with(
+            crate::usbradioplus_physical_preparation_descriptor(),
+            &raw,
+            settings,
+            |_| {},
+        )
+        .unwrap();
+        // SAFETY: the typed candidate and linked radio descriptor remain live through the callback.
+        let (request, provider) = unsafe {
+            (
+                crate::native_configuration::prepared(owner.0).unwrap(),
+                RadioProvider::from_raw_descriptor(rptadv_radio_descriptor()).unwrap(),
+            )
+        };
+        let (mut rx, _, _) = provider
+            .prepare(&request.radio, SessionPorts::default())
+            .unwrap()
+            .split();
+        let state = usbradioplus_station::SharedHardwareState::default();
+        let first = rx
+            .process(&[0.; 1920], &mut [0.; 960], state.receive_controls())
+            .unwrap();
+        assert!(
+            !first.receiver_keyed,
+            "receiver keyed before its first physical sample"
+        );
+        for online in [false, true, false, true] {
+            let mut inputs = usbradioplus_station::HardwareInputs::default();
+            inputs.observe_inverted_cm119(
+                request.hardware.inverted_cm119,
+                online.then_some([false, false]),
+            );
+            state.publish_sampled_inputs(inputs, std::time::Instant::now());
+            let controls = state.receive_controls();
+            let r = rx.process(&[0.; 1920], &mut [0.; 960], controls).unwrap();
+            assert_eq!(
+                r.receiver_keyed, online,
+                "carrier {carrier}, tone {tone}, online {online}"
+            );
+        }
+    }
+}

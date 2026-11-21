@@ -32,15 +32,15 @@ libraries. The module must retain these versioned dynamic dependencies:
 - `libusbradioplus_asterisk.so.1`
 - `libusbradioplus_product.so.1`
 - `librate_adjusting_pcm_ring3.so.3`
-- `librptadvradio.so.4`
+- `librptadvradio.so.5`
 - the released samplerate ABI-2, FFmpeg, PortAudio/ALSA, GPIO, and RNNoise adapters
 
 The corresponding build packages are `librate-adjusting-pcm-ring3-dev`,
 `librptadvradio-dev`, `librptadv-samplerate-adapter-dev`,
 `librptadv-ffmpeg-adapter-dev`, `librptadv-portaudio-alsa-adapter-dev`,
 `librptadv-gpio-adapter-dev`, and `librptadv-rnnoise-adapter-dev`.
-The GPIO runtime and development packages must be version `0.1.0~alpha4-1`
-or newer.
+The minimum runtime and development package versions for physical station preparation
+are `0.1.0~alpha5-1` for GPIO and `0.1.0~alpha13-1` for radio.
 
 `chan_usbradioplus.so` and `libusbradioplus_asterisk.so.1` are private,
 co-packaged in `usbradioplus`. The separately packaged

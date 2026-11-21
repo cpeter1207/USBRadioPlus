@@ -149,6 +149,8 @@ pub enum SubaudibleSource {
     Parallel = 4,
     /// Inverted parallel-port subaudible indication.
     ParallelInverted = 5,
+    /// Independent normalized external tone with required validity.
+    External = 6,
 }
 
 /// Transmit CTCSS/DCS turn-off policy.
@@ -483,6 +485,8 @@ pub struct ReceiveControls {
     /// Independent normalized carrier. None is unavailable/stale, never a
     /// request to fall back to GPIO or a DSP detector.
     pub external_carrier: Option<bool>,
+    /// Independent normalized tone, absent on stale or failed acquisition.
+    pub external_subaudible: Option<bool>,
     /// Normal USB GPIO carrier input.
     pub hardware_carrier: bool,
     /// Normal parallel-port carrier input.

@@ -129,6 +129,7 @@ pub(crate) fn apply(
             SubaudibleSource::UsbInverted => core::CtcssSource::UsbInverted,
             SubaudibleSource::Parallel => core::CtcssSource::Parallel,
             SubaudibleSource::ParallelInverted => core::CtcssSource::ParallelInverted,
+            SubaudibleSource::External => core::CtcssSource::External,
         };
         s.ctcss.receive_source = source;
     } else {

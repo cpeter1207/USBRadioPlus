@@ -86,6 +86,7 @@ impl StationPlan {
                 }
                 Source::External => {
                     station.ctcss.receive_source = match external_decode {
+                        SubaudibleSource::External => CtcssSource::External,
                         SubaudibleSource::Usb => CtcssSource::Usb,
                         SubaudibleSource::UsbInverted => CtcssSource::UsbInverted,
                         SubaudibleSource::Parallel => CtcssSource::Parallel,

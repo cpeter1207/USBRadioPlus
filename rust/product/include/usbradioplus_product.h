@@ -1746,6 +1746,13 @@ const struct UrpAstDescriptor *usbradioplus_product_descriptor_v1(void);
  * @return Pointer to the immutable, process-lifetime station preparation descriptor. */
 const UrpPreparationDescriptor *usbradioplus_preparation_descriptor(void);
 
+/** ABI version for the explicit physical station preparation capability. */
+#define URP_NATIVE_PHYSICAL_PREPARATION_ABI_VERSION 1U
+
+/** Same table layout as preparation1, with exact identity usbradioplus.physical-preparation1.
+ * The caller supplies the required physical DTO. No device access occurs during prepare. */
+const UrpPreparationDescriptor *usbradioplus_physical_preparation_descriptor(void);
+
 /** Return the independent peer-role preparation descriptor.
  * @return Pointer to the immutable, process-lifetime peer-role preparation descriptor. */
 const UrpLinkPreparationDescriptor *usbradioplus_link_preparation_descriptor(void);

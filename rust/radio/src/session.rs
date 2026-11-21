@@ -4,6 +4,7 @@ use super::*;
 #[derive(Clone, Copy)]
 pub struct RadioProvider {
     functions: Functions,
+    external_tone: bool,
 }
 
 impl RadioProvider {
@@ -69,7 +70,12 @@ impl RadioProvider {
         else {
             return Err(RadioError::IncompatibleAdapter);
         };
+        let feature_offset = std::mem::offset_of!(QualificationDescriptor, qualification_features);
+        let external_tone = header.struct_size as usize >= feature_offset + size_of::<u32>()
+            // SAFETY: the size includes this aligned immutable capability word.
+            && unsafe { ptr::addr_of!((*raw_descriptor.cast::<QualificationDescriptor>()).qualification_features).read() } & 1 != 0;
         Ok(Self {
+            external_tone,
             functions: Functions {
                 create,
                 warm,
@@ -87,6 +93,11 @@ impl RadioProvider {
         })
     }
 
+    /// Whether the optional external tone qualification record can be used with this provider.
+    pub fn has_external_tone(&self) -> bool {
+        self.external_tone
+    }
+
     /// Prepare a single-use update on the control plane without calling any port.
     ///
     /// `program_ring` must be empty: the live ring never changes. Processing ports
@@ -98,6 +109,11 @@ impl RadioProvider {
         config: &SessionConfig,
         ports: SessionPorts<'a>,
     ) -> Result<PreparedUpdate<'a>, RadioError> {
+        if config.qualification.subaudible_source == SubaudibleSource::External
+            && !self.external_tone
+        {
+            return Err(RadioError::IncompatibleAdapter);
+        }
         validate_config(config)?;
         let raw_config = config.as_raw();
         let raw_ports = ports.as_raw();
@@ -136,6 +152,11 @@ impl RadioProvider {
         config: &SessionConfig,
         ports: SessionPorts<'a>,
     ) -> Result<PreparedSession<'a>, RadioError> {
+        if config.qualification.subaudible_source == SubaudibleSource::External
+            && !self.external_tone
+        {
+            return Err(RadioError::IncompatibleAdapter);
+        }
         validate_config(config)?;
         let raw_config = config.as_raw();
         let raw_ports = ports.as_raw();

@@ -280,6 +280,22 @@ pub(super) unsafe fn create_from(
                 GpioAdapter::from_raw(providers.gpio).map_err(|_| Status::IncompatibleAbi)?,
             )
         };
+        if hardware.keyboard.is_some() && !gpio.has_keyboard()
+            || hardware.serial.is_some() && !gpio.has_serial()
+            || hardware.cm119.is_some()
+                && !matches!(
+                    hardware.ordinary_ptt,
+                    usbradioplus_station::OrdinaryPtt::Legacy
+                        | usbradioplus_station::OrdinaryPtt::Usb
+                )
+                && !gpio.has_input_only_ptt()
+            || (radio.qualification.subaudible_source
+                == usbradioplus_radio::SubaudibleSource::External
+                || hardware.serial.as_ref().is_some_and(|s| s.tone != 0))
+                && !radio_provider.has_external_tone()
+        {
+            return Err(Status::IncompatibleAbi);
+        }
         let denoise = if providers.rnnoise.is_null() {
             None
         } else {

@@ -242,7 +242,7 @@ fn external_parallel_encoder_respects_enable_ptt_and_backend_owned_pins() {
         assert_eq!(output.is_ok(), allowed, "{backend:?} pin{pin}");
         if allowed {
             let output = output.unwrap().unwrap();
-            assert_eq!(output.bank, crate::SiteBank::Parallel);
+            assert_eq!(output.bank, crate::SiteBank::Parallel.into());
             assert_eq!(output.mask, 1 << (pin - 2));
             plan.parallel.as_mut().unwrap().config.output_enable_mask &= !output.mask;
             assert!(external_encoder(&config, &plan).is_err());

@@ -11,6 +11,11 @@ use std::fmt;
 use std::mem::size_of;
 use std::ptr::{self, NonNull};
 
+mod keyboard;
+pub use keyboard::KeyboardDevice;
+mod serial;
+pub use serial::{SerialConfig, SerialDevice};
+
 const ABI_VERSION: u32 = 1;
 const CAPABILITY: &CStr = c"rptadv.cm119-hid-gpio";
 const RESULT_OK: c_int = 0;
@@ -309,6 +314,15 @@ struct Descriptor {
     parallel_close_outputs: Option<ParallelWrite>,
 }
 
+/// Append-only GPIO extension following the complete published alpha4 prefix.
+#[repr(C)]
+struct ExtendedDescriptor {
+    base: Descriptor,
+    open_without_ptt: Option<DeviceOpen>,
+    serial: Option<unsafe extern "C" fn() -> *const c_void>,
+    keyboard: Option<unsafe extern "C" fn() -> *const c_void>,
+}
+
 /// Failure reported while preparing or operating a GPIO adapter.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum GpioError {
@@ -362,6 +376,8 @@ pub enum Cm119Profile {
 /// Exact setup for one CM119 HID interface.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Cm119Config {
+    /// Reserve the dedicated pin for another PTT owner and leave it electrically undriven.
+    pub disable_ptt: bool,
     /// Stable Linux USB topology such as `3-1.2`.
     pub usb_port_path: String,
     /// USB vendor identifier, or zero for the C-Media default.
@@ -579,6 +595,9 @@ pub struct ParallelStatistics {
 #[derive(Clone, Copy)]
 pub struct GpioAdapter {
     descriptor: Descriptor,
+    open_without_ptt: Option<DeviceOpen>,
+    serial: Option<unsafe extern "C" fn() -> *const c_void>,
+    keyboard: Option<unsafe extern "C" fn() -> *const c_void>,
 }
 
 // SAFETY: construction requires a process-lifetime immutable descriptor; the
@@ -599,6 +618,9 @@ impl GpioAdapter {
     pub unsafe fn from_raw(descriptor: *const c_void) -> Result<Self, GpioError> {
         let pointer = NonNull::new(descriptor.cast_mut().cast::<Descriptor>())
             .ok_or(GpioError::IncompatibleAdapter)?;
+        if !pointer.as_ptr().is_aligned() {
+            return Err(GpioError::IncompatibleAdapter);
+        }
         // SAFETY: only the two-word prefix is required before the size check.
         // Do not form a reference spanning an older, shorter function table.
         let header = unsafe { &*pointer.as_ptr().cast::<[u32; 2]>() };
@@ -638,7 +660,41 @@ impl GpioAdapter {
         {
             return Err(GpioError::IncompatibleAdapter);
         }
-        Ok(Self { descriptor })
+        let open_without_ptt =
+            if header[0] as usize >= std::mem::offset_of!(ExtendedDescriptor, serial) {
+                // SAFETY: the size includes the complete first extension pointer.
+                unsafe {
+                    ptr::addr_of!((*pointer.as_ptr().cast::<ExtendedDescriptor>()).open_without_ptt)
+                        .read()
+                }
+            } else {
+                None
+            };
+        let serial = if header[0] as usize >= std::mem::offset_of!(ExtendedDescriptor, keyboard) {
+            // SAFETY: the size includes the entire optional serial getter.
+            unsafe { ptr::addr_of!((*pointer.as_ptr().cast::<ExtendedDescriptor>()).serial).read() }
+        } else {
+            None
+        };
+        let keyboard = if header[0] as usize >= size_of::<ExtendedDescriptor>() {
+            // SAFETY: the size includes the optional keyboard getter in full.
+            unsafe {
+                ptr::addr_of!((*pointer.as_ptr().cast::<ExtendedDescriptor>()).keyboard).read()
+            }
+        } else {
+            None
+        };
+        Ok(Self {
+            descriptor,
+            open_without_ptt,
+            serial,
+            keyboard,
+        })
+    }
+
+    /// Whether the dedicated CM119 PTT pin can be left electrically undriven.
+    pub fn has_input_only_ptt(&self) -> bool {
+        self.open_without_ptt.is_some()
     }
 
     /// Enumerate the bounded set of supported CM119 devices.
@@ -680,10 +736,14 @@ impl GpioAdapter {
         let path = checked_c_string(&config.usb_port_path)?;
         let raw_config = raw_device_config(config, &path);
         let mut device = ptr::null_mut();
-        // SAFETY: validation requires this function and the adapter initializes `device`.
-        map_result(unsafe {
-            self.descriptor.device_open.unwrap_unchecked()(&raw_config, &mut device)
-        })?;
+        let open = if config.disable_ptt {
+            self.open_without_ptt
+        } else {
+            self.descriptor.device_open
+        }
+        .ok_or(GpioError::IncompatibleAdapter)?;
+        // SAFETY: the checked provider owns the operation; the complete raw request and output stay live.
+        map_result(unsafe { open(&raw_config, &mut device) })?;
         Ok(Cm119Device {
             descriptor: self.descriptor,
             device: NonNull::new(device).ok_or(GpioError::AdapterFailure)?,

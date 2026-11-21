@@ -13,6 +13,8 @@ pub enum RemoteEncoderOutput {
     Usb(GpioPin),
     /// Configured parallel data output, using its connector pin number.
     Parallel(ParallelPin),
+    /// Selected dedicated modem output mask, bit 0 RTS and bit 1 DTR.
+    Serial(u8),
 }
 fn encoder_output(value: &str) -> Option<RemoteEncoderOutput> {
     let (bank, pin) = value.split_once(':')?;

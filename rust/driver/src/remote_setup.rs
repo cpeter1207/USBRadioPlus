@@ -30,6 +30,7 @@ impl std::error::Error for RemoteSetupError {}
 
 /// Immutable, Send setup. It contains no rig/session, station pointer or live
 /// control observer. Create actual contexts only on the existing hardware worker.
+#[derive(Clone)]
 pub struct RemoteSetup {
     configuration: ResolvedRemoteConfiguration,
     engine: Arc<RemoteProvider>,
@@ -87,6 +88,12 @@ impl RemoteSetup {
     /// Immutable source policy and definitions, copied before device access.
     pub fn configuration(&self) -> &ResolvedRemoteConfiguration {
         &self.configuration
+    }
+    pub(crate) fn pin_hamlib_options(
+        &mut self,
+        options: std::collections::BTreeMap<String, String>,
+    ) {
+        self.configuration.hamlib_options = options;
     }
     /// Prepared physical assignments, without assumed CM119 capabilities.
     pub fn hardware(&self) -> &HardwarePlan {

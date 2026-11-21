@@ -431,6 +431,31 @@ fn provider() -> RadioProvider {
     unsafe { RadioProvider::from_raw_descriptor(ptr::from_ref(&descriptor).cast()) }.unwrap()
 }
 
+#[test]
+fn physical_external_tone_rejects_a_prior_descriptor_before_create_or_update() {
+    let provider = provider();
+    assert!(!provider.has_external_tone());
+    let mut config = SessionConfig::new(42, 16, 16);
+    config.qualification.subaudible_source = SubaudibleSource::External;
+    assert!(matches!(
+        provider.prepare(&config, SessionPorts::default()),
+        Err(RadioError::IncompatibleAdapter)
+    ));
+    assert!(matches!(
+        provider.prepare_update(&config, SessionPorts::default()),
+        Err(RadioError::IncompatibleAdapter)
+    ));
+    for (input, expected) in [(None, 0), (Some(false), 8), (Some(true), 24)] {
+        let raw = ReceiveControls {
+            external_subaudible: input,
+            ..Default::default()
+        }
+        .as_raw();
+        assert_eq!(raw.subaudible_override, expected);
+        assert_eq!((raw.hardware_subaudible, raw.parallel_subaudible), (0, 0));
+    }
+}
+
 fn ports(lifecycle: &FakeLifecycle) -> SessionPorts<'_> {
     let mut ports = SessionPorts::default();
     ports.receive_deemphasis.raw.context = ptr::from_ref(lifecycle).cast_mut().cast();

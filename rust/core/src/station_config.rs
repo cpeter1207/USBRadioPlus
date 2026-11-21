@@ -586,6 +586,8 @@ pub enum CtcssSource {
     Parallel,
     /// Use an inverted parallel input.
     ParallelInverted,
+    /// Normalized dedicated external tone, prepared by the typed station owner.
+    External,
 }
 
 impl fmt::Display for CtcssSource {
@@ -597,6 +599,7 @@ impl fmt::Display for CtcssSource {
             Self::Dsp => "dsp",
             Self::Parallel => "pp",
             Self::ParallelInverted => "ppinvert",
+            Self::External => "external",
         })
     }
 }

@@ -33,6 +33,7 @@ pub(crate) fn setting(
 }
 
 thread_local! {
+    pub(crate) static LAST_APPLIED_PTT: std::cell::Cell<Option<bool>> = const { std::cell::Cell::new(None) };
     static RADIO_FOLLOWS_PTT: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
@@ -547,6 +548,8 @@ unsafe extern "C" fn radio_transmit(
     // SAFETY: The fake handle and result destination originate from the radio wrapper.
     unsafe {
         let radio = &*handle.cast::<RadioState>();
+        // RawTransmitInput carries physical_ptt_applied immediately after external_ptt_request.
+        LAST_APPLIED_PTT.set(Some(controls.cast::<u32>().add(1).read() != 0));
         // The radio ABI starts transmit controls with u32 external_ptt_request.
         let keyed = if radio.follows_ptt {
             controls.cast::<u32>().read()

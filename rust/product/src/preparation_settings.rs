@@ -8,6 +8,7 @@ use usbradioplus_core::*;
 #[serde(default, deny_unknown_fields)]
 pub(super) struct Settings {
     station: Station,
+    physical: Option<Physical>,
     local: Option<Role>,
     link: Option<Role>,
     voice_telemetry: Option<Role>,
@@ -219,7 +220,12 @@ impl Station {
     }
 }
 
+#[path = "preparation_physical.rs"]
+mod physical;
+use physical::Physical;
+
 pub(super) struct Semantic {
+    pub(super) physical: Option<Physical>,
     pub(super) ctcss_supplied: bool,
     pub(super) dcs_supplied: bool,
     pub(super) channel: ChannelConfiguration,
@@ -291,6 +297,7 @@ impl Settings {
             validate_remote(remote)?;
         }
         Ok(Semantic {
+            physical: self.physical,
             ctcss_supplied,
             dcs_supplied,
             channel,
@@ -414,14 +421,16 @@ fn validate_remote(r: &ResolvedRemoteConfiguration) -> Result<(), &'static str> 
     }
     if r.ptt_source
         .as_deref()
-        .is_some_and(|s| !matches!(s, "hamlib" | "usb" | "parallel"))
+        .is_some_and(|s| !matches!(s, "hamlib" | "usb" | "parallel" | "serial"))
     {
         return Err("ptt_source");
     }
-    if r.cor_source
-        .as_deref()
-        .is_some_and(|s| !matches!(s, "hamlib" | "usb" | "parallel" | "open" | "dsp"))
-    {
+    if r.cor_source.as_deref().is_some_and(|s| {
+        !matches!(
+            s,
+            "hamlib" | "usb" | "parallel" | "open" | "dsp" | "serial" | "key_down"
+        )
+    }) {
         return Err("cor_source");
     }
     if r.scan_presets_ms.contains(&Some(0)) {

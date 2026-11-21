@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0~alpha37 - Unreleased
+
+- Add explicit physical station preparation to product SONAME 1. Use GPIO adapter alpha5 and radio alpha13 for the new capabilities.
+
 ## 0.1.0~alpha36 - Unreleased
 
 - Add independent link-role preparation for metered peers on ports without a physical station.

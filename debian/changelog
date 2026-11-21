@@ -1,3 +1,10 @@
+usbradioplus (0.1.0~alpha37-1) UNRELEASED; urgency=medium
+
+  * Add the separately sized physical station preparation capability to SONAME 1.
+  * Require GPIO adapter alpha5 and radio alpha13 for physical qualification.
+
+ -- codex <codex@localhost>  Fri, 20 Nov 2026 23:00:00 -0600
+
 usbradioplus (0.1.0~alpha36-1) UNRELEASED; urgency=medium
 
   * Add the preparation1 capability to the product SONAME 1 SDK.

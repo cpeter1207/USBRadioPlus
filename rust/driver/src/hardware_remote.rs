@@ -50,7 +50,7 @@ fn physical_cancelled(
         || source.is_some_and(|source| !source.source().valid)
 }
 
-fn confirm_ptt(actual: i64, keyed: bool) -> Result<(), CallError> {
+pub(super) fn confirm_ptt(actual: i64, keyed: bool) -> Result<(), CallError> {
     if (actual != 0) == keyed {
         Ok(())
     } else {

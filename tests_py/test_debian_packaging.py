@@ -34,7 +34,7 @@ def test_usbradioplus_debian_package_is_nonactivating():
     assert "librate-adjusting-pcm-ring3-dev (>= 3.0.0~alpha6)" in control
     assert "librptadv-samplerate-adapter-dev (>= 0.2.0~alpha1)" in control
     assert "libsamplerate" not in control
-    assert "librptadvradio-dev (>= 0.1.0~alpha10)" in control
+    assert "librptadvradio-dev (>= 0.1.0~alpha13)" in control
     assert "--variable=abi_version rptadvradio),5" in makefile
     for soname in (
         "librate_adjusting_pcm_ring3.so.3",
