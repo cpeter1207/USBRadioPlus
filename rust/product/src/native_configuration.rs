@@ -75,6 +75,7 @@ enum View {
     },
     Typed {
         physical: NativePhysicalOptions,
+        explicit_physical: bool,
     },
 }
 
@@ -87,13 +88,59 @@ pub(super) struct Resolved {
 }
 
 impl Resolved {
-    pub(super) fn typed(request: native::ResolvedRequest, physical: NativePhysicalOptions) -> Self {
+    pub(super) fn typed(
+        request: native::ResolvedRequest,
+        physical: NativePhysicalOptions,
+        explicit_physical: bool,
+    ) -> Self {
         Self {
             remote: request.remote.clone(),
-            view: View::Typed { physical },
+            view: View::Typed {
+                physical,
+                explicit_physical,
+            },
             prepared: Ok(request),
         }
     }
+}
+
+/// Copy the owned request and its independently retained inspection data without acquiring hardware.
+///
+/// # Safety
+/// The pointer must be a live configuration from this product module.
+pub(super) unsafe fn copy_typed(owner: *const c_void) -> Result<Resolved, Status> {
+    // SAFETY: the matched module and caller retain the source for the synchronous copy.
+    let owner = unsafe { owner.cast::<Resolved>().as_ref() }.ok_or(Status::InvalidArgument)?;
+    let View::Typed {
+        physical,
+        explicit_physical: true,
+    } = &owner.view
+    else {
+        return Err(Status::InvalidArgument);
+    };
+    let request = owner.prepared.as_ref().map_err(|error| *error)?;
+    Ok(Resolved::typed(request.clone(), physical.clone(), true))
+}
+
+/// Borrow only a modular physical preparation from this matched product.
+///
+/// # Safety
+/// The caller retains a valid configuration owner from this module for the borrow.
+pub(super) unsafe fn typed_request<'a>(
+    pointer: *const c_void,
+) -> Result<&'a native::ResolvedRequest, Status> {
+    // SAFETY: caller retains the verified producer and its original configuration.
+    let owner = unsafe { pointer.cast::<Resolved>().as_ref() }.ok_or(Status::InvalidArgument)?;
+    if !matches!(
+        owner.view,
+        View::Typed {
+            explicit_physical: true,
+            ..
+        }
+    ) {
+        return Err(Status::InvalidArgument);
+    }
+    owner.prepared.as_ref().map_err(|error| *error)
 }
 
 /// Borrow a completed native plan on the synchronous control owner.
@@ -216,7 +263,7 @@ pub(crate) unsafe extern "C" fn visit(
                 configuration,
                 node,
             } => ini_template(configuration, node, call),
-            View::Typed { physical } => {
+            View::Typed { physical, .. } => {
                 let request = owner.prepared.as_ref().map_err(|e| *e)?;
                 template(
                     &request.configuration,

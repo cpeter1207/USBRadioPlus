@@ -18,6 +18,7 @@ pub use link_preparation::{
 };
 mod preparation;
 mod preparation_settings;
+mod station_ownership;
 pub use native::{
     URP_NATIVE_CONFIG_ABI_VERSION, URP_NATIVE_HARDWARE_GAIN_INPUT,
     URP_NATIVE_HARDWARE_GAIN_OUTPUT_A, URP_NATIVE_HARDWARE_GAIN_OUTPUT_B, UrpNativeCreateArgs,
@@ -28,6 +29,10 @@ pub use native_processing::{UrpNativeProcessingArgs, UrpNativeProcessingDiagnost
 pub use preparation::{
     UrpPreparationDescriptor, UrpTypedPreparation, usbradioplus_physical_preparation_descriptor,
     usbradioplus_preparation_descriptor,
+};
+pub use station_ownership::{
+    UrpBoundStationRequest, UrpStationOwnershipDescriptor,
+    usbradioplus_station_ownership_descriptor,
 };
 mod site;
 pub use site::{UrpAstSiteBinding, UrpAstSiteRequest, UrpAstSiteSnapshot};
@@ -1167,6 +1172,7 @@ struct DriverHandle(DriverInner);
 
 #[derive(Default)]
 struct ReservationState {
+    typed_ports: HashSet<[u8; 16]>,
     names: HashSet<String>,
     active: Option<String>,
     configured_active: Option<String>,
@@ -1183,6 +1189,7 @@ struct ChannelHandle {
 }
 
 struct ChannelControl {
+    typed: Option<station_ownership::TypedChannel>,
     remote: Option<RemotePreparation>,
     media: Option<StationMedia>,
     preflight: Option<HardwarePreflight>,
@@ -1344,17 +1351,29 @@ impl Drop for ChannelHandle {
         {
             let _ = worker.join();
         }
-        self.driver()
+        let typed_port = self
+            .control
+            .get_mut()
+            .typed
+            .as_ref()
+            .map(|typed| typed.port);
+        let mut reservations = self
+            .driver()
             .reservations
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .release(&self.reservation);
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some(port) = typed_port {
+            reservations.typed_ports.remove(&port);
+        } else {
+            reservations.release(&self.reservation);
+        }
     }
 }
 
 impl ReservationState {
     fn new(configured_active: Option<String>) -> Self {
         Self {
+            typed_ports: HashSet::new(),
             names: HashSet::new(),
             active: None,
             configured_active,
@@ -1936,34 +1955,64 @@ unsafe extern "C" fn channel_reserve(
             }
         };
         media.plan = media.plan.with_remote_configuration(remote_configuration);
-        let (program, consumer) =
-            LatestHandoff::split(HANDOFF_SLOTS).map_err(|_| Status::SetupFailed)?;
-        let handle = Box::new(ChannelHandle {
-            driver: NonNull::from(&driver.0),
-            reservation,
-            channel_context: args.channel_context as usize,
+        let handle = prepared_channel(
+            &driver.0,
+            &reservation,
+            args.channel_context,
             mode,
-            program: UnsafeCell::new(program),
-            control: UnsafeCell::new(ChannelControl {
-                remote,
-                media: Some(media),
-                preflight: Some(preflight),
-                hardware: None,
-                program: consumer,
-                voice: ControllerPcmFrame::silence(mode),
-                jitter,
-                reload: None,
-                running: false,
-                direct: None,
-                feedback: None,
-                programme_fence: None,
-            }),
-            rollback: Mutex::new(None),
-        });
-        // SAFETY: output_pointer validated this writable destination.
+            remote,
+            media,
+            preflight,
+            jitter,
+            None,
+        )
+        .map_err(|error| {
+            reservation_setup_failure(&driver.0, &reservation, format!("{error:?}"))
+        })?;
+        // SAFETY: the caller receives the sole channel owner.
         unsafe { output.as_ptr().write(Box::into_raw(handle).cast()) };
         Ok(())
     })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prepared_channel(
+    driver: &DriverInner,
+    reservation: &str,
+    context: *mut c_void,
+    mode: AsteriskPcmMode,
+    remote: Option<RemotePreparation>,
+    media: StationMedia,
+    preflight: HardwarePreflight,
+    jitter: UrpAstJitterConfig,
+    typed: Option<station_ownership::TypedChannel>,
+) -> Result<Box<ChannelHandle>, Status> {
+    let (program, consumer) =
+        LatestHandoff::split(HANDOFF_SLOTS).map_err(|_| Status::SetupFailed)?;
+    let handle = Box::new(ChannelHandle {
+        driver: NonNull::from(driver),
+        reservation: reservation.to_owned(),
+        channel_context: context as usize,
+        mode,
+        program: UnsafeCell::new(program),
+        control: UnsafeCell::new(ChannelControl {
+            typed,
+            remote,
+            media: Some(media),
+            preflight: Some(preflight),
+            hardware: None,
+            program: consumer,
+            voice: ControllerPcmFrame::silence(mode),
+            jitter,
+            reload: None,
+            running: false,
+            direct: None,
+            feedback: None,
+            programme_fence: None,
+        }),
+        rollback: Mutex::new(None),
+    });
+    Ok(handle)
 }
 
 unsafe extern "C" fn channel_start(channel: *mut c_void) -> c_int {
@@ -1983,13 +2032,25 @@ unsafe extern "C" fn channel_start(channel: *mut c_void) -> c_int {
         }
         let media = control.media.take().ok_or(Status::NotReady)?;
         let preflight = control.preflight.take().ok_or(Status::NotReady)?;
-        let mut hardware = HardwareStation::open_preflighted(
-            media,
-            channel.driver().audio,
-            channel.driver().gpio,
-            MAXIMUM_FRAME_COUNT,
-            preflight,
-        )
+        let mut hardware = if let Some(typed) = control.typed.as_mut() {
+            let selected = typed.selected.take().ok_or(Status::NotReady)?;
+            HardwareStation::open_prepared_physical(
+                media,
+                channel.driver().audio,
+                channel.driver().gpio,
+                preflight,
+                selected,
+                typed.active.gains,
+            )
+        } else {
+            HardwareStation::open_preflighted(
+                media,
+                channel.driver().audio,
+                channel.driver().gpio,
+                MAXIMUM_FRAME_COUNT,
+                preflight,
+            )
+        }
         .map_err(|error| {
             channel.log_error(&error.to_string());
             Status::SetupFailed

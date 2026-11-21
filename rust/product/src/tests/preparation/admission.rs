@@ -309,3 +309,134 @@ fn physical_inverted_chip_receive_requires_live_acquisition() {
         }
     }
 }
+
+#[test]
+fn station_binding_copies_the_matched_owned_physical_request() {
+    let raw = standalone_radio();
+    let settings = br#"{"physical":{"ordinary":{"audio_source":"alsa","ptt_source":"parallel"},"parallel_carrier_inverted":false,"parallel_ctcss_inverted":false},"station":{"parallel_port":{"output_assignments":["push_to_talk",null,null,null,null,null,null,null]}}}"#;
+    let original = prepare_with(
+        crate::usbradioplus_physical_preparation_descriptor(),
+        &raw,
+        settings,
+        |request| {
+            request.device_selection = 0;
+            request.device_identifier = b"hw:3,0".as_ptr();
+            request.device_identifier_length = 6;
+        },
+    )
+    .unwrap();
+    let product = crate::usbradioplus_product_descriptor_v1();
+    let get = crate::usbradioplus_station_ownership_descriptor();
+    // SAFETY: the static getter retains its complete immutable descriptor for the process.
+    let ops = unsafe { &*get };
+    let ordinary = prepare_with(
+        crate::usbradioplus_preparation_descriptor(),
+        &raw,
+        b"{}",
+        |_| {},
+    )
+    .unwrap();
+    assert!(ordinary.same(&ordinary));
+    // SAFETY: the old getter returned this live owner from the same matched DSO.
+    assert!(unsafe { crate::native_configuration::typed_request(ordinary.0) }.is_err());
+    let mut copied = ptr::dangling_mut();
+    assert_ne!(
+        // SAFETY: ordinary is a live released preparation from exactly the same product.
+        unsafe { (ops.copy_prepared)(product, ordinary.0, &mut copied) },
+        0
+    );
+    assert!(copied.is_null());
+    copied = ptr::dangling_mut();
+    assert_ne!(
+        // SAFETY: the original owner is live, while the null product identity must be rejected.
+        unsafe { (ops.copy_prepared)(ptr::null(), original.0, &mut copied) },
+        0
+    );
+    assert!(copied.is_null());
+    assert_eq!(
+        // SAFETY: the owner and the actual product descriptor are from the same loaded module.
+        unsafe { (ops.copy_prepared)(product, original.0, &mut copied) },
+        0
+    );
+    let copy = Owner(copied);
+    // SAFETY: the successful physical clone is retained by its unique owner.
+    assert!(unsafe { crate::native_configuration::typed_request(copy.0) }.is_ok());
+    assert!(original.same(&copy));
+    drop(original);
+    assert!(copy.same(&copy));
+}
+
+#[test]
+fn raw_alsa_typed_native_vad_update_and_reverse_preserve_audio_without_mixer_access() {
+    let _guard = PROVIDER_TEST_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    fixture::clear_failure();
+    fixture::exclusive_audio(true);
+    fixture::periodic_audio(true);
+    let settings = br#"{"physical":{"ordinary":{"audio_source":"alsa","ptt_source":"parallel"},"parallel_carrier_inverted":false,"parallel_ctcss_inverted":false},"station":{"parallel_port":{"output_assignments":["push_to_talk",null,null,null,null,null,null,null]}}}"#;
+    let descriptor = crate::usbradioplus_physical_preparation_descriptor();
+    let prepare = |mode| {
+        let mut raw = standalone_radio();
+        raw.receive.vad_mode = mode;
+        raw.qualification.carrier_source = 5;
+        prepare_with(descriptor, &raw, settings, |station| {
+            station.device_selection = 0;
+            station.device_identifier = b"hw:3,0".as_ptr();
+            station.device_identifier_length = 6;
+        })
+        .unwrap()
+    };
+    let initial = prepare(0);
+    let next = prepare(2);
+    let providers = fixture::manifest();
+    let callbacks = direct_callbacks();
+    let mut args = UrpNativeCreateArgs {
+        struct_size: size_of::<UrpNativeCreateArgs>() as u32,
+        abi_version: 1,
+        config: ptr::null(),
+        providers: &providers,
+        callbacks: &callbacks,
+        generation_id: 2,
+        maximum_frames: 960,
+    };
+    let mixer_count = fixture::mixer_discoveries();
+    let mut handle = ptr::null_mut();
+    let poll = |op: &mut dyn FnMut() -> i32| {
+        let limit = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        loop {
+            let code = op();
+            if code != 1 {
+                return code;
+            }
+            assert!(std::time::Instant::now() < limit);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+    };
+    // SAFETY: this test serializes the matched owner and retains fake providers, callbacks and physical preparations.
+    unsafe {
+        let physical = &*descriptor;
+        assert_eq!((physical.create)(initial.0, &args, &mut handle), 0);
+        assert_eq!(crate::native::start(handle), 0);
+        let streams = fixture::audio_lifecycle();
+        assert_eq!(streams, (1, 0));
+        for owner in [&next, &initial] {
+            args.generation_id += 1;
+            let mut update = ptr::null_mut();
+            assert_eq!(
+                (physical.prepare_update)(handle, owner.0, &args, &mut update),
+                0
+            );
+            assert_eq!(crate::native::begin_update(handle, update), 0);
+            assert_eq!(poll(&mut || crate::native::accept_update(handle)), 0);
+            assert_eq!(poll(&mut || crate::native::finish_update(handle, 1)), 0);
+            crate::native::destroy_update(update);
+        }
+        assert_eq!(fixture::audio_lifecycle(), streams);
+        assert_eq!(fixture::mixer_discoveries(), mixer_count);
+        assert_eq!(crate::native::stop(handle), 0);
+        crate::native::destroy(handle);
+    }
+    fixture::periodic_audio(false);
+    fixture::exclusive_audio(false);
+}

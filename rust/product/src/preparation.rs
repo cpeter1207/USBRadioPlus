@@ -289,7 +289,11 @@ unsafe fn prepare_request(
                 usbradioplus_driver::RemoteSetupError::Call(_) => report("remote"),
             })?;
         }
-        let owner = Box::new(native_configuration::Resolved::typed(request, physical));
+        let owner = Box::new(native_configuration::Resolved::typed(
+            request,
+            physical,
+            explicit_physical,
+        ));
         // SAFETY: output is initialized and the product destroy operation owns the returned allocation.
         unsafe { output.as_ptr().write(Box::into_raw(owner).cast()) };
         Ok(())

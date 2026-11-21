@@ -152,22 +152,9 @@ struct NativeStation {
 
 impl NativeStation {
     fn start(&mut self) -> Result<(), Status> {
-        if self.runtime.running() && !self.runtime.started() {
-            // Failed startup can leave callbacks active. Confirm stop before
-            // hardware initialization, including configured gain reapplication.
-            self.runtime.stop().map_err(|_| Status::SetupFailed)?;
-        }
-        if self.runtime.started() {
-            self.maintenance.start_preserving_gains()
-        } else {
-            self.maintenance.start()
-        }
-        .map_err(|_| Status::SetupFailed)?;
-        if self.runtime.start().is_err() {
-            let _ = self.maintenance.stop();
-            return Err(Status::SetupFailed);
-        }
-        Ok(())
+        self.maintenance
+            .start_station(&mut self.runtime)
+            .map_err(|_| Status::SetupFailed)
     }
 
     fn stop(&mut self) -> Result<(), Status> {
@@ -925,7 +912,7 @@ unsafe fn resolve_request(
 }
 
 impl ResolvedRequest {
-    fn set_generation(&mut self, generation_id: u64, maximum_frames: u32) {
+    pub(super) fn set_generation(&mut self, generation_id: u64, maximum_frames: u32) {
         self.radio.generation_id = generation_id;
         self.radio.maximum_receive_frame_count = maximum_frames;
         self.radio.maximum_transmit_frame_count = maximum_frames;

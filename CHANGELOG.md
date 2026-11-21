@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0~alpha38 - Unreleased
+
+- Add independently sized station ownership and Asterisk station binding descriptors for typed physical radio reservations, live updates and rollback.
+
 ## 0.1.0~alpha37 - Unreleased
 
 - Add explicit physical station preparation to product SONAME 1. Use GPIO adapter alpha5 and radio alpha13 for the new capabilities.

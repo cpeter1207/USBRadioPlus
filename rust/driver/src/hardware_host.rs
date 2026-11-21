@@ -793,6 +793,37 @@ impl HardwareStation {
         })
     }
 
+    /// Open the channel media with the exact physical selection and native mixer policy.
+    ///
+    /// # Errors
+    /// Returns the underlying device or maintenance failure before stream startup.
+    pub fn open_prepared_physical(
+        media: StationMedia,
+        audio: AudioProvider,
+        gpio: GpioAdapter,
+        preflight: HardwarePreflight,
+        selected: SelectedHardwarePlan,
+        gains: [Option<f64>; 3],
+    ) -> Result<Self, HardwareStationError> {
+        let plan = media.plan.hardware().clone();
+        let (runtime, control) = StationRuntime::open(media, &selected, audio)?;
+        let maintenance = HardwareMaintenance::native(
+            &plan,
+            preflight,
+            selected,
+            runtime.hardware_state(),
+            audio,
+            gpio,
+            gains,
+        )?;
+        Ok(Self {
+            runtime,
+            control,
+            maintenance,
+            remote_dsp: None,
+        })
+    }
+
     /// Bind the prepared remote composition before either audio callback starts.
     /// Keep the DSP pump on this original serialized station owner.
     pub fn bind_remote(
@@ -823,15 +854,7 @@ impl HardwareStation {
     ///
     /// Returns a GPIO open/service failure or a PortAudio start failure.
     pub fn start(&mut self) -> Result<(), HardwareStationError> {
-        if self.maintenance.service.running() {
-            return Ok(());
-        }
-        self.maintenance.service.start()?;
-        if let Err(error) = self.runtime.start() {
-            let _ = self.maintenance.service.stop();
-            return Err(error.into());
-        }
-        Ok(())
+        self.maintenance.start_station(&mut self.runtime)
     }
 
     /// Stop audio, fail-safe unkey hardware, and join the service thread.
@@ -981,6 +1004,12 @@ impl HardwareStation {
     pub fn finish_update(&mut self, commit: bool) -> Result<(), HardwareStationError> {
         self.runtime.finish_update(&mut self.control, commit)?;
         self.maintenance.finish_mixer_update(commit)
+    }
+
+    /// Retain the committed native gain intentions for future physical maintenance and restart.
+    pub fn adopt_native_gain_intents(&mut self, gains: [Option<f64>; 3]) {
+        self.maintenance
+            .adopt_native_gain_intents(gains, self.control.plan().configuration());
     }
 
     /// Clone the lock-free state shared with the native callbacks.
@@ -1434,6 +1463,14 @@ impl HardwareMaintenance {
             (old.output_a_gain_db, next.output_a_gain_db),
             (old.output_b_gain_db, next.output_b_gain_db),
         ];
+        if gains
+            .iter()
+            .zip(explicitly_changed_mixers)
+            .all(|(&(old, next), changed)| !changed && old == next)
+        {
+            // A DSP-only edit on an exact ALSA endpoint has no CM119 mixer to discover.
+            return Ok(());
+        }
         let levels = self.mixers()?.levels;
         self.update_mixers = Some(levels);
         for ((mixer, (old, next)), changed) in [
@@ -1509,6 +1546,31 @@ impl HardwareMaintenance {
             self.mixers.borrow_mut().take();
         }
         self.service.start()
+    }
+
+    /// Start the physical service before audio, preserving live gains across a failed stop.
+    ///
+    /// # Errors
+    ///
+    /// Returns a hardware or audio error while keeping the station available for recovery.
+    pub fn start_station(
+        &mut self,
+        runtime: &mut StationRuntime,
+    ) -> Result<(), HardwareStationError> {
+        if runtime.running() && !runtime.started() {
+            // A partial start can leave callbacks active. Confirm stop before writing any gains.
+            runtime.stop()?;
+        }
+        if runtime.started() {
+            self.start_preserving_gains()?;
+        } else {
+            self.start()?;
+        }
+        if let Err(error) = runtime.start() {
+            let _ = self.stop();
+            return Err(error.into());
+        }
+        Ok(())
     }
 
     /// Reacquire GPIO after an audio-stop failure without writing gains beneath

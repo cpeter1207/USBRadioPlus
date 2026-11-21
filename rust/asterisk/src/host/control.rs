@@ -18,6 +18,8 @@ pub(super) enum ControlOperation {
     Start,
     Stop,
     ReloadPrepare,
+    TypedStage(std::sync::Arc<super::channel::station::Plan>),
+    TypedFinish(unsafe extern "C" fn(*mut c_void, u32) -> i32, bool),
     ReloadActivate,
     ReloadFinish(bool),
     Text(Vec<u8>),
@@ -90,6 +92,10 @@ unsafe fn execute(
     unsafe {
         let descriptor = &*descriptor;
         match operation {
+            ControlOperation::TypedStage(plan) => ControlResult::Status(plan.stage(channel)),
+            ControlOperation::TypedFinish(finish, commit) => {
+                ControlResult::Status(finish(channel, u32::from(commit)))
+            }
             ControlOperation::Start => {
                 ControlResult::Status(status(descriptor.channel_start.map(|call| call(channel))))
             }

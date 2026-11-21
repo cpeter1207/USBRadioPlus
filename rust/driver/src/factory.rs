@@ -232,6 +232,18 @@ impl StationFactory {
         controller: ControllerConfiguration,
     ) -> Result<StationMedia, StationFactoryError> {
         let plan = self.plan(channel, generation_id, controller)?;
+        self.prepare_plan(plan, controller)
+    }
+
+    /// Bind an already validated plan to the original Asterisk station media owner.
+    ///
+    /// # Errors
+    /// Returns the station processing, conversion or provider binding failure.
+    pub fn prepare_plan(
+        &self,
+        plan: StationPlan,
+        controller: ControllerConfiguration,
+    ) -> Result<StationMedia, StationFactoryError> {
         let prepared = plan.prepare(&self.processing)?;
         let controller = match controller {
             ControllerConfiguration::AppRpt {

@@ -1731,6 +1731,57 @@ typedef struct UrpLinkPreparationDescriptor {
 	void (*destroy)(UrpPreparedLinkRole *);
 } UrpLinkPreparationDescriptor;
 
+/** A borrowed exact prepared station, valid through this synchronous call. */
+typedef struct UrpBoundStationRequest {
+	uint32_t struct_size;	     /**< Complete request size. */
+	uint32_t abi_version;	     /**< One. */
+	uint8_t port_uuid[16];	     /**< Registry port UUID in network byte order. */
+	uint64_t candidate_identity; /**< Nonzero semantic selection, independent of hardware
+					generation. */
+	const struct UrpAstDescriptor *product; /**< Producer of the preparation. */
+	const void *prepared;			/**< Immutable physical preparation from product. */
+} UrpBoundStationRequest;
+
+/** Callback synchronously invokes public ast_request with the supplied one-shot address. */
+typedef int (*UrpStationRequestChannel)(void *context, const char *address);
+/** Registered RadioPlusAdvanced technology operations supplied by libusbradioplus_asterisk. */
+typedef struct UrpAstStationBindingDescriptor {
+	uint32_t struct_size;	     /**< Complete table size. */
+	uint32_t abi_version;	     /**< One. */
+	const char *capability_name; /**< Exact usbradioplus.asterisk-station1. */
+	/** Pin the registered module and driver, copy the immutable provider request and return a
+	 * dormant owner. */
+	int (*prepare)(const UrpBoundStationRequest *, void **plan);
+	/** Lend a single-use address during the synchronous request; cancellation is implicit on
+	 * return. */
+	int (*with_request)(const void *plan, void *context, UrpStationRequestChannel);
+	/** Stage through the matching mounted channel's original taskprocessor. */
+	int (*stage)(void *asterisk_channel, const void *plan);
+	/** Commit or restore the mounted channel's staged station operation. */
+	int (*finish)(void *asterisk_channel, uint32_t commit);
+	/** Release the dormant plan; active and queued uses hold independent owners. */
+	void (*release)(void *plan);
+} UrpAstStationBindingDescriptor;
+
+/** Immutable extension for hosts retaining independently owned typed station plans. */
+typedef struct UrpStationOwnershipDescriptor {
+	uint32_t struct_size;	     /**< Complete readable descriptor size. */
+	uint32_t abi_version;	     /**< One. */
+	const char *capability_name; /**< Exact usbradioplus.station-ownership1. */
+	/** Copy a live typed configuration from the identified product1 module. Success transfers
+	 * one independent configuration, released by that module's native_configuration_destroy.
+	 * Keep the same DSO alive until the last owned configuration is released. */
+	int (*copy_prepared)(const struct UrpAstDescriptor *product, const void *prepared,
+			     void **output);
+	/** Reserve the exact station after publication on its existing Asterisk driver. */
+	int (*channel_reserve)(void *driver, const UrpBoundStationRequest *,
+			       const UrpAstChannelReserveArgs *, void **channel);
+	/** Stage on this mounted station. Zero staged, one untouched handoff, two pending. */
+	int (*channel_stage)(void *channel, const UrpBoundStationRequest *);
+	/** Commit or abort. Zero confirmed, two pending. */
+	int (*channel_finish)(void *channel, uint32_t commit);
+} UrpStationOwnershipDescriptor;
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -1752,6 +1803,11 @@ const UrpPreparationDescriptor *usbradioplus_preparation_descriptor(void);
 /** Same table layout as preparation1, with exact identity usbradioplus.physical-preparation1.
  * The caller supplies the required physical DTO. No device access occurs during prepare. */
 const UrpPreparationDescriptor *usbradioplus_physical_preparation_descriptor(void);
+
+/** Get the independent prepared station ownership capability from this product module. */
+const UrpStationOwnershipDescriptor *usbradioplus_station_ownership_descriptor(void);
+/** Defined by the Asterisk adapter DSO. Pin that DSO while using this table. */
+const UrpAstStationBindingDescriptor *usbradioplus_asterisk_station_binding_descriptor(void);
 
 /** Return the independent peer-role preparation descriptor.
  * @return Pointer to the immutable, process-lifetime peer-role preparation descriptor. */

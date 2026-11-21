@@ -1,3 +1,10 @@
+usbradioplus (0.1.0~alpha38-1) UNRELEASED; urgency=medium
+
+  * Export checked station ownership from product SONAME 1 and typed station
+    binding from Asterisk adapter SONAME 1.
+
+ -- codex <codex@localhost>  Sat, 21 Nov 2026 08:45:00 -0600
+
 usbradioplus (0.1.0~alpha37-1) UNRELEASED; urgency=medium
 
   * Add the separately sized physical station preparation capability to SONAME 1.
